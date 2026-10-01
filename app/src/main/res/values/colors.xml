@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Brand Primary Colors -->
+    <color name="brand_blue">#1D61F2</color>
+    <color name="brand_blue_dark">#1548B8</color>
+    <color name="brand_blue_light">#EEF4FF</color>
+
+    <!-- Status / Accent Colors -->
+    <color name="green_badge_bg">#E6F7ED</color>
+    <color name="green_badge_text">#10B981</color>
+    <color name="star_yellow">#FFB800</color>
+    <color name="notification_red">#FF3B30</color>
+
+    <!-- Neutrals & Backgrounds -->
+    <color name="bg_app">#F8F9FD</color>
+    <color name="bg_search">#F1F5F9</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="card_stroke">#E2E8F0</color>
+
+    <!-- Typography Colors -->
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_muted">#9CA3AF</color>
+
+    <!-- Legacy compatibility -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
