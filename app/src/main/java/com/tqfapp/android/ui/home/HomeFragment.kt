@@ -87,10 +87,7 @@ class HomeFragment : Fragment() {
         binding.rvProfessionals.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = ProfessionalAdapter(professionals) { professional ->
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, ProfessionalProfileFragment.newInstance(isOwner = false))
-                    .addToBackStack(null)
-                    .commit()
+                Toast.makeText(requireContext(), "Ver perfil de ${professional.name}", Toast.LENGTH_SHORT).show()
             }
         }
     }
