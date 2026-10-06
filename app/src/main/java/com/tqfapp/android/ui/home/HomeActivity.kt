@@ -32,7 +32,7 @@ class HomeActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_contracts -> {
-                    replaceFragment(HomeFragment()) // Or Contracts fragment
+                    replaceFragment(HomeFragment())
                     true
                 }
                 R.id.nav_chat -> {
