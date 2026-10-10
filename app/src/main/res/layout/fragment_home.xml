@@ -27,7 +27,7 @@
 
                 <ImageView
                     android:layout_width="wrap_content"
-                    android:layout_height="80dp"
+                    android:layout_height="52dp"
                     android:adjustViewBounds="true"
                     android:src="@drawable/logo"
                     android:scaleType="fitStart"
@@ -125,16 +125,15 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Categories Section (Grid 2x3) -->
+        <!-- Categories Carousel Section (Horizontal Scroll) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvCategories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:nestedScrollingEnabled="false"
-            app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-            app:spanCount="3"
-            tools:itemCount="6"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:itemCount="8"
             tools:listitem="@layout/item_category" />
 
         <!-- Filter Chips (Horizontal Scroll) -->
@@ -151,13 +150,16 @@
 
                 <!-- Filter 1: Categoria -->
                 <LinearLayout
+                    android:id="@+id/chipFilterCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_chip"
                     android:paddingHorizontal="14dp"
                     android:paddingVertical="8dp"
                     android:gravity="center_vertical"
-                    android:layout_marginEnd="8dp">
+                    android:layout_marginEnd="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:layout_width="16dp"
@@ -184,13 +186,16 @@
 
                 <!-- Filter 2: Avaliação -->
                 <LinearLayout
+                    android:id="@+id/chipFilterRating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_chip"
                     android:paddingHorizontal="14dp"
                     android:paddingVertical="8dp"
                     android:gravity="center_vertical"
-                    android:layout_marginEnd="8dp">
+                    android:layout_marginEnd="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:layout_width="16dp"
@@ -217,12 +222,15 @@
 
                 <!-- Filter 3: Proximidade -->
                 <LinearLayout
+                    android:id="@+id/chipFilterLocation"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_chip"
                     android:paddingHorizontal="14dp"
                     android:paddingVertical="8dp"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:layout_width="16dp"

@@ -1,5 +1,6 @@
 package com.tqfapp.android.ui.home
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,10 +13,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.ui.auth.LoginActivity
 
 class ProfessionalProfileFragment : Fragment() {
 
@@ -89,7 +90,11 @@ class ProfessionalProfileFragment : Fragment() {
         }
 
         view.findViewById<View>(R.id.btnShare)?.setOnClickListener {
-            showToast("Compartilhar perfil")
+            if (isOwner) {
+                performLogout()
+            } else {
+                showToast("Compartilhar perfil")
+            }
         }
 
         view.findViewById<View>(R.id.btnChangeAvatar)?.setOnClickListener {
@@ -159,6 +164,25 @@ class ProfessionalProfileFragment : Fragment() {
                 if (newBio.isNotEmpty()) txtBio?.text = newBio
 
                 showToast("Perfil de prestador atualizado!")
+            }
+            .setNegativeButton("Sair da conta") { _, _ ->
+                performLogout()
+            }
+            .setNeutralButton("Cancelar", null)
+            .show()
+    }
+
+    private fun performLogout() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Sair da conta")
+            .setMessage("Tem certeza que deseja encerrar sua sessão de prestador?")
+            .setPositiveButton("Sair") { _, _ ->
+                Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
+                val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                startActivity(intent)
+                requireActivity().finish()
             }
             .setNegativeButton("Cancelar", null)
             .show()

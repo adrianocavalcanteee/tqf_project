@@ -1,11 +1,10 @@
 package com.tqfapp.android.ui.profile
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,18 +14,21 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.databinding.FragmentProfileBinding
+import com.tqfapp.android.databinding.ItemRecentServiceBinding
+import com.tqfapp.android.ui.auth.LoginActivity
 
 class ProfileFragment : Fragment() {
 
-    private lateinit var imgProfile: ImageView
-    private lateinit var txtProfileName: TextView
+    private var _binding: FragmentProfileBinding? = null
+    private val binding get() = _binding!!
 
     // Photo Picker launcher for changing profile picture
     private val pickMediaLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null && ::imgProfile.isInitialized) {
-            imgProfile.setImageURI(uri)
+        if (uri != null) {
+            binding.imgProfile.setImageURI(uri)
             Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
         }
     }
@@ -36,53 +38,55 @@ class ProfileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return inflater.inflate(R.layout.fragment_profile, container, false)
+        _binding = FragmentProfileBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        imgProfile = view.findViewById(R.id.imgProfile)
-        txtProfileName = view.findViewById(R.id.txtProfileName)
-
-        setupClickListeners(view)
-        setupRecentServices(view)
+        setupClickListeners()
+        setupRecentServices()
     }
 
-    private fun setupClickListeners(view: View) {
-        view.findViewById<View>(R.id.btnBack)?.setOnClickListener {
+    private fun setupClickListeners() {
+        binding.btnBack.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
-        view.findViewById<View>(R.id.btnSettings)?.setOnClickListener {
+        binding.btnSettings.setOnClickListener {
             showEditProfileDialog()
         }
 
-        view.findViewById<View>(R.id.btnChangePhoto)?.setOnClickListener {
+        binding.btnChangePhoto.setOnClickListener {
             openGallery()
         }
 
-        imgProfile.setOnClickListener {
+        binding.imgProfile.setOnClickListener {
             openGallery()
         }
 
-        view.findViewById<View>(R.id.menuData)?.setOnClickListener {
+        binding.menuData.setOnClickListener {
             showEditProfileDialog()
         }
 
-        view.findViewById<View>(R.id.menuAddresses)?.setOnClickListener {
+        binding.menuAddresses.setOnClickListener {
             showToast("Meus endereços")
         }
 
-        view.findViewById<View>(R.id.menuFavorites)?.setOnClickListener {
+        binding.menuFavorites.setOnClickListener {
             showToast("Meus favoritos")
         }
 
-        view.findViewById<View>(R.id.menuNotifications)?.setOnClickListener {
+        binding.menuNotifications.setOnClickListener {
             showToast("Notificações")
         }
 
-        view.findViewById<View>(R.id.btnSeeAllServices)?.setOnClickListener {
+        binding.menuLogout.setOnClickListener {
+            performLogout()
+        }
+
+        binding.btnSeeAllServices.setOnClickListener {
             showToast("Ver todos os serviços")
         }
     }
@@ -91,16 +95,32 @@ class ProfileFragment : Fragment() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
         val etClientName = dialogView.findViewById<TextInputEditText>(R.id.etClientName)
 
-        etClientName?.setText(txtProfileName.text)
+        etClientName?.setText(binding.txtProfileName.text)
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
                 val newName = etClientName?.text?.toString()?.trim().orEmpty()
                 if (newName.isNotEmpty()) {
-                    txtProfileName.text = newName
+                    binding.txtProfileName.text = newName
                     showToast("Perfil de cliente atualizado com sucesso!")
                 }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun performLogout() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Sair da conta")
+            .setMessage("Tem certeza que deseja encerrar sua sessão?")
+            .setPositiveButton("Sair") { _, _ ->
+                Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
+                val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                startActivity(intent)
+                requireActivity().finish()
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -112,7 +132,7 @@ class ProfileFragment : Fragment() {
         )
     }
 
-    private fun setupRecentServices(view: View) {
+    private fun setupRecentServices() {
         val services = listOf(
             RecentServiceItem(
                 title = "Instalação de ar-condicionado",
@@ -130,7 +150,7 @@ class ProfileFragment : Fragment() {
             )
         )
 
-        view.findViewById<RecyclerView>(R.id.rvRecentServices)?.apply {
+        binding.rvRecentServices.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = RecentServiceAdapter(services) { service ->
                 showToast("Serviço: ${service.title}")
@@ -140,6 +160,11 @@ class ProfileFragment : Fragment() {
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     // Model for Recent Service
@@ -157,27 +182,23 @@ class ProfileFragment : Fragment() {
         private val onItemClick: (RecentServiceItem) -> Unit
     ) : RecyclerView.Adapter<RecentServiceAdapter.ViewHolder>() {
 
-        inner class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            val txtServiceTitle: TextView = view.findViewById(R.id.txtServiceTitle)
-            val txtProviderName: TextView = view.findViewById(R.id.txtProviderName)
-            val txtServiceDate: TextView = view.findViewById(R.id.txtServiceDate)
-            val txtStatus: TextView = view.findViewById(R.id.txtStatus)
-            val imgService: ImageView = view.findViewById(R.id.imgService)
-        }
+        inner class ViewHolder(val binding: ItemRecentServiceBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_recent_service, parent, false)
-            return ViewHolder(view)
+            val binding = ItemRecentServiceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(binding)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = items[position]
-            holder.txtServiceTitle.text = item.title
-            holder.txtProviderName.text = item.providerName
-            holder.txtServiceDate.text = item.date
-            holder.txtStatus.text = item.status
-            holder.imgService.setImageResource(item.imageRes)
-            holder.view.setOnClickListener { onItemClick(item) }
+            holder.binding.apply {
+                txtServiceTitle.text = item.title
+                txtProviderName.text = item.providerName
+                txtServiceDate.text = item.date
+                txtStatus.text = item.status
+                imgService.setImageResource(item.imageRes)
+                root.setOnClickListener { onItemClick(item) }
+            }
         }
 
         override fun getItemCount(): Int = items.size
