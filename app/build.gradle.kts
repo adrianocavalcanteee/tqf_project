@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -57,6 +58,7 @@ dependencies {
     // 3. BANCO DE DADOS LOCAL & PREFERÊNCIAS
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
     // implementation("androidx.sqlite:sqlite-ktx:2.4.0") // Caso usem SQLite nativo
 
     // 4. COMUNICAÇÃO WEB & REST API
