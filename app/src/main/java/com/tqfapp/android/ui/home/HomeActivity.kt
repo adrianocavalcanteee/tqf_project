@@ -24,10 +24,10 @@ class HomeActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             if (isProviderUser) {
-                // Prestador de serviço entra diretamente no seu próprio perfil de gerenciamento
-                replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
+                // Prestador de serviço entra diretamente no Feed de Solicitações de Clientes
+                replaceFragment(ProviderHomeFragment())
             } else {
-                // Contratante entra na tela Home de busca
+                // Contratante entra na tela Home de busca de profissionais
                 replaceFragment(HomeFragment())
             }
         }
@@ -39,7 +39,11 @@ class HomeActivity : AppCompatActivity() {
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
-                    replaceFragment(HomeFragment())
+                    if (isProviderUser) {
+                        replaceFragment(ProviderHomeFragment())
+                    } else {
+                        replaceFragment(HomeFragment())
+                    }
                     true
                 }
                 R.id.nav_contracts -> {
@@ -52,7 +56,7 @@ class HomeActivity : AppCompatActivity() {
                 }
                 R.id.nav_profile -> {
                     if (isProviderUser) {
-                        // Perfil do Prestador (Modo Dono / Edição)
+                        // Perfil do Prestador (Modo Dono / Gerenciamento e Edição)
                         replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
                     } else {
                         // Perfil do Contratante ("Ana Lima")

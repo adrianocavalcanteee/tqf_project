@@ -64,12 +64,14 @@ class ProfessionalProfileFragment : Fragment() {
         val btnChangeCover = view.findViewById<View>(R.id.btnChangeCover)
         val btnChangeAvatar = view.findViewById<View>(R.id.btnChangeAvatar)
         val layoutActionButtons = view.findViewById<View>(R.id.layoutActionButtons)
+        val cardProviderMenu = view.findViewById<View>(R.id.cardProviderMenu)
 
         if (isOwner) {
-            // MODO PRESTADOR (Vendo seu próprio perfil)
+            // MODO PRESTADOR (Gerenciando seu próprio perfil)
             btnEditProfile?.visibility = View.VISIBLE
             btnChangeCover?.visibility = View.VISIBLE
             btnChangeAvatar?.visibility = View.VISIBLE
+            cardProviderMenu?.visibility = View.VISIBLE
             layoutActionButtons?.visibility = View.GONE
         } else {
             // MODO CONTRATANTE (Cliente visualizando o prestador)
@@ -77,6 +79,7 @@ class ProfessionalProfileFragment : Fragment() {
             btnEditProfile?.visibility = View.GONE
             btnChangeCover?.visibility = View.GONE
             btnChangeAvatar?.visibility = View.GONE
+            cardProviderMenu?.visibility = View.GONE
         }
     }
 
@@ -90,11 +93,11 @@ class ProfessionalProfileFragment : Fragment() {
         }
 
         view.findViewById<View>(R.id.btnShare)?.setOnClickListener {
-            if (isOwner) {
-                performLogout()
-            } else {
-                showToast("Compartilhar perfil")
-            }
+            showToast("Compartilhar perfil")
+        }
+
+        view.findViewById<View>(R.id.menuLogoutProvider)?.setOnClickListener {
+            performLogout()
         }
 
         view.findViewById<View>(R.id.btnChangeAvatar)?.setOnClickListener {
