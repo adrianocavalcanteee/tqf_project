@@ -133,10 +133,6 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun setupNotification(view: View) {
-        view.findViewById<ImageView>(R.id.btnLogoutProvider)?.setOnClickListener {
-            performLogout()
-        }
-
         view.findViewById<ImageView>(R.id.imgNotificationProvider)?.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Notificações do Prestador")
