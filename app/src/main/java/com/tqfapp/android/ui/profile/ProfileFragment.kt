@@ -11,19 +11,27 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.utils.MapUtils
 
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
-    // Photo Picker launcher for changing profile picture
+    // Instância do Google Maps e Coordenadas do Escritório
+    private var googleMap: GoogleMap? = null
+    private var officeLatitude: Double = -23.550520 // Coordenada padrão (Ex: São Paulo, SP)
+    private var officeLongitude: Double = -46.633308
+
+    // Photo Picker launcher para alteração da foto de perfil
     private val pickMediaLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -47,6 +55,32 @@ class ProfileFragment : Fragment() {
 
         setupClickListeners()
         setupRecentServices()
+        setupOfficeMap()
+    }
+
+    /**
+     * Inicializa o SupportMapFragment do Google Maps de forma segura
+     */
+    private fun setupOfficeMap() {
+        val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
+        mapFragment?.getMapAsync { map ->
+            googleMap = map
+            updateOfficeMapMarker()
+        }
+    }
+
+    /**
+     * Atualiza o marcador do escritório e centraliza a câmera no mapa
+     */
+    private fun updateOfficeMapMarker() {
+        val map = googleMap ?: return
+        MapUtils.setupOfficeLocationOnMap(
+            googleMap = map,
+            latitude = officeLatitude,
+            longitude = officeLongitude,
+            title = "Escritório de " + binding.txtProfileName.text,
+            snippet = "Localização do Atendimento"
+        )
     }
 
     private fun setupClickListeners() {
@@ -91,20 +125,42 @@ class ProfileFragment : Fragment() {
         }
     }
 
+    /**
+     * Exibe o diálogo de edição do perfil, permitindo atualizar Nome, Bio e Coordenadas do Escritório.
+     */
     private fun showEditProfileDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
-        val etClientName = dialogView.findViewById<TextInputEditText>(R.id.etClientName)
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_provider_profile, null)
+        val etName = dialogView.findViewById<TextInputEditText>(R.id.etName)
+        val etBio = dialogView.findViewById<TextInputEditText>(R.id.etBio)
+        val etLatitude = dialogView.findViewById<TextInputEditText>(R.id.etLatitude)
+        val etLongitude = dialogView.findViewById<TextInputEditText>(R.id.etLongitude)
 
-        etClientName?.setText(binding.txtProfileName.text)
+        etName?.setText(binding.txtProfileName.text)
+        etBio?.setText(binding.txtBio.text)
+        etLatitude?.setText(officeLatitude.toString())
+        etLongitude?.setText(officeLongitude.toString())
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
-                val newName = etClientName?.text?.toString()?.trim().orEmpty()
+                val newName = etName?.text?.toString()?.trim().orEmpty()
+                val newBio = etBio?.text?.toString()?.trim().orEmpty()
+                val newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                val newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+
                 if (newName.isNotEmpty()) {
                     binding.txtProfileName.text = newName
-                    showToast("Perfil de cliente atualizado com sucesso!")
                 }
+                if (newBio.isNotEmpty()) {
+                    binding.txtBio.text = newBio
+                }
+                if (newLat != null && newLng != null) {
+                    officeLatitude = newLat
+                    officeLongitude = newLng
+                    updateOfficeMapMarker()
+                }
+
+                showToast("Perfil atualizado com sucesso!")
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -164,6 +220,7 @@ class ProfileFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        googleMap = null
         _binding = null
     }
 
