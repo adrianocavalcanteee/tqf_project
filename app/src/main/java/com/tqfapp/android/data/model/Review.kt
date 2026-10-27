@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 data class Review(
     @PrimaryKey
     val id: String,
+    val serviceId: String,
     val providerId: String,
     val clientId: String,
     val rating: Int,

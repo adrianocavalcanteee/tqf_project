@@ -11,6 +11,9 @@ interface ReviewDao {
     @Query("SELECT * FROM avaliacoes")
     suspend fun getAll(): List<Review>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM avaliacoes WHERE serviceId = :serviceId)")
+    suspend fun existsForService(serviceId: String): Boolean
+
     @Query("SELECT * FROM avaliacoes WHERE providerId = :providerId")
     suspend fun getByProvider(providerId: String): List<Review>
 

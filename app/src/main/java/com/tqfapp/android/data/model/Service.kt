@@ -1,4 +1,5 @@
 package com.tqfapp.android.data.model
+import com.tqfapp.android.business.ServiceStatus
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -8,5 +9,6 @@ data class Service(
     val id: String,
     val title: String,
     val description: String,
-    val price: Double
+    val price: Double,
+    val status: ServiceStatus = ServiceStatus.EM_ABERTO
 )
