@@ -20,6 +20,7 @@ import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.MapUtils
+import com.tqfapp.android.utils.UserSessionManager
 
 class ProfileFragment : Fragment() {
 
@@ -30,6 +31,9 @@ class ProfileFragment : Fragment() {
     private var googleMap: GoogleMap? = null
     private var officeLatitude: Double = -23.550520 // Coordenada padrão (Ex: São Paulo, SP)
     private var officeLongitude: Double = -46.633308
+
+    // Flag indicando se o usuário logado é Prestador de Serviço
+    private var isProviderUser: Boolean = false
 
     // Photo Picker launcher para alteração da foto de perfil
     private val pickMediaLauncher = registerForActivityResult(
@@ -53,13 +57,37 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Verifica o tipo de usuário através dos arguments ou da sessão do UserSessionManager
+        isProviderUser = arguments?.getBoolean(ARG_IS_PROVIDER)
+            ?: UserSessionManager.isProviderUser(requireContext())
+
+        setupUserRoleViewVisibility()
         setupClickListeners()
         setupRecentServices()
-        setupOfficeMap()
+
+        // IMPORTANTE: Só inicializa o Google Maps se o usuário logado for Prestador de Serviço
+        if (isProviderUser) {
+            setupOfficeMap()
+        }
     }
 
     /**
-     * Inicializa o SupportMapFragment do Google Maps de forma segura
+     * Alterna a visibilidade dos elementos do layout de acordo com o papel do usuário (Prestador vs Contratante)
+     */
+    private fun setupUserRoleViewVisibility() {
+        if (isProviderUser) {
+            // Exibe a seção e o mapa do escritório para o Prestador
+            binding.txtOfficeMapTitle.visibility = View.VISIBLE
+            binding.cardMapContainer.visibility = View.VISIBLE
+        } else {
+            // Oculta completamente a seção e o mapa do escritório para o Contratante (Cliente)
+            binding.txtOfficeMapTitle.visibility = View.GONE
+            binding.cardMapContainer.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Inicializa o SupportMapFragment do Google Maps de forma segura apenas para Prestadores
      */
     private fun setupOfficeMap() {
         val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
@@ -126,9 +154,20 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Exibe o diálogo de edição do perfil, permitindo atualizar Nome, Bio e Coordenadas do Escritório.
+     * Exibe o diálogo de edição de perfil correspondente ao tipo de usuário
      */
     private fun showEditProfileDialog() {
+        if (isProviderUser) {
+            showProviderEditProfileDialog()
+        } else {
+            showClientEditProfileDialog()
+        }
+    }
+
+    /**
+     * Diálogo de edição para Prestadores (inclui campos de Latitude e Longitude)
+     */
+    private fun showProviderEditProfileDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_provider_profile, null)
         val etName = dialogView.findViewById<TextInputEditText>(R.id.etName)
         val etBio = dialogView.findViewById<TextInputEditText>(R.id.etBio)
@@ -160,7 +199,29 @@ class ProfileFragment : Fragment() {
                     updateOfficeMapMarker()
                 }
 
-                showToast("Perfil atualizado com sucesso!")
+                showToast("Perfil de prestador atualizado!")
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    /**
+     * Diálogo de edição simples para Contratantes
+     */
+    private fun showClientEditProfileDialog() {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
+        val etClientName = dialogView.findViewById<TextInputEditText>(R.id.etClientName)
+
+        etClientName?.setText(binding.txtProfileName.text)
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("Salvar") { _, _ ->
+                val newName = etClientName?.text?.toString()?.trim().orEmpty()
+                if (newName.isNotEmpty()) {
+                    binding.txtProfileName.text = newName
+                    showToast("Perfil de cliente atualizado!")
+                }
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -171,6 +232,7 @@ class ProfileFragment : Fragment() {
             .setTitle("Sair da conta")
             .setMessage("Tem certeza que deseja encerrar sua sessão?")
             .setPositiveButton("Sair") { _, _ ->
+                UserSessionManager.clearSession(requireContext())
                 Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
                 val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -222,6 +284,18 @@ class ProfileFragment : Fragment() {
         super.onDestroyView()
         googleMap = null
         _binding = null
+    }
+
+    companion object {
+        private const val ARG_IS_PROVIDER = "arg_is_provider"
+
+        fun newInstance(isProvider: Boolean = false): ProfileFragment {
+            val fragment = ProfileFragment()
+            val args = Bundle()
+            args.putBoolean(ARG_IS_PROVIDER, isProvider)
+            fragment.arguments = args
+            return fragment
+        }
     }
 
     // Model for Recent Service

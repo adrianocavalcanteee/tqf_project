@@ -20,6 +20,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.MapUtils
+import com.tqfapp.android.utils.UserSessionManager
 
 class ProfessionalProfileFragment : Fragment() {
 
@@ -60,16 +61,29 @@ class ProfessionalProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
-        setupProfileMode(view, isOwner)
+        val isProviderUser = UserSessionManager.isProviderUser(requireContext())
 
+        setupProfileMode(view, isOwner)
         setupClickListeners(view, isOwner)
         setupPortfolio(view)
         setupReviews(view)
-        setupOfficeMap(view)
+
+        // IMPORTANTE: Só exibe o mapa e inicializa o Google Maps se o usuário logado for Prestador
+        val txtOfficeMapTitle = view.findViewById<View>(R.id.txtOfficeMapTitle)
+        val cardMapContainer = view.findViewById<View>(R.id.cardMapContainer)
+
+        if (isProviderUser) {
+            txtOfficeMapTitle?.visibility = View.VISIBLE
+            cardMapContainer?.visibility = View.VISIBLE
+            setupOfficeMap(view)
+        } else {
+            txtOfficeMapTitle?.visibility = View.GONE
+            cardMapContainer?.visibility = View.GONE
+        }
     }
 
     /**
-     * Inicializa o SupportMapFragment do Google Maps de forma segura
+     * Inicializa o SupportMapFragment do Google Maps de forma segura apenas para prestadores
      */
     private fun setupOfficeMap(view: View) {
         val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
@@ -224,6 +238,7 @@ class ProfessionalProfileFragment : Fragment() {
             .setTitle("Sair da conta")
             .setMessage("Tem certeza que deseja encerrar sua sessão de prestador?")
             .setPositiveButton("Sair") { _, _ ->
+                UserSessionManager.clearSession(requireContext())
                 Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
                 val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
