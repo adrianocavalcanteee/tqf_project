@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/bg_app">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header with Back Button & Title -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <ImageView
+                android:id="@+id/btnBack"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_arrow_back"
+                android:padding="6dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                app:tint="@color/text_primary"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Criar Nova Conta"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="48dp"
+            android:text="Cadastre-se para contratar ou oferecer serviços."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <!-- Register Card Container -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/card_bg">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Profile Picture Selection Section -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/containerAvatar"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
+                        app:cardCornerRadius="50dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/brand_blue"
+                        app:strokeWidth="2dp"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent">
+
+                            <ImageView
+                                android:id="@+id/imgRegisterAvatar"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:src="@drawable/ic_profile"
+                                tools:ignore="ContentDescription" />
+
+                            <!-- Camera Badge Overlay -->
+                            <ImageView
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_gravity="bottom|end"
+                                android:background="@drawable/bg_circle_blue"
+                                android:src="@drawable/ic_camera"
+                                android:padding="5dp"
+                                app:tint="@color/white"
+                                tools:ignore="ContentDescription" />
+                        </FrameLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:id="@+id/txtSelectAvatarLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Adicionar Foto de Perfil"
+                        android:textColor="@color/brand_blue"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tipo de Perfil"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <!-- User Type Selector (Contratante vs Prestador) -->
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleRegisterUserType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="16dp"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    app:checkedButton="@id/btnRegisterContractor">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRegisterContractor"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="Contratante"
+                        android:textColor="@color/brand_blue"
+                        android:textSize="13sp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:strokeColor="@color/brand_blue"
+                        app:strokeWidth="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRegisterProvider"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="Prestador"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:strokeColor="@color/card_stroke"
+                        app:strokeWidth="1dp" />
+
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Full Name Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Nome Completo *"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPersonName" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Email Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="E-mail *"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etEmail"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textEmailAddress" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Phone Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Telefone / WhatsApp *"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etPhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="phone" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Password Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Senha *"
+                    app:endIconMode="password_toggle"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Confirm Password Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilConfirmPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="Confirmar Senha *"
+                    app:endIconMode="password_toggle"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etConfirmPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Container para Campos Específicos do Prestador de Serviço -->
+                <LinearLayout
+                    android:id="@+id/layoutProviderFields"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@color/card_stroke" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Informações do Serviço / Escritório"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <!-- Category Exposed Dropdown -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilCategory"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Categoria Principal *"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/actvCategory"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none"
+                            tools:ignore="LabelFor" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Specialty Input -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilSpecialty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:hint="Especialidade / Título do Serviço *"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etSpecialty"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Ex: Eletricista Residencial e Predial" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Location Coordinates Inputs (GPS) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilLatitude"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:hint="Latitude (GPS)"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusBottomEnd="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etLatitude"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberSigned|numberDecimal"
+                                android:text="-23.550520" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilLongitude"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            android:hint="Longitude (GPS)"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusBottomEnd="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etLongitude"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberSigned|numberDecimal"
+                                android:text="-46.633308" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+
+                    <!-- Portfolio Section (Imagens do Portfólio) -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@color/card_stroke" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Portfólio / Trabalhos Realizados"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Adicione fotos de serviços anteriores para seu perfil (máx. 5 fotos)"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAddPortfolio"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="10dp"
+                        android:text="Adicionar Fotos ao Portfólio"
+                        android:textColor="@color/brand_blue"
+                        android:textSize="13sp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:icon="@drawable/ic_camera"
+                        app:iconTint="@color/brand_blue"
+                        app:strokeColor="@color/brand_blue"
+                        app:strokeWidth="1dp"
+                        app:cornerRadius="12dp" />
+
+                    <!-- Horizontal Previews of Portfolio Images -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvPortfolioPreviews"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:listitem="@layout/item_portfolio" />
+
+                </LinearLayout>
+
+                <!-- Submit Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRegister"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="24dp"
+                    android:text="Finalizar Cadastro"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textAllCaps="false"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/brand_blue"
+                    app:cornerRadius="14dp"
+                    app:elevation="0dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Login Footer -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Já possui uma conta? "
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/txtLogin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Faça Login"
+                android:textColor="@color/brand_blue"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

@@ -6,7 +6,11 @@ data class User(
     val email: String,
     val isProvider: Boolean, // true = prestador, false = contratante
     val category: String? = null,
-    val rating: Double = 0.0,
+    val specialty: String? = null,
+    val phone: String? = null,
+    val profilePictureUri: String? = null,
+    val portfolioUris: List<String> = emptyList(),
+    val rating: Double = 5.0,
     val latitude: Double? = null,
     val longitude: Double? = null
 )

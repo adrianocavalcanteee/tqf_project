@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tqfapp.android.R
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityLoginBinding
 import com.tqfapp.android.ui.home.HomeActivity
 import com.tqfapp.android.utils.UserSessionManager
@@ -12,12 +13,15 @@ import com.tqfapp.android.utils.UserSessionManager
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
+    private lateinit var userRepository: UserRepository
     private var isProviderMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        userRepository = UserRepository(this)
 
         setupUserTypeToggle()
         setupClickListeners()
@@ -59,14 +63,30 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val userTypeLabel = if (isProviderMode) "Prestador de Serviço" else "Contratante"
-            Toast.makeText(this, "Login realizado como $userTypeLabel!", Toast.LENGTH_SHORT).show()
+            // Tenta autenticar pelo banco de dados local em primeiro lugar
+            val authResult = userRepository.loginUser(email, password)
 
-            // Salva o tipo de usuário na sessão local
-            UserSessionManager.saveUserSession(this, isProviderMode)
+            val finalIsProvider: Boolean
+            val userName: String?
+
+            if (authResult.isSuccess) {
+                val dbUser = authResult.getOrNull()!!
+                finalIsProvider = dbUser.isProvider
+                userName = dbUser.name
+            } else {
+                // Fallback para o modo simulado se o usuário ainda não foi cadastrado no banco local
+                finalIsProvider = isProviderMode
+                userName = email.substringBefore("@")
+            }
+
+            val userTypeLabel = if (finalIsProvider) "Prestador de Serviço" else "Contratante"
+            Toast.makeText(this, "Bem-vindo, $userName! Login como $userTypeLabel", Toast.LENGTH_SHORT).show()
+
+            // Salva o tipo e dados de usuário na sessão local
+            UserSessionManager.saveUserSession(this, finalIsProvider, userName, email)
 
             val intent = Intent(this, HomeActivity::class.java).apply {
-                putExtra(EXTRA_IS_PROVIDER, isProviderMode)
+                putExtra(EXTRA_IS_PROVIDER, finalIsProvider)
             }
             startActivity(intent)
             finish()
@@ -77,7 +97,8 @@ class LoginActivity : AppCompatActivity() {
         }
 
         binding.txtRegister.setOnClickListener {
-            Toast.makeText(this, "Abrir tela de cadastro", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, RegisterActivity::class.java)
+            startActivity(intent)
         }
     }
 

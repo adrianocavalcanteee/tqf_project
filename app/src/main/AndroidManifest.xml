@@ -42,6 +42,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Tela de Cadastro -->
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false" />
+
         <!-- Tela Principal Home -->
         <activity
             android:name=".ui.home.HomeActivity"
