@@ -13,14 +13,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.utils.MapUtils
+import com.tqfapp.android.utils.UserSessionManager
 
 class ProfessionalProfileFragment : Fragment() {
 
-    // Photo Picker launcher for Profile Avatar
+    // Instância do Google Maps e Coordenadas do Escritório
+    private var googleMap: GoogleMap? = null
+    private var officeLatitude: Double = -23.550520 // Exemplo: São Paulo
+    private var officeLongitude: Double = -46.633308
+
+    // Photo Picker launcher para Foto de Perfil
     private val pickAvatarLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -30,7 +39,7 @@ class ProfessionalProfileFragment : Fragment() {
         }
     }
 
-    // Photo Picker launcher for Cover Image
+    // Photo Picker launcher para Foto de Capa
     private val pickCoverLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -52,11 +61,51 @@ class ProfessionalProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
-        setupProfileMode(view, isOwner)
+        val isProviderUser = UserSessionManager.isProviderUser(requireContext())
 
+        setupProfileMode(view, isOwner)
         setupClickListeners(view, isOwner)
         setupPortfolio(view)
         setupReviews(view)
+
+        // IMPORTANTE: Só exibe o mapa e inicializa o Google Maps se o usuário logado for Prestador
+        val txtOfficeMapTitle = view.findViewById<View>(R.id.txtOfficeMapTitle)
+        val cardMapContainer = view.findViewById<View>(R.id.cardMapContainer)
+
+        if (isProviderUser) {
+            txtOfficeMapTitle?.visibility = View.VISIBLE
+            cardMapContainer?.visibility = View.VISIBLE
+            setupOfficeMap(view)
+        } else {
+            txtOfficeMapTitle?.visibility = View.GONE
+            cardMapContainer?.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Inicializa o SupportMapFragment do Google Maps de forma segura apenas para prestadores
+     */
+    private fun setupOfficeMap(view: View) {
+        val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
+        mapFragment?.getMapAsync { map ->
+            googleMap = map
+            updateOfficeMapMarker(view)
+        }
+    }
+
+    /**
+     * Atualiza o marcador do escritório e centraliza a câmera no mapa
+     */
+    private fun updateOfficeMapMarker(view: View) {
+        val map = googleMap ?: return
+        val txtName = view.findViewById<TextView>(R.id.txtProfessionalName)?.text?.toString() ?: "Prestador"
+        MapUtils.setupOfficeLocationOnMap(
+            googleMap = map,
+            latitude = officeLatitude,
+            longitude = officeLongitude,
+            title = "Escritório de $txtName",
+            snippet = "Local de Atendimento"
+        )
     }
 
     private fun setupProfileMode(view: View, isOwner: Boolean) {
@@ -146,6 +195,8 @@ class ProfessionalProfileFragment : Fragment() {
         val etName = dialogView.findViewById<TextInputEditText>(R.id.etName)
         val etSpecialty = dialogView.findViewById<TextInputEditText>(R.id.etSpecialty)
         val etBio = dialogView.findViewById<TextInputEditText>(R.id.etBio)
+        val etLatitude = dialogView.findViewById<TextInputEditText>(R.id.etLatitude)
+        val etLongitude = dialogView.findViewById<TextInputEditText>(R.id.etLongitude)
 
         val txtName = rootView.findViewById<TextView>(R.id.txtProfessionalName)
         val txtSpecialty = rootView.findViewById<TextView>(R.id.txtSpecialty)
@@ -154,6 +205,8 @@ class ProfessionalProfileFragment : Fragment() {
         etName?.setText(txtName?.text)
         etSpecialty?.setText(txtSpecialty?.text)
         etBio?.setText(txtBio?.text)
+        etLatitude?.setText(officeLatitude.toString())
+        etLongitude?.setText(officeLongitude.toString())
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
@@ -161,10 +214,18 @@ class ProfessionalProfileFragment : Fragment() {
                 val newName = etName?.text?.toString()?.trim().orEmpty()
                 val newSpecialty = etSpecialty?.text?.toString()?.trim().orEmpty()
                 val newBio = etBio?.text?.toString()?.trim().orEmpty()
+                val newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                val newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
 
                 if (newName.isNotEmpty()) txtName?.text = newName
                 if (newSpecialty.isNotEmpty()) txtSpecialty?.text = newSpecialty
                 if (newBio.isNotEmpty()) txtBio?.text = newBio
+
+                if (newLat != null && newLng != null) {
+                    officeLatitude = newLat
+                    officeLongitude = newLng
+                    updateOfficeMapMarker(rootView)
+                }
 
                 showToast("Perfil de prestador atualizado!")
             }
@@ -180,6 +241,7 @@ class ProfessionalProfileFragment : Fragment() {
             .setTitle("Sair da conta")
             .setMessage("Tem certeza que deseja encerrar sua sessão de prestador?")
             .setPositiveButton("Sair") { _, _ ->
+                UserSessionManager.clearSession(requireContext())
                 Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
                 val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -227,6 +289,11 @@ class ProfessionalProfileFragment : Fragment() {
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        googleMap = null
     }
 
     companion object {

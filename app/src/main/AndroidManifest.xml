@@ -30,7 +30,7 @@
         <!-- Chave de API do Google Maps  -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="SUA_CHAVE_API_AQUI" />
+            android:value="AIzaSyB_McFoH4B2jNyGJLi_yg3OaD61fSWdYtY" />
 
         <!-- Tela Inicial de Login (LAUNCHER) -->
         <activity

@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tqfapp.android.R
 import com.tqfapp.android.databinding.ActivityLoginBinding
 import com.tqfapp.android.ui.home.HomeActivity
+import com.tqfapp.android.utils.UserSessionManager
 
 class LoginActivity : AppCompatActivity() {
 
@@ -60,6 +61,9 @@ class LoginActivity : AppCompatActivity() {
 
             val userTypeLabel = if (isProviderMode) "Prestador de Serviço" else "Contratante"
             Toast.makeText(this, "Login realizado como $userTypeLabel!", Toast.LENGTH_SHORT).show()
+
+            // Salva o tipo de usuário na sessão local
+            UserSessionManager.saveUserSession(this, isProviderMode)
 
             val intent = Intent(this, HomeActivity::class.java).apply {
                 putExtra(EXTRA_IS_PROVIDER, isProviderMode)
