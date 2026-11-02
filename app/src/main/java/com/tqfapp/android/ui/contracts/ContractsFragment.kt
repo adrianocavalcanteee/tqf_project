@@ -64,17 +64,54 @@ class ContractsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        seedProposalsInRoom()
         setupContractsList()
         setupFilters()
     }
 
+    private fun seedProposalsInRoom() {
+        val proposalDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).proposalDao()
+        kotlinx.coroutines.runBlocking {
+            if (proposalDao.getAll().isEmpty()) {
+                val initialProposals = listOf(
+                    com.tqfapp.android.data.model.Proposal("p1", "s1", "prov1", "cli1", 150.0, "EM_NEGOCIACAO"),
+                    com.tqfapp.android.data.model.Proposal("p2", "s2", "prov2", "cli1", 250.0, "CONCLUIDO"),
+                    com.tqfapp.android.data.model.Proposal("p3", "s3", "prov3", "cli1", 110.0, "PENDENTE")
+                )
+                initialProposals.forEach { proposalDao.insert(it) }
+            }
+        }
+    }
+
     private fun setupContractsList() {
+        val proposalDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).proposalDao()
+        val serviceDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).serviceDao()
+
         contractAdapter = ContractAdapter(allContracts,
             onChatClick = { contract ->
                 showToast("Abrindo conversa com ${contract.professionalName}")
             },
             onDetailsClick = { contract ->
-                showToast("Detalhes da contratação: ${contract.serviceTitle}")
+                // Aceitar proposta e atualizar status do serviço no banco
+                kotlinx.coroutines.runBlocking {
+                    val proposals = proposalDao.getAll()
+                    val p = proposals.find { it.value > 0 }
+                    if (p != null) {
+                        val updatedP = p.copy(status = "ACEITO")
+                        proposalDao.update(updatedP)
+
+                        val service = serviceDao.getById(p.serviceId)
+                        if (service != null) {
+                            val newStatus = com.tqfapp.android.business.ServiceRules.statusAfterAcceptedProposal(service.status)
+                            serviceDao.update(service.copy(status = newStatus))
+                            showToast("Proposta aceita! Serviço ${service.title} alterado para $newStatus no banco.")
+                        } else {
+                            showToast("Proposta aceita e salva no banco de dados!")
+                        }
+                    } else {
+                        showToast("Detalhes da contratação: ${contract.serviceTitle}")
+                    }
+                }
             }
         )
 

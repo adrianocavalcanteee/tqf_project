@@ -1,40 +1,89 @@
 package com.tqfapp.android.data.repository
 
 import android.content.Context
+import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.runBlocking
 
 /**
  * Repositório responsável pela camada de dados do Usuário (Autenticação e Cadastro).
- * Estruturado e pronto para ser integrado com o Banco de Dados Local (Room / DatabaseHelper) e API (Retrofit).
+ * Integrado ao Banco de Dados Local (Room) e SharedPreferences (SessionManager).
  */
 class UserRepository(private val context: Context) {
 
-    // Armazenamento temporário em memória para permitir a execução até o BD estar conectado
-    private val inMemoryUsers = mutableListOf<User>()
+    private val userDao = AppDatabase.getDatabase(context).userDao()
+    private val sessionManager = SessionManager(context)
 
     /**
-     * Ponto de integração para registrar o usuário.
-     * Deve ser conectado ao DatabaseHelper / DAO ou à ApiService do Retrofit.
+     * Registra o usuário no banco Room e inicia a sessão.
      */
-    fun registerUser(user: User, passwordRaw: String): Result<User> {
-        if (inMemoryUsers.any { it.email.equals(user.email, ignoreCase = true) }) {
-            return Result.failure(IllegalArgumentException("Este e-mail já está cadastrado."))
+    fun registerUser(user: User, passwordRaw: String): Result<User> = runBlocking {
+        val existingUsers = userDao.getAll()
+        if (existingUsers.any { it.email.equals(user.email, ignoreCase = true) }) {
+            return@runBlocking Result.failure(IllegalArgumentException("Este e-mail já está cadastrado."))
         }
 
-        inMemoryUsers.add(user)
-        // TODO: Conectar com o DatabaseHelper / Room / Retrofit API
-        return Result.success(user)
+        userDao.insert(user)
+        sessionManager.saveLogin(user.id)
+        UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
+
+        Result.success(user)
     }
 
     /**
-     * Ponto de integração para autenticar o usuário.
+     * Autentica o usuário pelo banco de dados Room.
      */
-    fun loginUser(email: String, passwordRaw: String): Result<User> {
-        val user = inMemoryUsers.find { it.email.equals(email, ignoreCase = true) }
-        return if (user != null) {
+    fun loginUser(email: String, passwordRaw: String): Result<User> = runBlocking {
+        val allUsers = userDao.getAll()
+        val user = allUsers.find { it.email.equals(email, ignoreCase = true) }
+
+        if (user != null) {
+            sessionManager.saveLogin(user.id)
+            UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
             Result.success(user)
         } else {
-            Result.failure(IllegalArgumentException("Usuário não encontrado no cache local."))
+            Result.failure(IllegalArgumentException("Usuário não encontrado no banco local."))
         }
+    }
+
+    /**
+     * Obtém o usuário atualmente logado na sessão do Room/SessionManager.
+     */
+    fun getCurrentUser(): User? = runBlocking {
+        val userId = sessionManager.getUserId()
+        if (userId != null) {
+            val user = userDao.getById(userId)
+            if (user != null) return@runBlocking user
+        }
+
+        // Fallback buscando por email salvo no UserSessionManager
+        val allUsers = userDao.getAll()
+        val sessionEmail = context.getSharedPreferences("tqf_user_session", Context.MODE_PRIVATE)
+            .getString("key_user_email", null)
+
+        allUsers.find { it.email.equals(sessionEmail, ignoreCase = true) }
+    }
+
+    /**
+     * Atualiza os dados do usuário no Room e atualiza os dados da sessão.
+     */
+    fun updateUser(user: User): Boolean = runBlocking {
+        try {
+            userDao.update(user)
+            UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Encerra a sessão do usuário limpando o SharedPreferences.
+     */
+    fun logout() {
+        sessionManager.logout()
+        UserSessionManager.clearSession(context)
     }
 }
