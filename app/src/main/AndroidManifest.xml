@@ -30,17 +30,27 @@
         <!-- Chave de API do Google Maps  -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="SUA_CHAVE_API_AQUI" />
+            android:value="AIzaSyB_McFoH4B2jNyGJLi_yg3OaD61fSWdYtY" />
 
-        <!-- Declaração da Tela Inicial (HomeActivity) -->
+        <!-- Tela Inicial de Login (LAUNCHER) -->
         <activity
-            android:name=".ui.home.HomeActivity"
+            android:name=".ui.auth.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Tela de Cadastro -->
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false" />
+
+        <!-- Tela Principal Home -->
+        <activity
+            android:name=".ui.home.HomeActivity"
+            android:exported="false" />
 
     </application>
 

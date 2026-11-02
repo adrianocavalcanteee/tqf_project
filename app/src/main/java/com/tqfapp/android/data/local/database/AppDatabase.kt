@@ -13,10 +13,13 @@ import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.User
 
+import androidx.room.TypeConverters
+
 @Database(
     entities = [User::class, Service::class, Proposal::class, Review::class],
     version = 1
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao
