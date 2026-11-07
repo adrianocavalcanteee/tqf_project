@@ -21,102 +21,123 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    // Full list of professionals
+    // Lista completa de prestadores de serviço de exemplo com dados completos (Bio + Coordenadas de Localização)
     private val allProfessionals = listOf(
         ProfessionalItem(
             name = "Carlos Mendes",
             specialty = "Eletricista Residencial e Predial",
             category = "Reformas e Reparos",
             subcategory = "Eletricista Residencial e Predial",
-            rating = "4,9 (86)",
+            rating = "4,9 (86 avaliações)",
             ratingValue = 4.9,
             location = "2,1 km • Centro",
             distanceKm = 2.1,
             price = "R$ 80,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Eletricista residencial e predial com mais de 8 anos de experiência. Instalações elétricas, quadros de disjuntores, chuveiros e pequenos reparos com total segurança.",
+            latitude = -23.550520,
+            longitude = -46.633308
         ),
         ProfessionalItem(
             name = "Rafael Lima",
             specialty = "Encanador / Bombeiro Hidráulico",
             category = "Reformas e Reparos",
             subcategory = "Encanador / Bombeiro Hidráulico",
-            rating = "4,8 (64)",
+            rating = "4,8 (64 avaliações)",
             ratingValue = 4.8,
             location = "3,4 km • Jardim Paulista",
             distanceKm = 3.4,
             price = "R$ 90,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Bombeiro hidráulico e encanador especializado em desentupimentos, detecção de vazamentos, instalação de torneiras e registros com garantia do serviço.",
+            latitude = -23.561500,
+            longitude = -46.655900
         ),
         ProfessionalItem(
             name = "Juliana Alves",
             specialty = "Diarista e Faxineira",
             category = "Serviços Domésticos",
             subcategory = "Diarista e Faxineira",
-            rating = "4,9 (112)",
+            rating = "4,9 (112 avaliações)",
             ratingValue = 4.9,
             location = "1,8 km • Vila Madalena",
             distanceKm = 1.8,
             price = "R$ 70,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Profissional de serviços domésticos e organização residencial. Trabalho com pontualidade, produtos adequados e atenção aos mínimos detalhes da sua casa.",
+            latitude = -23.555200,
+            longitude = -46.688300
         ),
         ProfessionalItem(
             name = "João Ferreira",
             specialty = "Técnico em Manutenção de Notebooks e Computadores",
             category = "Assistência Técnica",
             subcategory = "Técnico em Manutenção de Notebooks e Computadores",
-            rating = "5,0 (289)",
+            rating = "5,0 (289 avaliações)",
             ratingValue = 5.0,
             location = "2,1 km • Centro",
             distanceKm = 2.1,
             price = "R$ 100,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e garantia.",
+            latitude = -23.548900,
+            longitude = -46.638800
         ),
         ProfessionalItem(
             name = "Roberto Silva",
             specialty = "Mecânico Automotivo / Eletricista Auto",
             category = "Autos e Transporte",
             subcategory = "Mecânico Automotivo / Eletricista Auto",
-            rating = "4,8 (93)",
+            rating = "4,8 (93 avaliações)",
             ratingValue = 4.8,
             location = "2,4 km • Pinheiros",
             distanceKm = 2.4,
             price = "R$ 120,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Mecânico e eletricista automotivo com oficina especializada em injeção eletrônica, freios, suspensão e socorro mecânico rápido.",
+            latitude = -23.567000,
+            longitude = -46.701100
         ),
         ProfessionalItem(
             name = "Lucas Prado",
             specialty = "Desenvolvedor de Aplicativos Mobile",
             category = "Design e Tecnologia",
             subcategory = "Desenvolvedor de Aplicativos Mobile",
-            rating = "4,9 (45)",
+            rating = "4,9 (45 avaliações)",
             ratingValue = 4.9,
             location = "1,5 km • Vila Olímpia",
             distanceKm = 1.5,
             price = "R$ 150,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Desenvolvedor de aplicativos Android e iOS nativos e híbridos. Criação de sistemas modernos, rápidos e integrados para empresas e autônomos.",
+            latitude = -23.595500,
+            longitude = -46.686100
         ),
         ProfessionalItem(
             name = "Mariana Costa",
             specialty = "Fotógrafa e Cinegrafista",
             category = "Eventos",
             subcategory = "Fotógrafo e Cinegrafista",
-            rating = "5,0 (110)",
+            rating = "5,0 (110 avaliações)",
             ratingValue = 5.0,
             location = "3,0 km • Moema",
             distanceKm = 3.0,
             price = "R$ 200,00",
             status = "⚡ Atende hoje",
-            isVerified = true
+            isVerified = true,
+            bio = "Fotógrafa e videomaker profissional para eventos, ensaios corporativos e produtos. Equipamentos de alta qualidade e tratamento profissional de imagens.",
+            latitude = -23.602200,
+            longitude = -46.662100
         )
     )
 
-    // Filter states
+    // Filtros
     private var selectedCategoryFilter: String? = null
     private var selectedSubcategoryFilter: String? = null
     private var minRatingFilter: Double = 0.0
@@ -254,10 +275,23 @@ class HomeFragment : Fragment() {
             .show()
     }
 
+    /**
+     * Configura a lista de profissionais e trata o clique dinâmico para abrir o perfil com os dados específicos
+     */
     private fun setupProfessionals() {
         professionalAdapter = ProfessionalAdapter(allProfessionals) { professional ->
+            val fragment = ProfessionalProfileFragment.newInstance(
+                isOwner = false,
+                name = professional.name,
+                specialty = professional.specialty,
+                rating = professional.rating,
+                bio = professional.bio,
+                latitude = professional.latitude,
+                longitude = professional.longitude
+            )
+
             parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, ProfessionalProfileFragment.newInstance(isOwner = false))
+                .replace(R.id.fragmentContainer, fragment)
                 .addToBackStack(null)
                 .commit()
         }
@@ -269,7 +303,6 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupSearchAndFilters() {
-        // Live Search Input Filter
         binding.etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -279,25 +312,10 @@ class HomeFragment : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        // Filter Chip 1: Categoria
-        binding.chipFilterCategory.setOnClickListener {
-            showCategoryFilterDialog()
-        }
-
-        // Filter Chip 2: Avaliação
-        binding.chipFilterRating.setOnClickListener {
-            showRatingFilterDialog()
-        }
-
-        // Filter Chip 3: Proximidade
-        binding.chipFilterLocation.setOnClickListener {
-            showDistanceFilterDialog()
-        }
-
-        // Filter Icon in Search Bar
-        binding.btnFilter.setOnClickListener {
-            showCategoryFilterDialog()
-        }
+        binding.chipFilterCategory.setOnClickListener { showCategoryFilterDialog() }
+        binding.chipFilterRating.setOnClickListener { showRatingFilterDialog() }
+        binding.chipFilterLocation.setOnClickListener { showDistanceFilterDialog() }
+        binding.btnFilter.setOnClickListener { showCategoryFilterDialog() }
     }
 
     private fun setupNotificationAndActions() {
@@ -398,7 +416,7 @@ class HomeFragment : Fragment() {
         _binding = null
     }
 
-    // Models for UI presentation
+    // Models
     data class CategoryItem(
         val name: String,
         val iconRes: Int,
@@ -416,7 +434,10 @@ class HomeFragment : Fragment() {
         val distanceKm: Double,
         val price: String,
         val status: String,
-        val isVerified: Boolean
+        val isVerified: Boolean,
+        val bio: String = "Profissional autônomo com ampla experiência. Atendimento com agilidade, transparência e garantia no serviço.",
+        val latitude: Double = -23.550520,
+        val longitude: Double = -46.633308
     )
 
     // Category Adapter

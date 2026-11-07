@@ -65,7 +65,26 @@ class ProfessionalProfileFragment : Fragment() {
 
         val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
 
-        // Carrega as coordenadas com fallback estático de exemplo em São Paulo
+        // Carrega dados dinâmicos passados via Bundle
+        val name = arguments?.getString(ARG_NAME)
+        val specialty = arguments?.getString(ARG_SPECIALTY)
+        val rating = arguments?.getString(ARG_RATING)
+        val bio = arguments?.getString(ARG_BIO)
+
+        if (!name.isNullOrEmpty()) {
+            view.findViewById<TextView>(R.id.txtProfessionalName)?.text = name
+        }
+        if (!specialty.isNullOrEmpty()) {
+            view.findViewById<TextView>(R.id.txtSpecialty)?.text = specialty
+        }
+        if (!rating.isNullOrEmpty()) {
+            view.findViewById<TextView>(R.id.txtRating)?.text = rating
+        }
+        if (!bio.isNullOrEmpty()) {
+            view.findViewById<TextView>(R.id.txtBio)?.text = bio
+        }
+
+        // Carrega as coordenadas específicas do prestador com fallback seguro para São Paulo
         officeLatitude = arguments?.getDouble(ARG_LATITUDE, DEFAULT_LATITUDE) ?: DEFAULT_LATITUDE
         officeLongitude = arguments?.getDouble(ARG_LONGITUDE, DEFAULT_LONGITUDE) ?: DEFAULT_LONGITUDE
 
@@ -367,6 +386,10 @@ class ProfessionalProfileFragment : Fragment() {
 
     companion object {
         private const val ARG_IS_OWNER = "arg_is_owner"
+        private const val ARG_NAME = "arg_name"
+        private const val ARG_SPECIALTY = "arg_specialty"
+        private const val ARG_RATING = "arg_rating"
+        private const val ARG_BIO = "arg_bio"
         private const val ARG_LATITUDE = "arg_latitude"
         private const val ARG_LONGITUDE = "arg_longitude"
 
@@ -376,12 +399,20 @@ class ProfessionalProfileFragment : Fragment() {
 
         fun newInstance(
             isOwner: Boolean = false,
+            name: String? = null,
+            specialty: String? = null,
+            rating: String? = null,
+            bio: String? = null,
             latitude: Double = DEFAULT_LATITUDE,
             longitude: Double = DEFAULT_LONGITUDE
         ): ProfessionalProfileFragment {
             val fragment = ProfessionalProfileFragment()
             val args = Bundle().apply {
                 putBoolean(ARG_IS_OWNER, isOwner)
+                name?.let { putString(ARG_NAME, it) }
+                specialty?.let { putString(ARG_SPECIALTY, it) }
+                rating?.let { putString(ARG_RATING, it) }
+                bio?.let { putString(ARG_BIO, it) }
                 putDouble(ARG_LATITUDE, latitude)
                 putDouble(ARG_LONGITUDE, longitude)
             }
