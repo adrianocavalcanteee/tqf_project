@@ -8,6 +8,8 @@
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/brand_blue_light</item>
         <item name="colorOnSecondary">@color/brand_blue</item>
+        <!-- Backgrounds -->
+        <item name="android:windowBackground">@color/bg_app</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@color/bg_app</item>
         <item name="android:windowLightStatusBar">true</item>

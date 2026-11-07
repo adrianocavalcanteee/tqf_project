@@ -449,11 +449,11 @@
                 app:strokeWidth="1dp"
                 app:cardBackgroundColor="@color/card_bg">
 
-                <androidx.fragment.app.FragmentContainerView
+                <com.google.android.gms.maps.MapView
                     android:id="@+id/mapOffice"
-                    android:name="com.google.android.gms.maps.SupportMapFragment"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent"
+                    app:liteMode="true" />
 
             </com.google.android.material.card.MaterialCardView>
 

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,13 +13,14 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
 
@@ -27,13 +29,15 @@ class ProfileFragment : Fragment() {
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
-    // Instância do Google Maps e Coordenadas do Escritório
+    // Instância do Google Maps
     private var googleMap: GoogleMap? = null
-    private var officeLatitude: Double = -23.550520 // Coordenada padrão (Ex: São Paulo, SP)
-    private var officeLongitude: Double = -46.633308
 
-    // Flag indicando se o usuário logado é Prestador de Serviço
-    private var isProviderUser: Boolean = false
+    // Coordenadas estáticas de exemplo do escritório do prestador (São Paulo, SP)
+    private var officeLatitude: Double = DEFAULT_LATITUDE
+    private var officeLongitude: Double = DEFAULT_LONGITUDE
+
+    // Flag indicando se o PERFIL VISUALIZADO pertence a um Prestador de Serviço
+    private var isProviderProfile: Boolean = false
 
     // Photo Picker launcher para alteração da foto de perfil
     private val pickMediaLauncher = registerForActivityResult(
@@ -57,48 +61,71 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Verifica o tipo de usuário através dos arguments ou da sessão do UserSessionManager
-        isProviderUser = arguments?.getBoolean(ARG_IS_PROVIDER)
-            ?: UserSessionManager.isProviderUser(requireContext())
+        // 1. REGRA: Verifica se o PERFIL sendo visualizado pertence a um Prestador de Serviço.
+        isProviderProfile = if (arguments?.containsKey(ARG_IS_PROVIDER_PROFILE) == true) {
+            arguments?.getBoolean(ARG_IS_PROVIDER_PROFILE) ?: true
+        } else {
+            UserSessionManager.isProviderUser(requireContext())
+        }
 
+        // 2. Carrega as coordenadas com fallback estático para os dados de exemplo em São Paulo
+        officeLatitude = arguments?.getDouble(ARG_LATITUDE, DEFAULT_LATITUDE) ?: DEFAULT_LATITUDE
+        officeLongitude = arguments?.getDouble(ARG_LONGITUDE, DEFAULT_LONGITUDE) ?: DEFAULT_LONGITUDE
+
+        val customName = arguments?.getString(ARG_PROVIDER_NAME)
+        if (!customName.isNullOrEmpty()) {
+            binding.txtProfileName.text = customName
+        }
+
+        // 3. Ajusta a visibilidade das views do mapa conforme o perfil exibido
         setupUserRoleViewVisibility()
+
         setupClickListeners()
         setupRecentServices()
 
-        // IMPORTANTE: Só inicializa o Google Maps se o usuário logado for Prestador de Serviço
-        if (isProviderUser) {
-            setupOfficeMap()
+        // 4. Inicializa o MapView de forma segura se for perfil de prestador
+        if (isProviderProfile) {
+            setupOfficeMapView(savedInstanceState)
         }
     }
 
     /**
-     * Alterna a visibilidade dos elementos do layout de acordo com o papel do usuário (Prestador vs Contratante)
+     * Alterna a visibilidade dos elementos do layout de acordo com o PERFIL EXIBIDO.
      */
     private fun setupUserRoleViewVisibility() {
-        if (isProviderUser) {
-            // Exibe a seção e o mapa do escritório para o Prestador
+        if (isProviderProfile) {
+            binding.txtBioTitle.visibility = View.VISIBLE
+            binding.txtBio.visibility = View.VISIBLE
             binding.txtOfficeMapTitle.visibility = View.VISIBLE
             binding.cardMapContainer.visibility = View.VISIBLE
+            binding.txtServicesLabel.text = "Serviços\nrealizados"
         } else {
-            // Oculta completamente a seção e o mapa do escritório para o Contratante (Cliente)
+            binding.txtBioTitle.visibility = View.GONE
+            binding.txtBio.visibility = View.GONE
             binding.txtOfficeMapTitle.visibility = View.GONE
             binding.cardMapContainer.visibility = View.GONE
+            binding.txtServicesLabel.text = "Serviços\ncontratados"
         }
     }
 
     /**
-     * Inicializa o SupportMapFragment do Google Maps de forma segura apenas para Prestadores
+     * Inicializa o MapView com pré-carregamento dos recursos gráficos (evitando tela preta)
      */
-    private fun setupOfficeMap() {
-        val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
-        mapFragment?.getMapAsync { map ->
-            googleMap = map
-            updateOfficeMapMarker()
+    private fun setupOfficeMapView(savedInstanceState: Bundle?) {
+        try {
+            MapsInitializer.initialize(requireContext())
+            binding.mapOffice.onCreate(savedInstanceState)
+            binding.mapOffice.getMapAsync { map ->
+                googleMap = map
+                updateOfficeMapMarker()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     /**
-     * Atualiza o marcador do escritório e centraliza a câmera no mapa
+     * Atualiza o marcador (Marker) do escritório e centraliza a câmera nas coordenadas do prestador
      */
     private fun updateOfficeMapMarker() {
         val map = googleMap ?: return
@@ -107,7 +134,7 @@ class ProfileFragment : Fragment() {
             latitude = officeLatitude,
             longitude = officeLongitude,
             title = "Escritório de " + binding.txtProfileName.text,
-            snippet = "Localização do Atendimento"
+            snippet = "São Paulo - SP (Atendimento Presencial)"
         )
     }
 
@@ -154,10 +181,10 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Exibe o diálogo de edição de perfil correspondente ao tipo de usuário
+     * Exibe o diálogo de edição correspondente ao tipo do perfil exibido
      */
     private fun showEditProfileDialog() {
-        if (isProviderUser) {
+        if (isProviderProfile) {
             showProviderEditProfileDialog()
         } else {
             showClientEditProfileDialog()
@@ -165,34 +192,74 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Diálogo de edição para Prestadores (inclui campos de Latitude e Longitude)
+     * Diálogo amigável para o Prestador definir a localização digitando um endereço (Geocoding)
+     * sem precisar inserir Latitude e Longitude manualmente.
      */
     private fun showProviderEditProfileDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_provider_profile, null)
         val etName = dialogView.findViewById<TextInputEditText>(R.id.etName)
         val etBio = dialogView.findViewById<TextInputEditText>(R.id.etBio)
+        val etLocation = dialogView.findViewById<TextInputEditText>(R.id.etLocation)
         val etLatitude = dialogView.findViewById<TextInputEditText>(R.id.etLatitude)
         val etLongitude = dialogView.findViewById<TextInputEditText>(R.id.etLongitude)
+        val btnSearchAddress = dialogView.findViewById<View>(R.id.btnSearchAddress)
+        val txtLocationStatus = dialogView.findViewById<TextView>(R.id.txtLocationStatus)
 
         etName?.setText(binding.txtProfileName.text)
         etBio?.setText(binding.txtBio.text)
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
+        // Converte as coordenadas atuais em endereço legível para preencher o campo inicial
+        val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
+        if (!currentAddress.isNullOrEmpty()) {
+            etLocation?.setText(currentAddress)
+            txtLocationStatus?.visibility = View.VISIBLE
+            txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+        }
+
+        // Lógica do Botão: Converte o texto digitado pelo prestador em coordenadas automaticamente
+        btnSearchAddress?.setOnClickListener {
+            val addressText = etLocation?.text?.toString()?.trim().orEmpty()
+            if (addressText.isEmpty()) {
+                Toast.makeText(requireContext(), "Digite um endereço para localizar no mapa", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+            if (coords != null) {
+                etLatitude?.setText(coords.latitude.toString())
+                etLongitude?.setText(coords.longitude.toString())
+                txtLocationStatus?.visibility = View.VISIBLE
+                txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+                Toast.makeText(requireContext(), "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            }
+        }
+
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
                 val newName = etName?.text?.toString()?.trim().orEmpty()
                 val newBio = etBio?.text?.toString()?.trim().orEmpty()
-                val newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
-                val newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+                val addressText = etLocation?.text?.toString()?.trim().orEmpty()
 
-                if (newName.isNotEmpty()) {
-                    binding.txtProfileName.text = newName
+                var newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                var newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+
+                // Converte automaticamente o texto do endereço se o usuário digitou mas não clicou no botão
+                if (addressText.isNotEmpty() && (newLat == null || newLng == null)) {
+                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+                    if (coords != null) {
+                        newLat = coords.latitude
+                        newLng = coords.longitude
+                    }
                 }
-                if (newBio.isNotEmpty()) {
-                    binding.txtBio.text = newBio
-                }
+
+                if (newName.isNotEmpty()) binding.txtProfileName.text = newName
+                if (newBio.isNotEmpty()) binding.txtBio.text = newBio
+
                 if (newLat != null && newLng != null) {
                     officeLatitude = newLat
                     officeLongitude = newLng
@@ -206,7 +273,7 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Diálogo de edição simples para Contratantes
+     * Diálogo de edição para Contratante
      */
     private fun showClientEditProfileDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
@@ -280,19 +347,60 @@ class ProfileFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
+    // Repasse de ciclo de vida do MapView
+    override fun onResume() {
+        super.onResume()
+        if (isProviderProfile && _binding != null) {
+            try { binding.mapOffice.onResume() } catch (_: Exception) {}
+        }
+    }
+
+    override fun onPause() {
+        if (isProviderProfile && _binding != null) {
+            try { binding.mapOffice.onPause() } catch (_: Exception) {}
+        }
+        super.onPause()
+    }
+
     override fun onDestroyView() {
-        super.onDestroyView()
+        if (isProviderProfile && _binding != null) {
+            try { binding.mapOffice.onDestroy() } catch (_: Exception) {}
+        }
         googleMap = null
         _binding = null
+        super.onDestroyView()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (isProviderProfile && _binding != null) {
+            try { binding.mapOffice.onLowMemory() } catch (_: Exception) {}
+        }
     }
 
     companion object {
-        private const val ARG_IS_PROVIDER = "arg_is_provider"
+        private const val ARG_IS_PROVIDER_PROFILE = "arg_is_provider_profile"
+        private const val ARG_LATITUDE = "arg_latitude"
+        private const val ARG_LONGITUDE = "arg_longitude"
+        private const val ARG_PROVIDER_NAME = "arg_provider_name"
 
-        fun newInstance(isProvider: Boolean = false): ProfileFragment {
+        // Coordenadas estáticas de exemplo (São Paulo, SP)
+        const val DEFAULT_LATITUDE = -23.550520
+        const val DEFAULT_LONGITUDE = -46.633308
+
+        fun newInstance(
+            isProviderProfile: Boolean = true,
+            latitude: Double = DEFAULT_LATITUDE,
+            longitude: Double = DEFAULT_LONGITUDE,
+            providerName: String? = null
+        ): ProfileFragment {
             val fragment = ProfileFragment()
-            val args = Bundle()
-            args.putBoolean(ARG_IS_PROVIDER, isProvider)
+            val args = Bundle().apply {
+                putBoolean(ARG_IS_PROVIDER_PROFILE, isProviderProfile)
+                putDouble(ARG_LATITUDE, latitude)
+                putDouble(ARG_LONGITUDE, longitude)
+                providerName?.let { putString(ARG_PROVIDER_NAME, it) }
+            }
             fragment.arguments = args
             return fragment
         }

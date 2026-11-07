@@ -75,6 +75,7 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun setupUserTypeToggle() {
+        binding.toggleRegisterUserType.check(R.id.btnRegisterContractor)
         binding.toggleRegisterUserType.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 when (checkedId) {

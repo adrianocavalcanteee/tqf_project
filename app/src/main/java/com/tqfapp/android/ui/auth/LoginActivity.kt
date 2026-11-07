@@ -28,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setupUserTypeToggle() {
+        binding.toggleUserType.check(R.id.btnTypeContractor)
         binding.toggleUserType.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 when (checkedId) {

@@ -14,20 +14,23 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
 
 class ProfessionalProfileFragment : Fragment() {
 
-    // Instância do Google Maps e Coordenadas do Escritório
+    // Instância do Google Maps e MapView
     private var googleMap: GoogleMap? = null
-    private var officeLatitude: Double = -23.550520 // Exemplo: São Paulo
-    private var officeLongitude: Double = -46.633308
+    private var mapView: MapView? = null
+    private var officeLatitude: Double = DEFAULT_LATITUDE
+    private var officeLongitude: Double = DEFAULT_LONGITUDE
 
     // Photo Picker launcher para Foto de Perfil
     private val pickAvatarLauncher = registerForActivityResult(
@@ -61,35 +64,40 @@ class ProfessionalProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
-        val isProviderUser = UserSessionManager.isProviderUser(requireContext())
+
+        // Carrega as coordenadas com fallback estático de exemplo em São Paulo
+        officeLatitude = arguments?.getDouble(ARG_LATITUDE, DEFAULT_LATITUDE) ?: DEFAULT_LATITUDE
+        officeLongitude = arguments?.getDouble(ARG_LONGITUDE, DEFAULT_LONGITUDE) ?: DEFAULT_LONGITUDE
 
         setupProfileMode(view, isOwner)
         setupClickListeners(view, isOwner)
         setupPortfolio(view)
         setupReviews(view)
 
-        // IMPORTANTE: Só exibe o mapa e inicializa o Google Maps se o usuário logado for Prestador
+        // REGRA: Como este fragmento exibe o perfil de um Prestador, o mapa e o marcador SEMPRE aparecem
         val txtOfficeMapTitle = view.findViewById<View>(R.id.txtOfficeMapTitle)
         val cardMapContainer = view.findViewById<View>(R.id.cardMapContainer)
+        mapView = view.findViewById(R.id.mapOffice)
 
-        if (isProviderUser) {
-            txtOfficeMapTitle?.visibility = View.VISIBLE
-            cardMapContainer?.visibility = View.VISIBLE
-            setupOfficeMap(view)
-        } else {
-            txtOfficeMapTitle?.visibility = View.GONE
-            cardMapContainer?.visibility = View.GONE
-        }
+        txtOfficeMapTitle?.visibility = View.VISIBLE
+        cardMapContainer?.visibility = View.VISIBLE
+
+        setupOfficeMapView(view, savedInstanceState)
     }
 
     /**
-     * Inicializa o SupportMapFragment do Google Maps de forma segura apenas para prestadores
+     * Inicializa o MapView evitando problemas de renderização (tela preta)
      */
-    private fun setupOfficeMap(view: View) {
-        val mapFragment = childFragmentManager.findFragmentById(R.id.mapOffice) as? SupportMapFragment
-        mapFragment?.getMapAsync { map ->
-            googleMap = map
-            updateOfficeMapMarker(view)
+    private fun setupOfficeMapView(view: View, savedInstanceState: Bundle?) {
+        try {
+            MapsInitializer.initialize(requireContext())
+            mapView?.onCreate(savedInstanceState)
+            mapView?.getMapAsync { map ->
+                googleMap = map
+                updateOfficeMapMarker(view)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -104,7 +112,7 @@ class ProfessionalProfileFragment : Fragment() {
             latitude = officeLatitude,
             longitude = officeLongitude,
             title = "Escritório de $txtName",
-            snippet = "Local de Atendimento"
+            snippet = "São Paulo - SP (Atendimento Presencial)"
         )
     }
 
@@ -116,14 +124,12 @@ class ProfessionalProfileFragment : Fragment() {
         val cardProviderMenu = view.findViewById<View>(R.id.cardProviderMenu)
 
         if (isOwner) {
-            // MODO PRESTADOR (Gerenciando seu próprio perfil)
             btnEditProfile?.visibility = View.VISIBLE
             btnChangeCover?.visibility = View.VISIBLE
             btnChangeAvatar?.visibility = View.VISIBLE
             cardProviderMenu?.visibility = View.VISIBLE
             layoutActionButtons?.visibility = View.GONE
         } else {
-            // MODO CONTRATANTE (Cliente visualizando o prestador)
             layoutActionButtons?.visibility = View.VISIBLE
             btnEditProfile?.visibility = View.GONE
             btnChangeCover?.visibility = View.GONE
@@ -190,13 +196,19 @@ class ProfessionalProfileFragment : Fragment() {
         }
     }
 
+    /**
+     * Diálogo amigável para o Prestador definir o endereço do escritório
+     */
     private fun showEditProfileDialog(rootView: View) {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_provider_profile, null)
         val etName = dialogView.findViewById<TextInputEditText>(R.id.etName)
         val etSpecialty = dialogView.findViewById<TextInputEditText>(R.id.etSpecialty)
         val etBio = dialogView.findViewById<TextInputEditText>(R.id.etBio)
+        val etLocation = dialogView.findViewById<TextInputEditText>(R.id.etLocation)
         val etLatitude = dialogView.findViewById<TextInputEditText>(R.id.etLatitude)
         val etLongitude = dialogView.findViewById<TextInputEditText>(R.id.etLongitude)
+        val btnSearchAddress = dialogView.findViewById<View>(R.id.btnSearchAddress)
+        val txtLocationStatus = dialogView.findViewById<TextView>(R.id.txtLocationStatus)
 
         val txtName = rootView.findViewById<TextView>(R.id.txtProfessionalName)
         val txtSpecialty = rootView.findViewById<TextView>(R.id.txtSpecialty)
@@ -208,14 +220,53 @@ class ProfessionalProfileFragment : Fragment() {
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
+        // Converte as coordenadas atuais em endereço legível
+        val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
+        if (!currentAddress.isNullOrEmpty()) {
+            etLocation?.setText(currentAddress)
+            txtLocationStatus?.visibility = View.VISIBLE
+            txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+        }
+
+        // Converte o texto do endereço digitado pelo prestador em coordenadas
+        btnSearchAddress?.setOnClickListener {
+            val addressText = etLocation?.text?.toString()?.trim().orEmpty()
+            if (addressText.isEmpty()) {
+                Toast.makeText(requireContext(), "Digite um endereço para localizar no mapa", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+            if (coords != null) {
+                etLatitude?.setText(coords.latitude.toString())
+                etLongitude?.setText(coords.longitude.toString())
+                txtLocationStatus?.visibility = View.VISIBLE
+                txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+                Toast.makeText(requireContext(), "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            }
+        }
+
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
                 val newName = etName?.text?.toString()?.trim().orEmpty()
                 val newSpecialty = etSpecialty?.text?.toString()?.trim().orEmpty()
                 val newBio = etBio?.text?.toString()?.trim().orEmpty()
-                val newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
-                val newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+                val addressText = etLocation?.text?.toString()?.trim().orEmpty()
+
+                var newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                var newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+
+                // Se digitou endereço e não buscou manualmente, converte ao salvar
+                if (addressText.isNotEmpty() && (newLat == null || newLng == null)) {
+                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+                    if (coords != null) {
+                        newLat = coords.latitude
+                        newLng = coords.longitude
+                    }
+                }
 
                 if (newName.isNotEmpty()) txtName?.text = newName
                 if (newSpecialty.isNotEmpty()) txtSpecialty?.text = newSpecialty
@@ -291,18 +342,49 @@ class ProfessionalProfileFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
+    // Passagem de Ciclo de Vida para o MapView evitar telas pretas
+    override fun onResume() {
+        super.onResume()
+        try { mapView?.onResume() } catch (_: Exception) {}
+    }
+
+    override fun onPause() {
+        try { mapView?.onPause() } catch (_: Exception) {}
+        super.onPause()
+    }
+
     override fun onDestroyView() {
-        super.onDestroyView()
+        try { mapView?.onDestroy() } catch (_: Exception) {}
         googleMap = null
+        mapView = null
+        super.onDestroyView()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        try { mapView?.onLowMemory() } catch (_: Exception) {}
     }
 
     companion object {
         private const val ARG_IS_OWNER = "arg_is_owner"
+        private const val ARG_LATITUDE = "arg_latitude"
+        private const val ARG_LONGITUDE = "arg_longitude"
 
-        fun newInstance(isOwner: Boolean = false): ProfessionalProfileFragment {
+        // Coordenadas estáticas de exemplo (São Paulo, SP)
+        const val DEFAULT_LATITUDE = -23.550520
+        const val DEFAULT_LONGITUDE = -46.633308
+
+        fun newInstance(
+            isOwner: Boolean = false,
+            latitude: Double = DEFAULT_LATITUDE,
+            longitude: Double = DEFAULT_LONGITUDE
+        ): ProfessionalProfileFragment {
             val fragment = ProfessionalProfileFragment()
-            val args = Bundle()
-            args.putBoolean(ARG_IS_OWNER, isOwner)
+            val args = Bundle().apply {
+                putBoolean(ARG_IS_OWNER, isOwner)
+                putDouble(ARG_LATITUDE, latitude)
+                putDouble(ARG_LONGITUDE, longitude)
+            }
             fragment.arguments = args
             return fragment
         }
