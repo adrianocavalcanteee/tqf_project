@@ -32,12 +32,19 @@ class ProfileFragment : Fragment() {
     // Instância do Google Maps
     private var googleMap: GoogleMap? = null
 
+<<<<<<< HEAD
     // Coordenadas estáticas de exemplo do escritório do prestador (São Paulo, SP)
     private var officeLatitude: Double = DEFAULT_LATITUDE
     private var officeLongitude: Double = DEFAULT_LONGITUDE
 
     // Flag indicando se o PERFIL VISUALIZADO pertence a um Prestador de Serviço
     private var isProviderProfile: Boolean = false
+=======
+    // Flag indicando se o usuário logado é Prestador de Serviço
+    private var isProviderUser: Boolean = false
+    private lateinit var userRepository: com.tqfapp.android.data.repository.UserRepository
+    private var currentUser: com.tqfapp.android.data.model.User? = null
+>>>>>>> origin/feature/database-persistence
 
     // Photo Picker launcher para alteração da foto de perfil
     private val pickMediaLauncher = registerForActivityResult(
@@ -61,6 +68,7 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+<<<<<<< HEAD
         // 1. REGRA: Verifica se o PERFIL sendo visualizado pertence a um Prestador de Serviço.
         isProviderProfile = if (arguments?.containsKey(ARG_IS_PROVIDER_PROFILE) == true) {
             arguments?.getBoolean(ARG_IS_PROVIDER_PROFILE) ?: true
@@ -78,6 +86,15 @@ class ProfileFragment : Fragment() {
         }
 
         // 3. Ajusta a visibilidade das views do mapa conforme o perfil exibido
+=======
+        userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
+
+        // Verifica o tipo de usuário através dos arguments ou da sessão do UserSessionManager
+        isProviderUser = arguments?.getBoolean(ARG_IS_PROVIDER)
+            ?: UserSessionManager.isProviderUser(requireContext())
+
+        loadUserDataFromRoom()
+>>>>>>> origin/feature/database-persistence
         setupUserRoleViewVisibility()
 
         setupClickListeners()
@@ -86,6 +103,19 @@ class ProfileFragment : Fragment() {
         // 4. Inicializa o MapView de forma segura se for perfil de prestador
         if (isProviderProfile) {
             setupOfficeMapView(savedInstanceState)
+        }
+    }
+
+    private fun loadUserDataFromRoom() {
+        currentUser = userRepository.getCurrentUser()
+        val user = currentUser
+        if (user != null) {
+            binding.txtProfileName.text = user.name
+            binding.txtBio.text = user.specialty ?: user.category ?: "Usuário do TQF"
+            if (user.latitude != null && user.longitude != null) {
+                officeLatitude = user.latitude
+                officeLongitude = user.longitude
+            }
         }
     }
 
@@ -266,6 +296,19 @@ class ProfileFragment : Fragment() {
                     updateOfficeMapMarker()
                 }
 
+                // Atualiza o usuário no banco Room
+                val user = currentUser
+                if (user != null) {
+                    val updated = user.copy(
+                        name = if (newName.isNotEmpty()) newName else user.name,
+                        specialty = if (newBio.isNotEmpty()) newBio else user.specialty,
+                        latitude = if (newLat != null) newLat else user.latitude,
+                        longitude = if (newLng != null) newLng else user.longitude
+                    )
+                    userRepository.updateUser(updated)
+                    currentUser = updated
+                }
+
                 showToast("Perfil de prestador atualizado!")
             }
             .setNegativeButton("Cancelar", null)
@@ -287,6 +330,15 @@ class ProfileFragment : Fragment() {
                 val newName = etClientName?.text?.toString()?.trim().orEmpty()
                 if (newName.isNotEmpty()) {
                     binding.txtProfileName.text = newName
+
+                    // Atualiza o usuário no banco Room
+                    val user = currentUser
+                    if (user != null) {
+                        val updated = user.copy(name = newName)
+                        userRepository.updateUser(updated)
+                        currentUser = updated
+                    }
+
                     showToast("Perfil de cliente atualizado!")
                 }
             }
@@ -299,7 +351,7 @@ class ProfileFragment : Fragment() {
             .setTitle("Sair da conta")
             .setMessage("Tem certeza que deseja encerrar sua sessão?")
             .setPositiveButton("Sair") { _, _ ->
-                UserSessionManager.clearSession(requireContext())
+                userRepository.logout()
                 Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
                 val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

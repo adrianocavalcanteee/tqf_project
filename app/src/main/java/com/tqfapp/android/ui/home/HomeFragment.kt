@@ -158,10 +158,27 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        seedServicesInRoom()
         setupCategories()
         setupProfessionals()
         setupSearchAndFilters()
         setupNotificationAndActions()
+    }
+
+    private fun seedServicesInRoom() {
+        val serviceDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).serviceDao()
+        kotlinx.coroutines.runBlocking {
+            if (serviceDao.getAll().isEmpty()) {
+                val initialServices = listOf(
+                    com.tqfapp.android.data.model.Service("s1", "Eletricista Residencial e Predial", "Instalação e reparos elétricos", 80.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
+                    com.tqfapp.android.data.model.Service("s2", "Encanador / Bombeiro Hidráulico", "Reparos de vazamentos e tubulação", 90.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
+                    com.tqfapp.android.data.model.Service("s3", "Diarista e Faxineira", "Limpeza residencial completa", 70.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
+                    com.tqfapp.android.data.model.Service("s4", "Técnico em Manutenção de Notebooks", "Conserto de computadores", 100.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
+                    com.tqfapp.android.data.model.Service("s5", "Mecânico Automotivo / Eletricista Auto", "Revisão e manutenção veicular", 120.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO)
+                )
+                initialServices.forEach { serviceDao.insert(it) }
+            }
+        }
     }
 
     private fun setupCategories() {

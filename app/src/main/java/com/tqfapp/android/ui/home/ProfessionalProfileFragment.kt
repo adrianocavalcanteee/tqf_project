@@ -239,6 +239,7 @@ class ProfessionalProfileFragment : Fragment() {
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
+<<<<<<< HEAD
         // Converte as coordenadas atuais em endereço legível
         val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
         if (!currentAddress.isNullOrEmpty()) {
@@ -266,6 +267,9 @@ class ProfessionalProfileFragment : Fragment() {
                 Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
+=======
+        val userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
+>>>>>>> origin/feature/database-persistence
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
@@ -297,6 +301,17 @@ class ProfessionalProfileFragment : Fragment() {
                     updateOfficeMapMarker(rootView)
                 }
 
+                val user = userRepository.getCurrentUser()
+                if (user != null) {
+                    val updated = user.copy(
+                        name = if (newName.isNotEmpty()) newName else user.name,
+                        specialty = if (newSpecialty.isNotEmpty()) newSpecialty else user.specialty,
+                        latitude = if (newLat != null) newLat else user.latitude,
+                        longitude = if (newLng != null) newLng else user.longitude
+                    )
+                    userRepository.updateUser(updated)
+                }
+
                 showToast("Perfil de prestador atualizado!")
             }
             .setNegativeButton("Sair da conta") { _, _ ->
@@ -311,7 +326,8 @@ class ProfessionalProfileFragment : Fragment() {
             .setTitle("Sair da conta")
             .setMessage("Tem certeza que deseja encerrar sua sessão de prestador?")
             .setPositiveButton("Sair") { _, _ ->
-                UserSessionManager.clearSession(requireContext())
+                val userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
+                userRepository.logout()
                 Toast.makeText(requireContext(), "Sessão encerrada com sucesso.", Toast.LENGTH_SHORT).show()
                 val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -340,18 +356,43 @@ class ProfessionalProfileFragment : Fragment() {
     }
 
     private fun setupReviews(view: View) {
-        val reviews = listOf(
-            ReviewItem(
-                reviewerName = "Mariana Costa",
-                date = "10 de mar. de 2025",
+        val reviewDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).reviewDao()
+        val dbReviews = kotlinx.coroutines.runBlocking { reviewDao.getAll() }
+
+        val reviewsList = if (dbReviews.isNotEmpty()) {
+            dbReviews.map {
+                ReviewItem(
+                    reviewerName = "Cliente",
+                    date = it.date,
+                    comment = it.comment,
+                    avatarRes = R.drawable.ic_profile
+                )
+            }
+        } else {
+            val initialReview = com.tqfapp.android.data.model.Review(
+                id = "r1",
+                serviceId = "s1",
+                providerId = "p1",
+                clientId = "c1",
+                rating = 5,
                 comment = "Excelente profissional! Resolveu meu problema com muita agilidade. Recomendo!",
-                avatarRes = R.drawable.ic_profile
+                date = "10 de mar. de 2025"
             )
-        )
+            kotlinx.coroutines.runBlocking { reviewDao.insert(initialReview) }
+
+            listOf(
+                ReviewItem(
+                    reviewerName = "Mariana Costa",
+                    date = initialReview.date,
+                    comment = initialReview.comment,
+                    avatarRes = R.drawable.ic_profile
+                )
+            )
+        }
 
         view.findViewById<RecyclerView>(R.id.rvReviews)?.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = ReviewAdapter(reviews) {
+            adapter = ReviewAdapter(reviewsList) {
                 showToast("Avaliação de ${it.reviewerName}")
             }
         }

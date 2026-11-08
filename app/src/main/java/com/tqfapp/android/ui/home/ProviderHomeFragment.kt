@@ -175,12 +175,37 @@ class ProviderHomeFragment : Fragment() {
             .setMessage("Serviço: ${request.title}\nOrçamento estimado do cliente: ${request.budget}")
             .setView(dialogView)
             .setPositiveButton("Enviar Proposta") { _, _ ->
-                val priceValue = etQuotePrice?.text?.toString()?.trim().orEmpty()
-                if (priceValue.isNotEmpty()) {
-                    showToast("Proposta de R$ $priceValue enviada para ${request.clientName}!")
-                } else {
-                    showToast("Proposta enviada ao cliente com sucesso!")
+                val priceString = etQuotePrice?.text?.toString()?.trim().orEmpty()
+                val priceValue = priceString.toDoubleOrNull() ?: 0.0
+
+                if (!com.tqfapp.android.business.ProposalRules.isValid(priceValue)) {
+                    showToast("Valor da proposta deve ser maior que zero.")
+                    return@setPositiveButton
                 }
+
+                if (!com.tqfapp.android.business.ProposalRules.canCreateProposal(com.tqfapp.android.business.ServiceStatus.EM_ABERTO)) {
+                    showToast("Não é possível criar proposta para serviço concluído.")
+                    return@setPositiveButton
+                }
+
+                val proposalDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).proposalDao()
+                val sessionManager = com.tqfapp.android.data.local.preferences.SessionManager(requireContext())
+                val currentUserId = sessionManager.getUserId() ?: "provider_1"
+
+                val proposal = com.tqfapp.android.data.model.Proposal(
+                    id = java.util.UUID.randomUUID().toString(),
+                    serviceId = request.serviceId,
+                    providerId = currentUserId,
+                    clientId = request.clientName,
+                    value = priceValue,
+                    status = "PENDENTE"
+                )
+
+                kotlinx.coroutines.runBlocking {
+                    proposalDao.insert(proposal)
+                }
+
+                showToast("Proposta de R$ $priceValue salva no banco para ${request.clientName}!")
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -192,6 +217,7 @@ class ProviderHomeFragment : Fragment() {
 
     // Model for Service Request
     data class ServiceRequestItem(
+        val serviceId: String = "s1",
         val clientName: String,
         val category: String,
         val title: String,
