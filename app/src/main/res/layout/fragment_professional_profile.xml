@@ -371,9 +371,11 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnHireNow"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="6dp"
+                    android:paddingHorizontal="4dp"
                     android:text="Contratar agora"
                     android:textColor="@color/white"
                     android:textSize="13sp"
@@ -381,6 +383,7 @@
                     android:textStyle="bold"
                     app:icon="@drawable/ic_calendar_white"
                     app:iconGravity="textStart"
+                    app:iconPadding="4dp"
                     app:backgroundTint="@color/brand_blue"
                     app:cornerRadius="12dp"
                     app:elevation="0dp" />
@@ -389,10 +392,12 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCallChat"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
-                    android:text="Chamar no chat"
+                    android:paddingHorizontal="4dp"
+                    android:text="Chat"
                     android:textColor="@color/brand_blue"
                     android:textSize="13sp"
                     android:textAllCaps="false"
@@ -400,6 +405,7 @@
                     app:icon="@drawable/ic_chat"
                     app:iconTint="@color/brand_blue"
                     app:iconGravity="textStart"
+                    app:iconPadding="4dp"
                     app:backgroundTint="#EEF4FF"
                     app:strokeColor="#D0E1FD"
                     app:strokeWidth="1dp"
@@ -411,21 +417,32 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="20dp"
                 android:text="Sobre mim"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/txtBio"
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:lineSpacingExtra="3dp" />
+                android:layout_marginTop="8dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_stroke"
+                app:strokeWidth="1dp"
+                app:cardBackgroundColor="@color/card_bg">
+
+                <TextView
+                    android:id="@+id/txtBio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="16dp"
+                    android:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="4dp" />
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- "Localização do Escritório" Section (Google Maps) -->
             <TextView
@@ -441,8 +458,8 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardMapContainer"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="210dp"
+                android:layout_marginTop="8dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
                 app:strokeColor="@color/card_stroke"
@@ -462,7 +479,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Serviços"
+                android:text="Serviços oferecidos"
                 android:textColor="@color/text_primary"
                 android:textSize="17sp"
                 android:textStyle="bold" />
@@ -478,51 +495,71 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Formatação"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/brand_blue"
                     android:textSize="13sp"
-                    app:chipBackgroundColor="#F1F5F9"
-                    app:chipCornerRadius="16dp"
-                    app:chipStrokeWidth="0dp" />
+                    android:textStyle="bold"
+                    app:chipIcon="@drawable/ic_check_circle"
+                    app:chipIconTint="@color/brand_blue"
+                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipCornerRadius="12dp"
+                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Montagem de PC"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/brand_blue"
                     android:textSize="13sp"
-                    app:chipBackgroundColor="#F1F5F9"
-                    app:chipCornerRadius="16dp"
-                    app:chipStrokeWidth="0dp" />
+                    android:textStyle="bold"
+                    app:chipIcon="@drawable/ic_check_circle"
+                    app:chipIconTint="@color/brand_blue"
+                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipCornerRadius="12dp"
+                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Redes e Wi-Fi"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/brand_blue"
                     android:textSize="13sp"
-                    app:chipBackgroundColor="#F1F5F9"
-                    app:chipCornerRadius="16dp"
-                    app:chipStrokeWidth="0dp" />
+                    android:textStyle="bold"
+                    app:chipIcon="@drawable/ic_check_circle"
+                    app:chipIconTint="@color/brand_blue"
+                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipCornerRadius="12dp"
+                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Suporte remoto"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/brand_blue"
                     android:textSize="13sp"
-                    app:chipBackgroundColor="#F1F5F9"
-                    app:chipCornerRadius="16dp"
-                    app:chipStrokeWidth="0dp" />
+                    android:textStyle="bold"
+                    app:chipIcon="@drawable/ic_check_circle"
+                    app:chipIconTint="@color/brand_blue"
+                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipCornerRadius="12dp"
+                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Manutenção preventiva"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/brand_blue"
                     android:textSize="13sp"
-                    app:chipBackgroundColor="#F1F5F9"
-                    app:chipCornerRadius="16dp"
-                    app:chipStrokeWidth="0dp" />
+                    android:textStyle="bold"
+                    app:chipIcon="@drawable/ic_check_circle"
+                    app:chipIconTint="@color/brand_blue"
+                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipCornerRadius="12dp"
+                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeWidth="1dp" />
             </com.google.android.material.chip.ChipGroup>
 
             <!-- "Portfólio" Section -->

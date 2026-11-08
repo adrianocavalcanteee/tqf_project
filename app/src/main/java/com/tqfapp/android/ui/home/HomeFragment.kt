@@ -15,6 +15,7 @@ import com.tqfapp.android.R
 import com.tqfapp.android.databinding.FragmentHomeBinding
 import com.tqfapp.android.databinding.ItemCategoryBinding
 import com.tqfapp.android.databinding.ItemProfessionalBinding
+import com.tqfapp.android.ui.notifications.NotificationsFragment
 
 class HomeFragment : Fragment() {
 
@@ -337,11 +338,10 @@ class HomeFragment : Fragment() {
 
     private fun setupNotificationAndActions() {
         binding.imgNotification.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Notificações")
-                .setMessage("Você tem 2 novas mensagens de orçamentos pendentes.")
-                .setPositiveButton("Entendido", null)
-                .show()
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, NotificationsFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         binding.btnSeeAll.setOnClickListener {

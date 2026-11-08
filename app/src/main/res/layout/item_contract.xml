@@ -177,7 +177,7 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                android:text="Chamar no chat"
+                android:text="Chat"
                 android:textColor="@color/brand_blue"
                 android:textSize="12sp"
                 android:textAllCaps="false"

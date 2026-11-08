@@ -17,9 +17,12 @@ import com.google.android.gms.maps.MapsInitializer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
@@ -32,19 +35,14 @@ class ProfileFragment : Fragment() {
     // Instância do Google Maps
     private var googleMap: GoogleMap? = null
 
-<<<<<<< HEAD
     // Coordenadas estáticas de exemplo do escritório do prestador (São Paulo, SP)
     private var officeLatitude: Double = DEFAULT_LATITUDE
     private var officeLongitude: Double = DEFAULT_LONGITUDE
 
     // Flag indicando se o PERFIL VISUALIZADO pertence a um Prestador de Serviço
     private var isProviderProfile: Boolean = false
-=======
-    // Flag indicando se o usuário logado é Prestador de Serviço
-    private var isProviderUser: Boolean = false
-    private lateinit var userRepository: com.tqfapp.android.data.repository.UserRepository
-    private var currentUser: com.tqfapp.android.data.model.User? = null
->>>>>>> origin/feature/database-persistence
+    private lateinit var userRepository: UserRepository
+    private var currentUser: User? = null
 
     // Photo Picker launcher para alteração da foto de perfil
     private val pickMediaLauncher = registerForActivityResult(
@@ -68,7 +66,8 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-<<<<<<< HEAD
+        userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
+
         // 1. REGRA: Verifica se o PERFIL sendo visualizado pertence a um Prestador de Serviço.
         isProviderProfile = if (arguments?.containsKey(ARG_IS_PROVIDER_PROFILE) == true) {
             arguments?.getBoolean(ARG_IS_PROVIDER_PROFILE) ?: true
@@ -85,16 +84,7 @@ class ProfileFragment : Fragment() {
             binding.txtProfileName.text = customName
         }
 
-        // 3. Ajusta a visibilidade das views do mapa conforme o perfil exibido
-=======
-        userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
-
-        // Verifica o tipo de usuário através dos arguments ou da sessão do UserSessionManager
-        isProviderUser = arguments?.getBoolean(ARG_IS_PROVIDER)
-            ?: UserSessionManager.isProviderUser(requireContext())
-
         loadUserDataFromRoom()
->>>>>>> origin/feature/database-persistence
         setupUserRoleViewVisibility()
 
         setupClickListeners()
@@ -198,7 +188,10 @@ class ProfileFragment : Fragment() {
         }
 
         binding.menuNotifications.setOnClickListener {
-            showToast("Notificações")
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, NotificationsFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         binding.menuLogout.setOnClickListener {

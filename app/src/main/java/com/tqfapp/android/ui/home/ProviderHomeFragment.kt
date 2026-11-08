@@ -19,6 +19,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.tqfapp.android.R
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.ui.notifications.NotificationsFragment
 
 class ProviderHomeFragment : Fragment() {
 
@@ -134,11 +135,10 @@ class ProviderHomeFragment : Fragment() {
 
     private fun setupNotification(view: View) {
         view.findViewById<ImageView>(R.id.imgNotificationProvider)?.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Notificações do Prestador")
-                .setMessage("Você recebeu 3 novas solicitações de orçamento no seu bairro hoje!")
-                .setPositiveButton("Entendido", null)
-                .show()
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, NotificationsFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         view.findViewById<TextView>(R.id.btnSeeAllRequests)?.setOnClickListener {

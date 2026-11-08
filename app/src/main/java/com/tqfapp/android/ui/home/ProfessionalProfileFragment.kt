@@ -16,10 +16,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.ui.chat.ChatFragment
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
@@ -203,7 +206,11 @@ class ProfessionalProfileFragment : Fragment() {
         }
 
         view.findViewById<View>(R.id.btnCallChat)?.setOnClickListener {
-            showToast("Abrindo conversa no chat")
+            activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, ChatFragment())
+                .addToBackStack(null)
+                .commit()
         }
 
         view.findViewById<View>(R.id.btnSeeAllPortfolio)?.setOnClickListener {
@@ -239,7 +246,6 @@ class ProfessionalProfileFragment : Fragment() {
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
-<<<<<<< HEAD
         // Converte as coordenadas atuais em endereço legível
         val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
         if (!currentAddress.isNullOrEmpty()) {
@@ -267,9 +273,8 @@ class ProfessionalProfileFragment : Fragment() {
                 Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
-=======
-        val userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
->>>>>>> origin/feature/database-persistence
+
+        val userRepository = UserRepository(requireContext())
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
@@ -314,10 +319,7 @@ class ProfessionalProfileFragment : Fragment() {
 
                 showToast("Perfil de prestador atualizado!")
             }
-            .setNegativeButton("Sair da conta") { _, _ ->
-                performLogout()
-            }
-            .setNeutralButton("Cancelar", null)
+            .setNegativeButton("Cancelar", null)
             .show()
     }
 
@@ -341,10 +343,10 @@ class ProfessionalProfileFragment : Fragment() {
 
     private fun setupPortfolio(view: View) {
         val portfolioImages = listOf(
-            R.drawable.ic_profile,
-            R.drawable.ic_profile,
-            R.drawable.ic_profile,
-            R.drawable.ic_profile
+            R.drawable.ic_tech_repair,
+            R.drawable.ic_laptop,
+            R.drawable.ic_clipboard,
+            R.drawable.ic_briefcase
         )
 
         view.findViewById<RecyclerView>(R.id.rvPortfolio)?.apply {

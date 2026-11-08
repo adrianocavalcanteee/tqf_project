@@ -17,25 +17,18 @@
 
         <!-- Logo & Branding -->
         <ImageView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
+            android:id="@+id/imgLogo"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:src="@drawable/ic_logo_brand"
+            android:adjustViewBounds="true"
+            android:src="@drawable/logo"
             tools:ignore="ContentDescription" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Tem Quem Faça"
-            android:textColor="@color/text_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="8dp"
             android:text="Serviços confiáveis, perto de você."
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
@@ -85,9 +78,7 @@
                         android:textColor="@color/brand_blue"
                         android:textSize="13sp"
                         android:textAllCaps="false"
-                        android:textStyle="bold"
-                        app:strokeColor="@color/brand_blue"
-                        app:strokeWidth="1dp" />
+                        android:textStyle="bold" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnTypeProvider"
@@ -99,14 +90,13 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp"
                         android:textAllCaps="false"
-                        android:textStyle="bold"
-                        app:strokeColor="@color/card_stroke"
-                        app:strokeWidth="1dp" />
+                        android:textStyle="bold" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <!-- Email Input -->
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="E-mail"
@@ -125,6 +115,7 @@
 
                 <!-- Password Input -->
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
