@@ -20,6 +20,7 @@ import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityRegisterBinding
 import com.tqfapp.android.ui.home.HomeActivity
+import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.UserSessionManager
 import java.util.UUID
 
@@ -152,6 +153,26 @@ class RegisterActivity : AppCompatActivity() {
             finish()
         }
 
+        // Botão para buscar endereço e converter em coordenadas
+        binding.btnSearchAddress.setOnClickListener {
+            val addressText = binding.etLocation.text?.toString()?.trim().orEmpty()
+            if (addressText.isEmpty()) {
+                Toast.makeText(this, "Digite um endereço para localizar no mapa", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val coords = LocationUtils.getCoordinatesFromAddress(this, addressText)
+            if (coords != null) {
+                binding.etLatitude.setText(coords.latitude.toString())
+                binding.etLongitude.setText(coords.longitude.toString())
+                binding.txtLocationStatus.visibility = View.VISIBLE
+                binding.txtLocationStatus.text = "✓ Endereço localizado com sucesso!"
+                Toast.makeText(this, "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            }
+        }
+
         binding.btnRegister.setOnClickListener {
             performRegistration()
         }
@@ -203,8 +224,22 @@ class RegisterActivity : AppCompatActivity() {
         if (isProviderMode) {
             category = binding.actvCategory.text?.toString()?.trim().orEmpty()
             specialty = binding.etSpecialty.text?.toString()?.trim().orEmpty()
-            latitude = binding.etLatitude.text?.toString()?.toDoubleOrNull() ?: -23.550520
-            longitude = binding.etLongitude.text?.toString()?.toDoubleOrNull() ?: -46.633308
+
+            val addressText = binding.etLocation.text?.toString()?.trim().orEmpty()
+            if (addressText.isNotEmpty()) {
+                val coords = LocationUtils.getCoordinatesFromAddress(this, addressText)
+                if (coords != null) {
+                    latitude = coords.latitude
+                    longitude = coords.longitude
+                }
+            }
+
+            if (latitude == null) {
+                latitude = binding.etLatitude.text?.toString()?.toDoubleOrNull() ?: -23.550520
+            }
+            if (longitude == null) {
+                longitude = binding.etLongitude.text?.toString()?.toDoubleOrNull() ?: -46.633308
+            }
 
             if (category.isEmpty()) {
                 binding.tilCategory.error = "Selecione a categoria do seu serviço"

@@ -332,52 +332,74 @@
                             android:hint="Ex: Eletricista Residencial e Predial" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Location Coordinates Inputs (GPS) -->
-                    <LinearLayout
+                    <!-- Address Search Input -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilLocation"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="12dp">
+                        android:layout_marginTop="12dp"
+                        android:hint="Endereço do Escritório (Rua, Número, Bairro, Cidade)"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_search"
+                        app:endIconContentDescription="Buscar Endereço"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp">
 
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/tilLatitude"
-                            android:layout_width="0dp"
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etLocation"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginEnd="6dp"
-                            android:hint="Latitude (GPS)"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusBottomEnd="12dp">
+                            android:inputType="textPostalAddress"
+                            android:text="São Paulo, SP" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/etLatitude"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="numberSigned|numberDecimal"
-                                android:text="-23.550520" />
-                        </com.google.android.material.textfield.TextInputLayout>
+                    <!-- Button: Buscar e Converter Endereço em Coordenadas -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSearchAddress"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="8dp"
+                        android:text="📍 Localizar e Posicionar no Mapa"
+                        android:textColor="@color/brand_blue"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        app:strokeColor="@color/brand_blue"
+                        app:strokeWidth="1dp"
+                        app:cornerRadius="10dp" />
 
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/tilLongitude"
-                            android:layout_width="0dp"
+                    <!-- Status Feedback -->
+                    <TextView
+                        android:id="@+id/txtLocationStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="✓ Endereço padrão definido (São Paulo, SP)"
+                        android:textColor="@color/green_badge_text"
+                        android:textSize="12sp" />
+
+                    <!-- Hidden / Optional Advanced Coordinates -->
+                    <LinearLayout
+                        android:id="@+id/layoutManualCoordinates"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etLatitude"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="6dp"
-                            android:hint="Longitude (GPS)"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusBottomEnd="12dp">
+                            android:text="-23.550520" />
 
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/etLongitude"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="numberSigned|numberDecimal"
-                                android:text="-46.633308" />
-                        </com.google.android.material.textfield.TextInputLayout>
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etLongitude"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="-46.633308" />
                     </LinearLayout>
 
                     <!-- Portfolio Section (Imagens do Portfólio) -->
