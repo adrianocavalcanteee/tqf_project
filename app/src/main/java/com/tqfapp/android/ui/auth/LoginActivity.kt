@@ -18,13 +18,18 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityLoginBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        try {
+            binding = ActivityLoginBinding.inflate(layoutInflater)
+            setContentView(binding.root)
 
-        userRepository = UserRepository(this)
+            userRepository = UserRepository(this)
 
-        setupUserTypeToggle()
-        setupClickListeners()
+            setupUserTypeToggle()
+            setupClickListeners()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Erro ao iniciar Login: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupUserTypeToggle() {
@@ -64,20 +69,21 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Tenta autenticar pelo banco de dados local em primeiro lugar
+            // Tenta autenticar pelo banco de dados local
             val authResult = userRepository.loginUser(email, password)
 
-            val finalIsProvider: Boolean
-            val userName: String?
-
-            if (authResult.isSuccess) {
-                val dbUser = authResult.getOrNull()!!
-                finalIsProvider = dbUser.isProvider
-                userName = dbUser.name
+            val finalIsProvider = isProviderMode
+            val userName = if (authResult.isSuccess) {
+                authResult.getOrNull()?.name ?: email.substringBefore("@")
             } else {
-                // Fallback para o modo simulado se o usuário ainda não foi cadastrado no banco local
-                finalIsProvider = isProviderMode
-                userName = email.substringBefore("@")
+                email.substringBefore("@")
+            }
+
+            // Atualiza o tipo do usuário no Room de acordo com o toggle selecionado
+            val currentUser = userRepository.getCurrentUser()
+            if (currentUser != null) {
+                val updated = currentUser.copy(isProvider = finalIsProvider, name = userName)
+                userRepository.updateUser(updated)
             }
 
             val userTypeLabel = if (finalIsProvider) "Prestador de Serviço" else "Contratante"

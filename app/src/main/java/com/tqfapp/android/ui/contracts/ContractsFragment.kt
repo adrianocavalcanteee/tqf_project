@@ -8,9 +8,14 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.tqfapp.android.R
+import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.model.Proposal
 import com.tqfapp.android.databinding.FragmentContractsBinding
 import com.tqfapp.android.databinding.ItemContractBinding
+import com.tqfapp.android.ui.chat.ChatFragment
+import kotlinx.coroutines.runBlocking
 
 class ContractsFragment : Fragment() {
 
@@ -57,111 +62,141 @@ class ContractsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentContractsBinding.inflate(inflater, container, false)
-        return binding.root
+        try {
+            _binding = FragmentContractsBinding.inflate(inflater, container, false)
+            return binding.root
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return View(requireContext())
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        seedProposalsInRoom()
-        setupContractsList()
-        setupFilters()
+        try {
+            seedProposalsInRoom()
+            setupContractsList()
+            setupFilters()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun seedProposalsInRoom() {
-        val proposalDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).proposalDao()
-        kotlinx.coroutines.runBlocking {
-            if (proposalDao.getAll().isEmpty()) {
-                val initialProposals = listOf(
-                    com.tqfapp.android.data.model.Proposal("p1", "s1", "prov1", "cli1", 150.0, "EM_NEGOCIACAO"),
-                    com.tqfapp.android.data.model.Proposal("p2", "s2", "prov2", "cli1", 250.0, "CONCLUIDO"),
-                    com.tqfapp.android.data.model.Proposal("p3", "s3", "prov3", "cli1", 110.0, "PENDENTE")
-                )
-                initialProposals.forEach { proposalDao.insert(it) }
+        try {
+            val proposalDao = AppDatabase.getDatabase(requireContext()).proposalDao()
+            runBlocking {
+                val existing = try { proposalDao.getAll() } catch (_: Exception) { emptyList() }
+                if (existing.isEmpty()) {
+                    val initialProposals = listOf(
+                        Proposal("p1", "s1", "prov1", "cli1", 150.0, "EM_NEGOCIACAO"),
+                        Proposal("p2", "s2", "prov2", "cli1", 250.0, "CONCLUIDO"),
+                        Proposal("p3", "s3", "prov3", "cli1", 110.0, "PENDENTE")
+                    )
+                    initialProposals.forEach {
+                        try {
+                            proposalDao.insert(it)
+                        } catch (_: Exception) {}
+                    }
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun setupContractsList() {
-        val proposalDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).proposalDao()
-        val serviceDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).serviceDao()
-
-        contractAdapter = ContractAdapter(allContracts,
-            onChatClick = { contract ->
-                showToast("Abrindo conversa com ${contract.professionalName}")
-            },
-            onDetailsClick = { contract ->
-                // Aceitar proposta e atualizar status do serviço no banco
-                kotlinx.coroutines.runBlocking {
-                    val proposals = proposalDao.getAll()
-                    val p = proposals.find { it.value > 0 }
-                    if (p != null) {
-                        val updatedP = p.copy(status = "ACEITO")
-                        proposalDao.update(updatedP)
-
-                        val service = serviceDao.getById(p.serviceId)
-                        if (service != null) {
-                            val newStatus = com.tqfapp.android.business.ServiceRules.statusAfterAcceptedProposal(service.status)
-                            serviceDao.update(service.copy(status = newStatus))
-                            showToast("Proposta aceita! Serviço ${service.title} alterado para $newStatus no banco.")
-                        } else {
-                            showToast("Proposta aceita e salva no banco de dados!")
-                        }
-                    } else {
-                        showToast("Detalhes da contratação: ${contract.serviceTitle}")
+        try {
+            contractAdapter = ContractAdapter(allContracts,
+                onChatClick = { _ ->
+                    activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, ChatFragment())
+                        .addToBackStack(null)
+                        .commit()
+                },
+                onDetailsClick = { contract ->
+                    try {
+                        val detailsFragment = ServiceDetailsFragment.newInstance(
+                            title = contract.serviceTitle,
+                            professional = contract.professionalName,
+                            specialty = contract.specialty,
+                            schedule = contract.scheduleDate,
+                            price = contract.price,
+                            status = contract.status,
+                            desc = "Serviço contratado com ${contract.professionalName}. Acompanhe o andamento ou entre em contato via chat em caso de dúvidas."
+                        )
+                        parentFragmentManager.beginTransaction()
+                            .replace(R.id.fragmentContainer, detailsFragment)
+                            .addToBackStack(null)
+                            .commit()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showToast("Detalhes: ${contract.serviceTitle}")
                     }
                 }
-            }
-        )
+            )
 
-        binding.rvContracts.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = contractAdapter
+            binding.rvContracts.apply {
+                layoutManager = LinearLayoutManager(requireContext())
+                adapter = contractAdapter
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun setupFilters() {
-        binding.chipAll.setOnClickListener {
-            filterByStatus(null)
-        }
+        try {
+            binding.chipAll.setOnClickListener {
+                filterByStatus(null)
+            }
 
-        binding.chipInProgress.setOnClickListener {
-            filterByStatus("Em andamento")
-        }
+            binding.chipInProgress.setOnClickListener {
+                filterByStatus("Em andamento")
+            }
 
-        binding.chipScheduled.setOnClickListener {
-            filterByStatus("Agendado")
-        }
+            binding.chipScheduled.setOnClickListener {
+                filterByStatus("Agendado")
+            }
 
-        binding.chipCompleted.setOnClickListener {
-            filterByStatus("Concluído")
-        }
+            binding.chipCompleted.setOnClickListener {
+                filterByStatus("Concluído")
+            }
 
-        binding.chipCanceled.setOnClickListener {
-            filterByStatus("Cancelado")
-        }
+            binding.chipCanceled.setOnClickListener {
+                filterByStatus("Cancelado")
+            }
 
-        binding.btnSearchContract.setOnClickListener {
-            showToast("Buscar nas contratações")
+            binding.btnSearchContract.setOnClickListener {
+                showToast("Buscar nas contratações")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun filterByStatus(statusFilter: String?) {
-        val filtered = if (statusFilter == null) {
-            allContracts
-        } else {
-            allContracts.filter { it.status.equals(statusFilter, ignoreCase = true) }
-        }
+        try {
+            val filtered = if (statusFilter == null) {
+                allContracts
+            } else {
+                allContracts.filter { it.status.equals(statusFilter, ignoreCase = true) }
+            }
 
-        contractAdapter.updateList(filtered)
-        if (filtered.isEmpty()) {
-            showToast("Nenhuma contratação encontrada com o status '$statusFilter'")
+            contractAdapter.updateList(filtered)
+            if (filtered.isEmpty()) {
+                showToast("Nenhuma contratação encontrada com o status '$statusFilter'")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun showToast(message: String) {
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        try {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {}
     }
 
     override fun onDestroyView() {
@@ -210,6 +245,9 @@ class ContractsFragment : Fragment() {
                 txtContractPrice.text = item.price
                 txtStatusBadge.text = item.status
                 imgVerified.visibility = if (item.isVerified) View.VISIBLE else View.GONE
+
+                val isCompleted = item.status.equals("Concluído", ignoreCase = true) || item.status.equals("Concluídos", ignoreCase = true)
+                btnChat.visibility = if (isCompleted) View.GONE else View.VISIBLE
 
                 btnChat.setOnClickListener { onChatClick(item) }
                 btnDetails.setOnClickListener { onDetailsClick(item) }

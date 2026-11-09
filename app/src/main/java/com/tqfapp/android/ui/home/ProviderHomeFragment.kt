@@ -14,11 +14,14 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.ui.auth.LoginActivity
+import com.tqfapp.android.ui.chat.ChatFragment
 import com.tqfapp.android.ui.notifications.NotificationsFragment
 
 class ProviderHomeFragment : Fragment() {
@@ -83,8 +86,12 @@ class ProviderHomeFragment : Fragment() {
     private fun setupRequestsList() {
         requestAdapter = ServiceRequestAdapter(
             allRequests,
-            onChatClick = { request ->
-                showToast("Abrindo conversa com ${request.clientName}")
+            onChatClick = { _ ->
+                activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, ChatFragment())
+                    .addToBackStack(null)
+                    .commit()
             },
             onQuoteClick = { request ->
                 showSendQuoteDialog(request)
@@ -165,9 +172,8 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun showSendQuoteDialog(request: ServiceRequestItem) {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
-        val etQuotePrice = dialogView.findViewById<EditText>(R.id.etClientName)
-        etQuotePrice?.hint = "Valor do orçamento (R$)"
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_send_quote, null)
+        val etQuotePrice = dialogView.findViewById<TextInputEditText>(R.id.etQuotePrice)
         etQuotePrice?.setText("")
 
         MaterialAlertDialogBuilder(requireContext())

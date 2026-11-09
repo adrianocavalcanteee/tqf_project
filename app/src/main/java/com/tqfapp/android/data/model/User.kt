@@ -11,6 +11,9 @@ data class User(
     val isProvider: Boolean, // true = prestador, false = contratante
     val category: String? = null,
     val specialty: String? = null,
+    val bio: String? = null,
+    val servicesText: String? = null,
+    val address: String? = null,
     val phone: String? = null,
     val profilePictureUri: String? = null,
     val portfolioUris: List<String> = emptyList(),

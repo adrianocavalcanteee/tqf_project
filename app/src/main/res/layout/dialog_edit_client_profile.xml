@@ -2,6 +2,7 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -9,51 +10,100 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:gravity="center_horizontal"
+        android:padding="24dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="start"
             android:text="Editar Perfil do Cliente"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- Name Input -->
+        <!-- Avatar preview -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardClientAvatarEdit"
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="45dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/brand_blue"
+            app:strokeWidth="2dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/imgClientAvatarEdit"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_profile"
+                tools:ignore="ContentDescription" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChangeClientPhoto"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Alterar Foto de Perfil"
+            android:textColor="@color/brand_blue"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            app:strokeColor="@color/brand_blue"
+            app:strokeWidth="1dp"
+            app:cornerRadius="10dp"
+            android:visibility="gone" />
+
+        <!-- Non-editable Name Display -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="20dp"
+            android:gravity="start">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nome (Não pode ser alterado)"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/txtClientNameStatic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:padding="12dp"
+                android:background="#F1F5F9"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Address Input -->
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Nome completo"
+            android:hint="Endereço de Entrega / Residência"
             app:boxCornerRadiusTopStart="12dp"
             app:boxCornerRadiusTopEnd="12dp"
             app:boxCornerRadiusBottomStart="12dp"
             app:boxCornerRadiusBottomEnd="12dp">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etClientName"
+                android:id="@+id/etClientAddress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPersonName" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <!-- Description Input -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="Descrição / Bio"
-            app:boxCornerRadiusTopStart="12dp"
-            app:boxCornerRadiusTopEnd="12dp"
-            app:boxCornerRadiusBottomStart="12dp"
-            app:boxCornerRadiusBottomEnd="12dp">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etClientDesc"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textMultiLine"
-                android:lines="2" />
+                android:inputType="textPostalAddress" />
         </com.google.android.material.textfield.TextInputLayout>
 
     </LinearLayout>

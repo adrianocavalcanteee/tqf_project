@@ -2,6 +2,7 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -9,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="24dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -38,6 +39,27 @@
                 android:inputType="textPersonName" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Category Exposed Dropdown -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilCategory"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Categoria Principal *"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp">
+
+            <AutoCompleteTextView
+                android:id="@+id/actvCategory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none"
+                tools:ignore="LabelFor" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- Specialty Input -->
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -64,7 +86,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Endereço do Escritório (Rua, Número, Bairro, Cidade)"
+            android:hint="Endereço do Escritório"
+            app:placeholderText="Ex: Av. Paulista, 1000 - São Paulo"
             app:endIconMode="custom"
             app:endIconDrawable="@drawable/ic_search"
             app:endIconContentDescription="Buscar Endereço"
@@ -89,7 +112,7 @@
             android:minHeight="44dp"
             android:paddingVertical="8dp"
             android:paddingHorizontal="12dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:text="📍 Localizar e Posicionar no Mapa"
             android:textColor="@color/brand_blue"
             android:textSize="13sp"
@@ -126,9 +149,106 @@
                 android:id="@+id/etBio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textMultiLine"
-                android:lines="3" />
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="3"
+                android:gravity="top|start" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Services Offered Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Serviços Oferecidos"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Nome do serviço"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etNewService"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAddService"
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
+                android:layout_marginStart="8dp"
+                android:text="Adicionar"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textAllCaps="false"
+                android:textStyle="bold"
+                app:backgroundTint="@color/brand_blue"
+                app:cornerRadius="12dp"
+                app:elevation="0dp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDialogServices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_dialog_service" />
+
+        <!-- Portfolio Section inside Edit Dialog -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Adicionar Fotos ao Portfólio"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddPortfolio"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="44dp"
+            android:layout_marginTop="8dp"
+            android:text="Selecionar Novas Fotos"
+            android:textColor="@color/brand_blue"
+            android:textSize="13sp"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            app:icon="@drawable/ic_camera"
+            app:iconTint="@color/brand_blue"
+            app:strokeColor="@color/brand_blue"
+            app:strokeWidth="1dp"
+            app:cornerRadius="10dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvPortfolioPreviews"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_portfolio" />
 
         <!-- Hidden / Optional Advanced Coordinates -->
         <LinearLayout

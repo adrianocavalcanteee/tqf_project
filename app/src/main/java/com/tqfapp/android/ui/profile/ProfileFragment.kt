@@ -1,10 +1,12 @@
 package com.tqfapp.android.ui.profile
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -21,6 +23,8 @@ import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
+import com.tqfapp.android.ui.contracts.ContractsFragment
+import com.tqfapp.android.ui.contracts.ServiceDetailsFragment
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.utils.LocationUtils
@@ -49,7 +53,29 @@ class ProfileFragment : Fragment() {
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            binding.imgProfile.setImageURI(uri)
+            if (_binding != null) {
+                binding.imgProfile.setImageURI(uri)
+            }
+            Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private var clientAvatarImageViewRef: ImageView? = null
+
+    private val clientPhotoPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            clientAvatarImageViewRef?.setImageURI(uri)
+            if (_binding != null) {
+                binding.imgProfile.setImageURI(uri)
+            }
+            val user = currentUser
+            if (user != null) {
+                val updated = user.copy(profilePictureUri = uri.toString())
+                userRepository.updateUser(updated)
+                currentUser = updated
+            }
             Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
         }
     }
@@ -97,15 +123,32 @@ class ProfileFragment : Fragment() {
     }
 
     private fun loadUserDataFromRoom() {
-        currentUser = userRepository.getCurrentUser()
-        val user = currentUser
-        if (user != null) {
-            binding.txtProfileName.text = user.name
-            binding.txtBio.text = user.specialty ?: user.category ?: "Usuário do TQF"
-            if (user.latitude != null && user.longitude != null) {
-                officeLatitude = user.latitude
-                officeLongitude = user.longitude
+        if (_binding == null) return
+        try {
+            currentUser = userRepository.getCurrentUser()
+            val user = currentUser
+            if (user != null && _binding != null) {
+                binding.txtProfileName.text = user.name
+                binding.txtBio.text = user.bio ?: user.specialty ?: user.category ?: "Usuário do TQF"
+                user.profilePictureUri?.let {
+                    try {
+                        if (_binding != null) {
+                            binding.imgProfile.setImageURI(Uri.parse(it))
+                        }
+                    } catch (_: Exception) {}
+                }
+                user.address?.let {
+                    if (it.isNotBlank()) {
+                        binding.txtClientAddressDisplay.text = it
+                    }
+                }
+                if (user.latitude != null && user.longitude != null) {
+                    officeLatitude = user.latitude
+                    officeLongitude = user.longitude
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -171,16 +214,16 @@ class ProfileFragment : Fragment() {
             openGallery()
         }
 
-        binding.imgProfile.setOnClickListener {
-            openGallery()
-        }
-
-        binding.menuData.setOnClickListener {
-            showEditProfileDialog()
-        }
-
         binding.menuAddresses.setOnClickListener {
-            showToast("Meus endereços")
+            val address = currentUser?.address?.takeIf { it.isNotBlank() } ?: "Nenhum endereço cadastrado"
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Meus Endereços")
+                .setMessage("Endereço atual cadastrado:\n\n$address")
+                .setPositiveButton("Editar Endereço") { _, _ ->
+                    showClientEditProfileDialog()
+                }
+                .setNegativeButton("Fechar", null)
+                .show()
         }
 
         binding.menuFavorites.setOnClickListener {
@@ -199,7 +242,10 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnSeeAllServices.setOnClickListener {
-            showToast("Ver todos os serviços")
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, ContractsFragment())
+                .addToBackStack(null)
+                .commit()
         }
     }
 
@@ -313,26 +359,29 @@ class ProfileFragment : Fragment() {
      */
     private fun showClientEditProfileDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
-        val etClientName = dialogView.findViewById<TextInputEditText>(R.id.etClientName)
+        val txtClientNameStatic = dialogView.findViewById<TextView>(R.id.txtClientNameStatic)
+        val etClientAddress = dialogView.findViewById<TextInputEditText>(R.id.etClientAddress)
+        val imgClientAvatarEdit = dialogView.findViewById<ImageView>(R.id.imgClientAvatarEdit)
+        val btnChangeClientPhoto = dialogView.findViewById<View>(R.id.btnChangeClientPhoto)
 
-        etClientName?.setText(binding.txtProfileName.text)
+        txtClientNameStatic?.text = binding.txtProfileName.text
+        currentUser?.address?.let { etClientAddress?.setText(it) }
+        clientAvatarImageViewRef = imgClientAvatarEdit
+
+        btnChangeClientPhoto?.setOnClickListener {
+            clientPhotoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
-                val newName = etClientName?.text?.toString()?.trim().orEmpty()
-                if (newName.isNotEmpty()) {
-                    binding.txtProfileName.text = newName
-
-                    // Atualiza o usuário no banco Room
-                    val user = currentUser
-                    if (user != null) {
-                        val updated = user.copy(name = newName)
-                        userRepository.updateUser(updated)
-                        currentUser = updated
-                    }
-
-                    showToast("Perfil de cliente atualizado!")
+                val newAddress = etClientAddress?.text?.toString()?.trim().orEmpty()
+                val user = currentUser
+                if (user != null) {
+                    val updated = user.copy(address = newAddress)
+                    userRepository.updateUser(updated)
+                    currentUser = updated
+                    showToast("Endereço de entrega atualizado!")
                 }
             }
             .setNegativeButton("Cancelar", null)
@@ -383,7 +432,19 @@ class ProfileFragment : Fragment() {
         binding.rvRecentServices.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = RecentServiceAdapter(services) { service ->
-                showToast("Serviço: ${service.title}")
+                val detailsFragment = ServiceDetailsFragment.newInstance(
+                    title = service.title,
+                    professional = service.providerName.removePrefix("com "),
+                    specialty = "Especialista TQF",
+                    schedule = service.date,
+                    price = "R$ 150,00",
+                    status = service.status,
+                    desc = "Serviço contratado. Acompanhe os detalhes e avaliações."
+                )
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, detailsFragment)
+                    .addToBackStack(null)
+                    .commit()
             }
         }
     }

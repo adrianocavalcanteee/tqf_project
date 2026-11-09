@@ -7,17 +7,17 @@ import com.tqfapp.android.data.model.User
 interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(user: User)
+    fun insert(user: User)
 
     @Query("SELECT * FROM usuarios")
-    suspend fun getAll(): List<User>
+    fun getAll(): List<User>
 
     @Query("SELECT * FROM usuarios WHERE id = :id")
-    suspend fun getById(id: String): User?
+    fun getById(id: String): User?
 
     @Update
-    suspend fun update(user: User)
+    fun update(user: User)
 
     @Delete
-    suspend fun delete(user: User)
+    fun delete(user: User)
 }
