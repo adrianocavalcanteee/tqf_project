@@ -1,6 +1,9 @@
 package com.tqfapp.android.ui.home
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -9,6 +12,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,6 +21,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -23,9 +29,11 @@ import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentHomeBinding
 import com.tqfapp.android.databinding.ItemCategoryBinding
 import com.tqfapp.android.ui.notifications.NotificationsFragment
+import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.runBlocking
 
 class HomeFragment : Fragment() {
@@ -34,11 +42,30 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var googleMap: GoogleMap? = null
+    private var clientLatLng: LatLng? = null
 
     companion object {
         // Coordenadas padrão centralizadas em Manaus, Amazonas
         private val MANAUS_LAT_LNG = LatLng(-3.1190, -60.0217)
         private const val DEFAULT_ZOOM = 12f
+    }
+
+    // Launcher para solicitação de permissões de localização (GPS)
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineGranted || coarseGranted) {
+            enableMyLocationLayer()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Permissão de GPS negada. Exibindo apenas o endereço cadastrado.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     // Lista completa de prestadores de serviço de exemplo com coordenadas fixas em Manaus
@@ -328,6 +355,8 @@ class HomeFragment : Fragment() {
                     val professional = marker.tag as? ProfessionalItem
                     if (professional != null) {
                         openProfessionalProfile(professional)
+                    } else {
+                        marker.showInfoWindow()
                     }
                     false
                 }
@@ -341,12 +370,104 @@ class HomeFragment : Fragment() {
                 }
             }
 
+            // Habilita a camada nativa da bolinha azul de localização no Google Maps (GPS)
+            enableMyLocationLayer()
+
             // Centraliza o mapa inicialmente em Manaus - AM
             centerMapOnManaus()
 
             // Carrega e exibe os marcadores de acordo com os filtros atuais
             applyFilters()
         }
+    }
+
+    /**
+     * Habilita a camada da Bolinha Azul de Localização nativa do Google Maps se a permissão for concedida.
+     * Caso contrário, solicita as permissões necessárias.
+     */
+    @SuppressLint("MissingPermission")
+    private fun enableMyLocationLayer() {
+        val map = googleMap ?: return
+        if (hasLocationPermission()) {
+            try {
+                map.isMyLocationEnabled = true
+                map.uiSettings.isMyLocationButtonEnabled = true
+            } catch (e: SecurityException) {
+                e.printStackTrace()
+            }
+        } else {
+            requestPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    /**
+     * Verifica se o aplicativo possui permissão de GPS/Localização
+     */
+    private fun hasLocationPermission(): Boolean {
+        val ctx = context ?: return false
+        return ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Obtém ou inicializa as coordenadas do cliente (usando o endereço cadastrado ou fallback de Manaus)
+     */
+    private fun getOrInitClientLocation(): LatLng {
+        clientLatLng?.let { return it }
+
+        val userRepository = UserRepository(requireContext())
+        val currentUser = userRepository.getCurrentUser()
+
+        var coords: LatLng? = null
+        val addressText = currentUser?.address
+        if (!addressText.isNullOrBlank()) {
+            coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+        }
+
+        if (coords == null && currentUser?.latitude != null && currentUser.longitude != null) {
+            coords = LatLng(currentUser.latitude, currentUser.longitude)
+        }
+
+        // Coordenada de exemplo padrão do cliente em Manaus - AM (Av. Djalma Batista, Chapada)
+        val finalCoords = coords ?: LatLng(-3.1019, -60.0265)
+        clientLatLng = finalCoords
+        return finalCoords
+    }
+
+    /**
+     * Plota o Marcador Azul e o Círculo de alcance da localização do Cliente no Mapa
+     */
+    private fun setupClientLocationMarker() {
+        val map = googleMap ?: return
+        val currentUser = try { UserRepository(requireContext()).getCurrentUser() } catch (_: Exception) { null }
+        val clientPos = getOrInitClientLocation()
+
+        val clientName = currentUser?.name ?: "Cliente (Você)"
+        val clientAddress = currentUser?.address ?: "Av. Djalma Batista, 1661 - Chapada, Manaus - AM"
+
+        // Marcador Azul (Azure Pin) da Localização Cadastrada do Cliente
+        map.addMarker(
+            MarkerOptions()
+                .position(clientPos)
+                .title("📍 $clientName")
+                .snippet("Endereço: $clientAddress")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+        )
+
+        // Círculo Translúcido Azul indicando o raio da área do cliente
+        map.addCircle(
+            CircleOptions()
+                .center(clientPos)
+                .radius(600.0) // 600m de raio
+                .strokeWidth(2f)
+                .strokeColor(Color.parseColor("#007AFF"))
+                .fillColor(Color.parseColor("#22007AFF"))
+        )
     }
 
     /**
@@ -488,7 +609,7 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Filtra a lista de prestadores e atualiza os marcadores vermelhos no mapa dinamicamente
+     * Filtra a lista de prestadores e atualiza os marcadores no mapa dinamicamente
      */
     private fun applyFilters() {
         val filteredList = allProfessionals.filter { item ->
@@ -509,17 +630,21 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Atualiza os marcadores vermelhos no Google Maps com base nos prestadores filtrados
+     * Atualiza os marcadores no Google Maps (Plota a localização do Cliente e dos Prestadores Filtrados)
      */
     private fun updateMapMarkers(professionals: List<ProfessionalItem>) {
         val map = googleMap ?: return
         map.clear()
+
+        // 1. Desenha a localização cadastrada do cliente contratante (Pin Azul + Círculo)
+        setupClientLocationMarker()
 
         if (professionals.isEmpty()) {
             Toast.makeText(requireContext(), "Nenhum prestador encontrado com estes filtros", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // 2. Desenha os marcadores vermelhos dos prestadores de serviço
         for (professional in professionals) {
             val position = LatLng(professional.latitude, professional.longitude)
             val marker = map.addMarker(
