@@ -1,28 +1,47 @@
 package com.tqfapp.android.ui.home
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.databinding.FragmentHomeBinding
 import com.tqfapp.android.databinding.ItemCategoryBinding
-import com.tqfapp.android.databinding.ItemProfessionalBinding
 import com.tqfapp.android.ui.notifications.NotificationsFragment
+import kotlinx.coroutines.runBlocking
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    // Lista completa de prestadores de serviço de exemplo com dados completos (Bio + Coordenadas de Localização)
+    private var googleMap: GoogleMap? = null
+
+    companion object {
+        // Coordenadas padrão centralizadas em Manaus, Amazonas
+        private val MANAUS_LAT_LNG = LatLng(-3.1190, -60.0217)
+        private const val DEFAULT_ZOOM = 12f
+    }
+
+    // Lista completa de prestadores de serviço de exemplo com coordenadas fixas em Manaus
     private val allProfessionals = listOf(
         ProfessionalItem(
             name = "Carlos Mendes",
@@ -31,14 +50,14 @@ class HomeFragment : Fragment() {
             subcategory = "Eletricista Residencial e Predial",
             rating = "4,9 (86 avaliações)",
             ratingValue = 4.9,
-            location = "2,1 km • Centro",
+            location = "2,1 km • Centro, Manaus",
             distanceKm = 2.1,
             price = "R$ 80,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Eletricista residencial e predial com mais de 8 anos de experiência. Instalações elétricas, quadros de disjuntores, chuveiros e pequenos reparos com total segurança.",
-            latitude = -23.550520,
-            longitude = -46.633308
+            bio = "Eletricista residencial e predial com mais de 8 anos de experiência em Manaus. Instalações elétricas, quadros de disjuntores, chuveiros e reparos com total segurança.",
+            latitude = -3.1316,
+            longitude = -60.0234
         ),
         ProfessionalItem(
             name = "Rafael Lima",
@@ -47,14 +66,14 @@ class HomeFragment : Fragment() {
             subcategory = "Encanador / Bombeiro Hidráulico",
             rating = "4,8 (64 avaliações)",
             ratingValue = 4.8,
-            location = "3,4 km • Jardim Paulista",
+            location = "3,4 km • Adrianópolis, Manaus",
             distanceKm = 3.4,
             price = "R$ 90,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Bombeiro hidráulico e encanador especializado em desentupimentos, detecção de vazamentos, instalação de torneiras e registros com garantia do serviço.",
-            latitude = -23.561500,
-            longitude = -46.655900
+            bio = "Bombeiro hidráulico e encanador em Manaus especializado em desentupimentos, detecção de vazamentos, instalação de torneiras e registros com garantia.",
+            latitude = -3.1072,
+            longitude = -60.0125
         ),
         ProfessionalItem(
             name = "Juliana Alves",
@@ -63,14 +82,14 @@ class HomeFragment : Fragment() {
             subcategory = "Diarista e Faxineira",
             rating = "4,9 (112 avaliações)",
             ratingValue = 4.9,
-            location = "1,8 km • Vila Madalena",
+            location = "1,8 km • Ponta Negra, Manaus",
             distanceKm = 1.8,
             price = "R$ 70,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Profissional de serviços domésticos e organização residencial. Trabalho com pontualidade, produtos adequados e atenção aos mínimos detalhes da sua casa.",
-            latitude = -23.555200,
-            longitude = -46.688300
+            bio = "Profissional de serviços domésticos e organização residencial em Manaus. Trabalho com pontualidade, higiene e atenção aos mínimos detalhes.",
+            latitude = -3.0780,
+            longitude = -60.0980
         ),
         ProfessionalItem(
             name = "João Ferreira",
@@ -79,14 +98,14 @@ class HomeFragment : Fragment() {
             subcategory = "Técnico em Manutenção de Notebooks e Computadores",
             rating = "5,0 (289 avaliações)",
             ratingValue = 5.0,
-            location = "2,1 km • Centro",
+            location = "2,1 km • Vieiralves, Manaus",
             distanceKm = 2.1,
             price = "R$ 100,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e garantia.",
-            latitude = -23.548900,
-            longitude = -46.638800
+            bio = "Técnico de TI com mais de 5 anos de experiência em manutenção de computadores e notebooks no Vieiralves. Trabalho ágil, transparente e com garantia.",
+            latitude = -3.1005,
+            longitude = -60.0200
         ),
         ProfessionalItem(
             name = "Roberto Silva",
@@ -95,14 +114,14 @@ class HomeFragment : Fragment() {
             subcategory = "Mecânico Automotivo / Eletricista Auto",
             rating = "4,8 (93 avaliações)",
             ratingValue = 4.8,
-            location = "2,4 km • Pinheiros",
+            location = "2,4 km • Aleixo, Manaus",
             distanceKm = 2.4,
             price = "R$ 120,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Mecânico e eletricista automotivo com oficina especializada em injeção eletrônica, freios, suspensão e socorro mecânico rápido.",
-            latitude = -23.567000,
-            longitude = -46.701100
+            bio = "Mecânico e eletricista automotivo na região do Aleixo, Manaus. Oficina especializada em injeção eletrônica, freios, suspensão e socorro mecânico.",
+            latitude = -3.0950,
+            longitude = -59.9910
         ),
         ProfessionalItem(
             name = "Lucas Prado",
@@ -111,14 +130,14 @@ class HomeFragment : Fragment() {
             subcategory = "Desenvolvedor de Aplicativos Mobile",
             rating = "4,9 (45 avaliações)",
             ratingValue = 4.9,
-            location = "1,5 km • Vila Olímpia",
+            location = "1,5 km • Flores, Manaus",
             distanceKm = 1.5,
             price = "R$ 150,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Desenvolvedor de aplicativos Android e iOS nativos e híbridos. Criação de sistemas modernos, rápidos e integrados para empresas e autônomos.",
-            latitude = -23.595500,
-            longitude = -46.686100
+            bio = "Desenvolvedor de aplicativos Android e iOS nativos e híbridos em Manaus. Criação de sistemas modernos, rápidos e integrados para empresas e autônomos.",
+            latitude = -3.0730,
+            longitude = -60.0150
         ),
         ProfessionalItem(
             name = "Mariana Costa",
@@ -127,25 +146,23 @@ class HomeFragment : Fragment() {
             subcategory = "Fotógrafo e Cinegrafista",
             rating = "5,0 (110 avaliações)",
             ratingValue = 5.0,
-            location = "3,0 km • Moema",
+            location = "3,0 km • Parque 10, Manaus",
             distanceKm = 3.0,
             price = "R$ 200,00",
             status = "⚡ Atende hoje",
             isVerified = true,
-            bio = "Fotógrafa e videomaker profissional para eventos, ensaios corporativos e produtos. Equipamentos de alta qualidade e tratamento profissional de imagens.",
-            latitude = -23.602200,
-            longitude = -46.662100
+            bio = "Fotógrafa e videomaker profissional no Parque 10 em Manaus. Eventos, ensaios corporativos e de produtos com equipamentos de alta qualidade.",
+            latitude = -3.0880,
+            longitude = -60.0100
         )
     )
 
-    // Filtros
+    // Filtros selecionados
     private var selectedCategoryFilter: String? = null
     private var selectedSubcategoryFilter: String? = null
     private var minRatingFilter: Double = 0.0
     private var maxDistanceFilter: Double = 999.0
     private var currentSearchQuery: String = ""
-
-    private lateinit var professionalAdapter: ProfessionalAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -161,21 +178,22 @@ class HomeFragment : Fragment() {
 
         seedServicesInRoom()
         setupCategories()
-        setupProfessionals()
+        setupMapFragment()
+        setupMapTouchHandling()
         setupSearchAndFilters()
         setupNotificationAndActions()
     }
 
     private fun seedServicesInRoom() {
-        val serviceDao = com.tqfapp.android.data.local.database.AppDatabase.getDatabase(requireContext()).serviceDao()
-        kotlinx.coroutines.runBlocking {
+        val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
+        runBlocking {
             if (serviceDao.getAll().isEmpty()) {
                 val initialServices = listOf(
-                    com.tqfapp.android.data.model.Service("s1", "Eletricista Residencial e Predial", "Instalação e reparos elétricos", 80.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
-                    com.tqfapp.android.data.model.Service("s2", "Encanador / Bombeiro Hidráulico", "Reparos de vazamentos e tubulação", 90.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
-                    com.tqfapp.android.data.model.Service("s3", "Diarista e Faxineira", "Limpeza residencial completa", 70.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
-                    com.tqfapp.android.data.model.Service("s4", "Técnico em Manutenção de Notebooks", "Conserto de computadores", 100.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO),
-                    com.tqfapp.android.data.model.Service("s5", "Mecânico Automotivo / Eletricista Auto", "Revisão e manutenção veicular", 120.0, com.tqfapp.android.business.ServiceStatus.EM_ABERTO)
+                    Service("s1", "Eletricista Residencial e Predial", "Instalação e reparos elétricos", 80.0, ServiceStatus.EM_ABERTO),
+                    Service("s2", "Encanador / Bombeiro Hidráulico", "Reparos de vazamentos e tubulação", 90.0, ServiceStatus.EM_ABERTO),
+                    Service("s3", "Diarista e Faxineira", "Limpeza residencial completa", 70.0, ServiceStatus.EM_ABERTO),
+                    Service("s4", "Técnico em Manutenção de Notebooks", "Conserto de computadores", 100.0, ServiceStatus.EM_ABERTO),
+                    Service("s5", "Mecânico Automotivo / Eletricista Auto", "Revisão e manutenção veicular", 120.0, ServiceStatus.EM_ABERTO)
                 )
                 initialServices.forEach { serviceDao.insert(it) }
             }
@@ -294,30 +312,88 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Configura a lista de profissionais e trata o clique dinâmico para abrir o perfil com os dados específicos
+     * Inicializa o SupportMapFragment e centraliza o mapa em Manaus com os marcadores
      */
-    private fun setupProfessionals() {
-        professionalAdapter = ProfessionalAdapter(allProfessionals) { professional ->
-            val fragment = ProfessionalProfileFragment.newInstance(
-                isOwner = false,
-                name = professional.name,
-                specialty = professional.specialty,
-                rating = professional.rating,
-                bio = professional.bio,
-                latitude = professional.latitude,
-                longitude = professional.longitude
-            )
+    private fun setupMapFragment() {
+        val mapFragment = childFragmentManager.findFragmentById(R.id.mapFragment) as? SupportMapFragment
+        mapFragment?.getMapAsync { map ->
+            googleMap = map
+            map.apply {
+                uiSettings.isZoomControlsEnabled = true
+                uiSettings.isCompassEnabled = true
+                uiSettings.isMapToolbarEnabled = true
 
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, fragment)
-                .addToBackStack(null)
-                .commit()
-        }
+                // Clique no Marcador abre o Perfil do Prestador
+                setOnMarkerClickListener { marker ->
+                    val professional = marker.tag as? ProfessionalItem
+                    if (professional != null) {
+                        openProfessionalProfile(professional)
+                    }
+                    false
+                }
 
-        binding.rvProfessionals.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = professionalAdapter
+                // Clique na Janela de Informações (InfoWindow) também abre o Perfil
+                setOnInfoWindowClickListener { marker ->
+                    val professional = marker.tag as? ProfessionalItem
+                    if (professional != null) {
+                        openProfessionalProfile(professional)
+                    }
+                }
+            }
+
+            // Centraliza o mapa inicialmente em Manaus - AM
+            centerMapOnManaus()
+
+            // Carrega e exibe os marcadores de acordo com os filtros atuais
+            applyFilters()
         }
+    }
+
+    /**
+     * Permite gestos suaves no Mapa dentro do NestedScrollView
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupMapTouchHandling() {
+        binding.mapTouchOverlay.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    binding.root.requestDisallowInterceptTouchEvent(true)
+                    false
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    binding.root.requestDisallowInterceptTouchEvent(false)
+                    false
+                }
+                else -> false
+            }
+        }
+    }
+
+    /**
+     * Centraliza a câmera do mapa em Manaus, Amazonas
+     */
+    private fun centerMapOnManaus() {
+        googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(MANAUS_LAT_LNG, DEFAULT_ZOOM))
+    }
+
+    /**
+     * Navega para a tela de Perfil do Prestador selecionado
+     */
+    private fun openProfessionalProfile(professional: ProfessionalItem) {
+        val fragment = ProfessionalProfileFragment.newInstance(
+            isOwner = false,
+            name = professional.name,
+            specialty = professional.specialty,
+            rating = professional.rating,
+            bio = professional.bio,
+            latitude = professional.latitude,
+            longitude = professional.longitude
+        )
+
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun setupSearchAndFilters() {
@@ -351,8 +427,9 @@ class HomeFragment : Fragment() {
             maxDistanceFilter = 999.0
             currentSearchQuery = ""
             binding.etSearch.setText("")
+            centerMapOnManaus()
             applyFilters()
-            Toast.makeText(requireContext(), "Exibindo todos os profissionais", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Exibindo todos os profissionais no mapa", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -410,6 +487,9 @@ class HomeFragment : Fragment() {
             .show()
     }
 
+    /**
+     * Filtra a lista de prestadores e atualiza os marcadores vermelhos no mapa dinamicamente
+     */
     private fun applyFilters() {
         val filteredList = allProfessionals.filter { item ->
             val matchesCategory = selectedCategoryFilter == null || item.category.equals(selectedCategoryFilter, ignoreCase = true)
@@ -425,11 +505,37 @@ class HomeFragment : Fragment() {
             matchesCategory && matchesSubcategory && matchesRating && matchesDistance && matchesSearch
         }
 
-        professionalAdapter.updateList(filteredList)
+        updateMapMarkers(filteredList)
+    }
+
+    /**
+     * Atualiza os marcadores vermelhos no Google Maps com base nos prestadores filtrados
+     */
+    private fun updateMapMarkers(professionals: List<ProfessionalItem>) {
+        val map = googleMap ?: return
+        map.clear()
+
+        if (professionals.isEmpty()) {
+            Toast.makeText(requireContext(), "Nenhum prestador encontrado com estes filtros", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        for (professional in professionals) {
+            val position = LatLng(professional.latitude, professional.longitude)
+            val marker = map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(professional.name)
+                    .snippet("${professional.specialty} • ${professional.rating}")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            )
+            marker?.tag = professional
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        googleMap = null
         _binding = null
     }
 
@@ -453,8 +559,8 @@ class HomeFragment : Fragment() {
         val status: String,
         val isVerified: Boolean,
         val bio: String = "Profissional autônomo com ampla experiência. Atendimento com agilidade, transparência e garantia no serviço.",
-        val latitude: Double = -23.550520,
-        val longitude: Double = -46.633308
+        val latitude: Double = -3.1190,
+        val longitude: Double = -60.0217
     )
 
     // Category Adapter
@@ -475,42 +581,6 @@ class HomeFragment : Fragment() {
             holder.binding.txtCategoryName.text = item.name
             holder.binding.imgCategoryIcon.setImageResource(item.iconRes)
             holder.binding.root.setOnClickListener { onItemClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
-    }
-
-    // Professional Adapter
-    private inner class ProfessionalAdapter(
-        private var items: List<ProfessionalItem>,
-        private val onItemClick: (ProfessionalItem) -> Unit
-    ) : RecyclerView.Adapter<ProfessionalAdapter.ViewHolder>() {
-
-        fun updateList(newList: List<ProfessionalItem>) {
-            items = newList
-            notifyDataSetChanged()
-        }
-
-        inner class ViewHolder(val binding: ItemProfessionalBinding) : RecyclerView.ViewHolder(binding.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemProfessionalBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.binding.apply {
-                txtName.text = item.name
-                txtSpecialty.text = item.specialty
-                txtRating.text = item.rating
-                txtLocation.text = item.location
-                txtPrice.text = item.price
-                txtStatusBadge.text = item.status
-                imgVerified.visibility = if (item.isVerified) View.VISIBLE else View.GONE
-                btnViewProfile.setOnClickListener { onItemClick(item) }
-                root.setOnClickListener { onItemClick(item) }
-            }
         }
 
         override fun getItemCount(): Int = items.size

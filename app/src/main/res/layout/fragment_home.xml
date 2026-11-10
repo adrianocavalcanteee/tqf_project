@@ -258,7 +258,7 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- Section Title: Profissionais perto de você -->
+        <!-- Section Title: Prestadores no Mapa (Manaus) -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -287,15 +287,34 @@
                 android:focusable="true" />
         </RelativeLayout>
 
-        <!-- Professionals RecyclerView -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvProfessionals"
+        <!-- Google Maps Container -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardMapContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:nestedScrollingEnabled="false"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:itemCount="3"
-            tools:listitem="@layout/item_professional" />
+            android:layout_height="420dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.fragment.app.FragmentContainerView
+                    android:id="@+id/mapFragment"
+                    android:name="com.google.android.gms.maps.SupportMapFragment"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <View
+                    android:id="@+id/mapTouchOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 
