@@ -1,14 +1,60 @@
 package com.tqfapp.android.utils
 
+import android.content.Context
+import android.util.Log
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
+import com.tqfapp.android.R
 
 /**
- * Utilitário responsável pelo gerenciamento e configuração do Google Maps no app.
+ * Utilitário responsável pelo gerenciamento, estilização e configuração do Google Maps no app.
  */
 object MapUtils {
+
+    /**
+     * Aplica um estilo visual personalizado em formato JSON ao Google Maps a partir de um recurso raw.
+     *
+     * @param context Contexto da aplicação ou fragmento.
+     * @param googleMap Instância do GoogleMap.
+     * @param rawResId ID do recurso raw do arquivo JSON de estilo (padrão R.raw.map_style).
+     * @return Boolean indicando se o estilo foi aplicado com sucesso.
+     */
+    fun applyCustomMapStyle(
+        context: Context,
+        googleMap: GoogleMap,
+        rawResId: Int = R.raw.map_style
+    ): Boolean {
+        return try {
+            val style = MapStyleOptions.loadRawResourceStyle(context, rawResId)
+            val success = googleMap.setMapStyle(style)
+            if (!success) {
+                Log.e("MapUtils", "Falha ao aplicar a formatação do estilo no Google Maps.")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e("MapUtils", "Erro ao carregar o arquivo de estilo do mapa: ", e)
+            false
+        }
+    }
+
+    /**
+     * Aplica um estilo visual personalizado ao Google Maps a partir de uma String JSON.
+     */
+    fun applyCustomMapStyleFromJson(
+        googleMap: GoogleMap,
+        jsonStyle: String
+    ): Boolean {
+        return try {
+            val style = MapStyleOptions(jsonStyle)
+            googleMap.setMapStyle(style)
+        } catch (e: Exception) {
+            Log.e("MapUtils", "Erro ao carregar o estilo JSON do mapa: ", e)
+            false
+        }
+    }
 
     /**
      * Configura e centraliza o mapa na localização do escritório do prestador.

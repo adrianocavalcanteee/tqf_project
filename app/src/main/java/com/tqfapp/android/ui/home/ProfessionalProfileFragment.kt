@@ -144,6 +144,7 @@ class ProfessionalProfileFragment : Fragment() {
             mapView?.onCreate(savedInstanceState)
             mapView?.getMapAsync { map ->
                 googleMap = map
+                MapUtils.applyCustomMapStyle(requireContext(), map)
                 updateOfficeMapMarker(view)
             }
         } catch (e: Exception) {

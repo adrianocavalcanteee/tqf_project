@@ -34,6 +34,7 @@ import com.tqfapp.android.databinding.FragmentHomeBinding
 import com.tqfapp.android.databinding.ItemCategoryBinding
 import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.utils.LocationUtils
+import com.tqfapp.android.utils.MapUtils
 import kotlinx.coroutines.runBlocking
 
 class HomeFragment : Fragment() {
@@ -345,6 +346,10 @@ class HomeFragment : Fragment() {
         val mapFragment = childFragmentManager.findFragmentById(R.id.mapFragment) as? SupportMapFragment
         mapFragment?.getMapAsync { map ->
             googleMap = map
+
+            // Aplica o estilo visual personalizado do JSON ao Google Maps
+            MapUtils.applyCustomMapStyle(requireContext(), map)
+
             map.apply {
                 uiSettings.isZoomControlsEnabled = true
                 uiSettings.isCompassEnabled = true
