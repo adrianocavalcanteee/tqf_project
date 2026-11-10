@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
@@ -97,6 +98,25 @@ object MapUtils {
 
             // Move a câmera com animação até o local do escritório
             animateCamera(CameraUpdateFactory.newLatLngZoom(officeLatLng, zoomLevel))
+        }
+    }
+
+    /**
+     * Retorna a cor de matiz (Hue) do marcador correspondente para cada categoria de serviço.
+     */
+    fun getCategoryHue(category: String?): Float {
+        if (category.isNullOrBlank()) return BitmapDescriptorFactory.HUE_RED
+
+        return when (category.lowercase().trim()) {
+            "assistência técnica" -> BitmapDescriptorFactory.HUE_GREEN
+            "reformas e reparos" -> BitmapDescriptorFactory.HUE_ROSE
+            "serviços domésticos" -> BitmapDescriptorFactory.HUE_CYAN
+            "design e tecnologia" -> BitmapDescriptorFactory.HUE_ORANGE
+            "eventos" -> BitmapDescriptorFactory.HUE_YELLOW
+            "aulas e treinamentos" -> BitmapDescriptorFactory.HUE_VIOLET
+            "saúde e bem-estar" -> BitmapDescriptorFactory.HUE_RED
+            "autos e transporte" -> BitmapDescriptorFactory.HUE_MAGENTA
+            else -> BitmapDescriptorFactory.HUE_RED
         }
     }
 }

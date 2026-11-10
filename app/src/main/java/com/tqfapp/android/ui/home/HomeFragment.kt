@@ -649,15 +649,17 @@ class HomeFragment : Fragment() {
             return
         }
 
-        // 2. Desenha os marcadores vermelhos dos prestadores de serviço
+        // 2. Desenha os marcadores dos prestadores de serviço com cores dinâmicas por categoria
         for (professional in professionals) {
             val position = LatLng(professional.latitude, professional.longitude)
+            val markerHue = MapUtils.getCategoryHue(professional.category)
+
             val marker = map.addMarker(
                 MarkerOptions()
                     .position(position)
                     .title(professional.name)
                     .snippet("${professional.specialty} • ${professional.rating}")
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                    .icon(BitmapDescriptorFactory.defaultMarker(markerHue))
             )
             marker?.tag = professional
         }
