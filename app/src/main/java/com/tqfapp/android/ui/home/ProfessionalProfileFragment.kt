@@ -38,6 +38,7 @@ class ProfessionalProfileFragment : Fragment() {
     // Instância do Google Maps e MapView
     private var googleMap: GoogleMap? = null
     private var mapView: MapView? = null
+    private var isMapCreated = false
     private var officeLatitude: Double = DEFAULT_LATITUDE
     private var officeLongitude: Double = DEFAULT_LONGITUDE
 
@@ -141,7 +142,9 @@ class ProfessionalProfileFragment : Fragment() {
     private fun setupOfficeMapView(view: View, savedInstanceState: Bundle?) {
         try {
             MapsInitializer.initialize(requireContext())
+            mapView = view.findViewById(R.id.mapOffice)
             mapView?.onCreate(savedInstanceState)
+            isMapCreated = true
             mapView?.getMapAsync { map ->
                 googleMap = map
                 updateOfficeMapMarker(view)
@@ -507,16 +510,23 @@ class ProfessionalProfileFragment : Fragment() {
     // Passagem de Ciclo de Vida para o MapView evitar telas pretas
     override fun onResume() {
         super.onResume()
-        try { mapView?.onResume() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onResume() } catch (_: Exception) {}
+        }
     }
 
     override fun onPause() {
-        try { mapView?.onPause() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onPause() } catch (_: Exception) {}
+        }
         super.onPause()
     }
 
     override fun onDestroyView() {
-        try { mapView?.onDestroy() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onDestroy() } catch (_: Exception) {}
+        }
+        isMapCreated = false
         googleMap = null
         mapView = null
         super.onDestroyView()
@@ -524,7 +534,9 @@ class ProfessionalProfileFragment : Fragment() {
 
     override fun onLowMemory() {
         super.onLowMemory()
-        try { mapView?.onLowMemory() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onLowMemory() } catch (_: Exception) {}
+        }
     }
 
     companion object {

@@ -19,10 +19,13 @@ import com.google.android.gms.maps.MapsInitializer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
+import com.tqfapp.android.databinding.ItemReviewBinding
 import com.tqfapp.android.ui.contracts.ContractsFragment
 import com.tqfapp.android.ui.contracts.ServiceDetailsFragment
 import com.tqfapp.android.ui.auth.LoginActivity
@@ -45,6 +48,7 @@ class ProfileFragment : Fragment() {
 
     // Flag indicando se o PERFIL VISUALIZADO pertence a um Prestador de Serviço
     private var isProviderProfile: Boolean = false
+    private var isMapCreated = false
     private lateinit var userRepository: UserRepository
     private var currentUser: User? = null
 
@@ -91,34 +95,35 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        try {
+            userRepository = UserRepository(requireContext())
 
-        userRepository = com.tqfapp.android.data.repository.UserRepository(requireContext())
+            isProviderProfile = if (arguments?.containsKey(ARG_IS_PROVIDER_PROFILE) == true) {
+                arguments?.getBoolean(ARG_IS_PROVIDER_PROFILE) ?: true
+            } else {
+                UserSessionManager.isProviderUser(requireContext())
+            }
 
-        // 1. REGRA: Verifica se o PERFIL sendo visualizado pertence a um Prestador de Serviço.
-        isProviderProfile = if (arguments?.containsKey(ARG_IS_PROVIDER_PROFILE) == true) {
-            arguments?.getBoolean(ARG_IS_PROVIDER_PROFILE) ?: true
-        } else {
-            UserSessionManager.isProviderUser(requireContext())
-        }
+            officeLatitude = arguments?.getDouble(ARG_LATITUDE, DEFAULT_LATITUDE) ?: DEFAULT_LATITUDE
+            officeLongitude = arguments?.getDouble(ARG_LONGITUDE, DEFAULT_LONGITUDE) ?: DEFAULT_LONGITUDE
 
-        // 2. Carrega as coordenadas com fallback estático para os dados de exemplo em São Paulo
-        officeLatitude = arguments?.getDouble(ARG_LATITUDE, DEFAULT_LATITUDE) ?: DEFAULT_LATITUDE
-        officeLongitude = arguments?.getDouble(ARG_LONGITUDE, DEFAULT_LONGITUDE) ?: DEFAULT_LONGITUDE
+            val customName = arguments?.getString(ARG_PROVIDER_NAME)
+            if (!customName.isNullOrEmpty()) {
+                binding.txtProfileName.text = customName
+            }
 
-        val customName = arguments?.getString(ARG_PROVIDER_NAME)
-        if (!customName.isNullOrEmpty()) {
-            binding.txtProfileName.text = customName
-        }
+            loadUserDataFromRoom()
+            setupUserRoleViewVisibility()
 
-        loadUserDataFromRoom()
-        setupUserRoleViewVisibility()
+            setupClickListeners()
+            setupRecentServices()
+            setupClientReviews()
 
-        setupClickListeners()
-        setupRecentServices()
-
-        // 4. Inicializa o MapView de forma segura se for perfil de prestador
-        if (isProviderProfile) {
-            setupOfficeMapView(savedInstanceState)
+            if (isProviderProfile) {
+                setupOfficeMapView(savedInstanceState)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -178,6 +183,7 @@ class ProfileFragment : Fragment() {
         try {
             MapsInitializer.initialize(requireContext())
             binding.mapOffice.onCreate(savedInstanceState)
+            isMapCreated = true
             binding.mapOffice.getMapAsync { map ->
                 googleMap = map
                 updateOfficeMapMarker()
@@ -456,22 +462,23 @@ class ProfileFragment : Fragment() {
     // Repasse de ciclo de vida do MapView
     override fun onResume() {
         super.onResume()
-        if (isProviderProfile && _binding != null) {
+        if (isMapCreated && _binding != null) {
             try { binding.mapOffice.onResume() } catch (_: Exception) {}
         }
     }
 
     override fun onPause() {
-        if (isProviderProfile && _binding != null) {
+        if (isMapCreated && _binding != null) {
             try { binding.mapOffice.onPause() } catch (_: Exception) {}
         }
         super.onPause()
     }
 
     override fun onDestroyView() {
-        if (isProviderProfile && _binding != null) {
+        if (isMapCreated && _binding != null) {
             try { binding.mapOffice.onDestroy() } catch (_: Exception) {}
         }
+        isMapCreated = false
         googleMap = null
         _binding = null
         super.onDestroyView()
@@ -479,7 +486,7 @@ class ProfileFragment : Fragment() {
 
     override fun onLowMemory() {
         super.onLowMemory()
-        if (isProviderProfile && _binding != null) {
+        if (isMapCreated && _binding != null) {
             try { binding.mapOffice.onLowMemory() } catch (_: Exception) {}
         }
     }
@@ -543,6 +550,73 @@ class ProfileFragment : Fragment() {
                 txtStatus.text = item.status
                 imgService.setImageResource(item.imageRes)
                 root.setOnClickListener { onItemClick(item) }
+            }
+        }
+
+        override fun getItemCount(): Int = items.size
+    }
+
+    private fun setupClientReviews() {
+        if (_binding == null) return
+        try {
+            val db = try { AppDatabase.getDatabase(requireContext()) } catch (_: Exception) { null }
+            val reviewDao = db?.reviewDao()
+            val dbReviews = try { reviewDao?.getAll() } catch (_: Exception) { null } ?: emptyList()
+
+            val reviewsList = if (dbReviews.isNotEmpty()) {
+                dbReviews.map {
+                    ClientReviewItem(
+                        reviewerName = "Prestador de Serviço",
+                        date = it.date,
+                        comment = "⭐ ${it.rating}/5 - ${it.comment}",
+                        avatarRes = R.drawable.ic_profile
+                    )
+                }
+            } else {
+                listOf(
+                    ClientReviewItem(
+                        reviewerName = "Paulo Oliveira",
+                        date = "12 de mar. de 2025",
+                        comment = "⭐ 5/5 - Ótima cliente! Comunicação excelente e pagamento pontual.",
+                        avatarRes = R.drawable.ic_profile
+                    )
+                )
+            }
+
+            binding.rvClientReviews.apply {
+                layoutManager = LinearLayoutManager(requireContext())
+                adapter = ClientReviewAdapter(reviewsList)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    data class ClientReviewItem(
+        val reviewerName: String,
+        val date: String,
+        val comment: String,
+        val avatarRes: Int
+    )
+
+    private inner class ClientReviewAdapter(
+        private val items: List<ClientReviewItem>
+    ) : RecyclerView.Adapter<ClientReviewAdapter.ViewHolder>() {
+
+        inner class ViewHolder(val binding: ItemReviewBinding) : RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val binding = ItemReviewBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = items[position]
+            holder.binding.apply {
+                txtReviewerName.text = item.reviewerName
+                txtReviewDate.text = item.date
+                txtReviewComment.text = item.comment
+                imgReviewerAvatar.setImageResource(item.avatarRes)
             }
         }
 

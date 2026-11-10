@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.tqfapp.android.data.local.dao.ProposalDao
 import com.tqfapp.android.data.local.dao.ReviewDao
 import com.tqfapp.android.data.local.dao.ServiceDao
@@ -13,11 +14,10 @@ import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.User
 
-import androidx.room.TypeConverters
-
 @Database(
     entities = [User::class, Service::class, Proposal::class, Review::class],
-    version = 1
+    version = 2,
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -38,7 +38,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "tqf_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration(true)
+                    .allowMainThreadQueries()
+                    .build()
 
                 INSTANCE = instance
                 instance

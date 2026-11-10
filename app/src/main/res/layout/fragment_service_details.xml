@@ -238,7 +238,7 @@
                     tools:listitem="@layout/item_portfolio" />
             </LinearLayout>
 
-            <!-- Action Button -->
+            <!-- Action Button: Chat -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnDetailAction"
                 android:layout_width="match_parent"
@@ -254,6 +254,22 @@
                 app:backgroundTint="@color/brand_blue"
                 app:cornerRadius="14dp"
                 app:elevation="0dp" />
+
+            <!-- Review Button (Shown when Service is Concluded) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReviewService"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="16dp"
+                android:text="⭐ Avaliar Atendimento"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textAllCaps="false"
+                android:textStyle="bold"
+                app:backgroundTint="@color/brand_blue"
+                app:cornerRadius="14dp"
+                app:elevation="0dp"
+                android:visibility="gone" />
 
         </LinearLayout>
     </ScrollView>

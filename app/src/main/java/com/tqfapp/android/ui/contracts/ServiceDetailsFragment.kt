@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.RatingBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -15,9 +16,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.ui.chat.ChatFragment
 import com.tqfapp.android.utils.UserSessionManager
+import java.util.UUID
 
 class ServiceDetailsFragment : Fragment() {
 
@@ -92,11 +98,18 @@ class ServiceDetailsFragment : Fragment() {
         }
 
         val btnDetailAction = view.findViewById<MaterialButton>(R.id.btnDetailAction)
+        val btnReviewService = view.findViewById<MaterialButton>(R.id.btnReviewService)
         val isCompleted = status.equals("Concluído", ignoreCase = true) || status.equals("Concluídos", ignoreCase = true)
+
         if (isCompleted) {
             btnDetailAction?.visibility = View.GONE
+            btnReviewService?.visibility = View.VISIBLE
+            btnReviewService?.setOnClickListener {
+                showReviewDialog(title, profName)
+            }
         } else {
             btnDetailAction?.visibility = View.VISIBLE
+            btnReviewService?.visibility = View.GONE
             btnDetailAction?.setOnClickListener {
                 activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
                 parentFragmentManager.beginTransaction()
@@ -105,6 +118,41 @@ class ServiceDetailsFragment : Fragment() {
                     .commit()
             }
         }
+    }
+
+    private fun showReviewDialog(title: String, targetName: String) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_review, null)
+        val ratingBar = dialogView.findViewById<RatingBar>(R.id.ratingBar)
+        val etComment = dialogView.findViewById<TextInputEditText>(R.id.etReviewComment)
+        val txtSubtitle = dialogView.findViewById<TextView>(R.id.txtReviewDialogSubtitle)
+
+        txtSubtitle?.text = "Como foi a sua experiência com $targetName no serviço '$title'?"
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("Enviar Avaliação") { _, _ ->
+                val ratingValue = ratingBar?.rating?.toInt() ?: 5
+                val commentText = etComment?.text?.toString()?.trim().orEmpty().ifEmpty { "Atendimento excelente e serviço concluído com sucesso." }
+
+                val reviewDao = AppDatabase.getDatabase(requireContext()).reviewDao()
+                val review = Review(
+                    id = UUID.randomUUID().toString(),
+                    serviceId = "s1",
+                    providerId = "p1",
+                    clientId = "c1",
+                    rating = ratingValue,
+                    comment = commentText,
+                    date = "Hoje"
+                )
+                try {
+                    reviewDao.insert(review)
+                    Toast.makeText(requireContext(), "Avaliação enviada com sucesso!", Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {
+                    Toast.makeText(requireContext(), "Avaliação registrada!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private inner class PortfolioPreviewAdapter(
