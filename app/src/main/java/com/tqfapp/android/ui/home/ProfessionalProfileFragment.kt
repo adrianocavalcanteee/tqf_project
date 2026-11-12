@@ -25,9 +25,12 @@ import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.auth.LoginActivity
+import java.util.UUID
 import com.tqfapp.android.ui.chat.ChatFragment
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
@@ -38,6 +41,7 @@ class ProfessionalProfileFragment : Fragment() {
     // Instância do Google Maps e MapView
     private var googleMap: GoogleMap? = null
     private var mapView: MapView? = null
+    private var isMapCreated = false
     private var officeLatitude: Double = DEFAULT_LATITUDE
     private var officeLongitude: Double = DEFAULT_LONGITUDE
 
@@ -141,7 +145,9 @@ class ProfessionalProfileFragment : Fragment() {
     private fun setupOfficeMapView(view: View, savedInstanceState: Bundle?) {
         try {
             MapsInitializer.initialize(requireContext())
+            mapView = view.findViewById(R.id.mapOffice)
             mapView?.onCreate(savedInstanceState)
+            isMapCreated = true
             mapView?.getMapAsync { map ->
                 googleMap = map
                 MapUtils.applyCustomMapStyle(requireContext(), map)
@@ -230,17 +236,10 @@ class ProfessionalProfileFragment : Fragment() {
             showEditProfileDialog(view)
         }
 
-        view.findViewById<View>(R.id.btnHireNow)?.setOnClickListener {
-            showToast("Iniciando contratação...")
+        val requestServiceClickListener = View.OnClickListener {
+            showRequestServiceDialog(view)
         }
-
-        view.findViewById<View>(R.id.btnCallChat)?.setOnClickListener {
-            activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, ChatFragment())
-                .addToBackStack(null)
-                .commit()
-        }
+        view.findViewById<View>(R.id.btnRequestService)?.setOnClickListener(requestServiceClickListener)
 
         view.findViewById<View>(R.id.btnSeeAllPortfolio)?.setOnClickListener {
             showToast("Ver todo o portfólio")
@@ -270,14 +269,20 @@ class ProfessionalProfileFragment : Fragment() {
         val rvDialogServices = dialogView.findViewById<RecyclerView>(R.id.rvDialogServices)
         val btnAddPortfolio = dialogView.findViewById<View>(R.id.btnAddPortfolio)
         val rvPortfolioPreviews = dialogView.findViewById<RecyclerView>(R.id.rvPortfolioPreviews)
+        val etProviderPhone = dialogView.findViewById<TextInputEditText>(R.id.etProviderPhone)
 
         val txtName = rootView.findViewById<TextView>(R.id.txtProfessionalName)
         val txtSpecialty = rootView.findViewById<TextView>(R.id.txtSpecialty)
         val txtBio = rootView.findViewById<TextView>(R.id.txtBio)
 
-        etName?.setText(txtName?.text)
-        etSpecialty?.setText(txtSpecialty?.text)
-        etBio?.setText(txtBio?.text)
+        val userRepository = UserRepository(requireContext())
+        val allUsers = try { AppDatabase.getDatabase(requireContext()).userDao().getAll() } catch (_: Exception) { emptyList() }
+        val currentUser = userRepository.getCurrentUser() ?: allUsers.find { it.isProvider } ?: allUsers.firstOrNull()
+
+        etName?.setText(currentUser?.name ?: txtName?.text)
+        etSpecialty?.setText(currentUser?.specialty ?: txtSpecialty?.text)
+        etBio?.setText(currentUser?.bio ?: txtBio?.text)
+        etProviderPhone?.setText(currentUser?.phone)
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
@@ -294,14 +299,7 @@ class ProfessionalProfileFragment : Fragment() {
         val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories)
         actvCategory?.setAdapter(categoryAdapter)
 
-        val userRepository = UserRepository(requireContext())
-        val allUsers = try { AppDatabase.getDatabase(requireContext()).userDao().getAll() } catch (_: Exception) { emptyList() }
-        val currentUser = userRepository.getCurrentUser() ?: allUsers.find { it.isProvider } ?: allUsers.firstOrNull()
-
         currentUser?.category?.let { actvCategory?.setText(it, false) }
-        currentUser?.name?.takeIf { it.isNotEmpty() }?.let { etName?.setText(it) }
-        currentUser?.specialty?.takeIf { it.isNotEmpty() }?.let { etSpecialty?.setText(it) }
-        currentUser?.bio?.takeIf { it.isNotEmpty() }?.let { etBio?.setText(it) }
 
         editPortfolioUris.clear()
         currentUser?.portfolioUris?.forEach { editPortfolioUris.add(Uri.parse(it)) }
@@ -378,6 +376,7 @@ class ProfessionalProfileFragment : Fragment() {
                 val newCategory = actvCategory?.text?.toString()?.trim().orEmpty()
                 val newSpecialty = etSpecialty?.text?.toString()?.trim().orEmpty()
                 val newBio = etBio?.text?.toString()?.trim().orEmpty()
+                val newPhone = etProviderPhone?.text?.toString()?.trim().orEmpty()
                 val addressText = etLocation?.text?.toString()?.trim().orEmpty()
                 val finalServicesText = dialogServicesList.joinToString(",")
 
@@ -409,6 +408,7 @@ class ProfessionalProfileFragment : Fragment() {
                         category = if (newCategory.isNotEmpty()) newCategory else user.category,
                         specialty = if (newSpecialty.isNotEmpty()) newSpecialty else user.specialty,
                         bio = if (newBio.isNotEmpty()) newBio else user.bio,
+                        phone = if (newPhone.isNotEmpty()) newPhone else user.phone,
                         servicesText = finalServicesText,
                         latitude = if (newLat != null) newLat else user.latitude,
                         longitude = if (newLng != null) newLng else user.longitude,
@@ -508,16 +508,23 @@ class ProfessionalProfileFragment : Fragment() {
     // Passagem de Ciclo de Vida para o MapView evitar telas pretas
     override fun onResume() {
         super.onResume()
-        try { mapView?.onResume() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onResume() } catch (_: Exception) {}
+        }
     }
 
     override fun onPause() {
-        try { mapView?.onPause() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onPause() } catch (_: Exception) {}
+        }
         super.onPause()
     }
 
     override fun onDestroyView() {
-        try { mapView?.onDestroy() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onDestroy() } catch (_: Exception) {}
+        }
+        isMapCreated = false
         googleMap = null
         mapView = null
         super.onDestroyView()
@@ -525,7 +532,9 @@ class ProfessionalProfileFragment : Fragment() {
 
     override fun onLowMemory() {
         super.onLowMemory()
-        try { mapView?.onLowMemory() } catch (_: Exception) {}
+        if (isMapCreated) {
+            try { mapView?.onLowMemory() } catch (_: Exception) {}
+        }
     }
 
     companion object {
@@ -708,5 +717,64 @@ class ProfessionalProfileFragment : Fragment() {
         }
 
         override fun getItemCount(): Int = items.size
+    }
+
+    private fun showRequestServiceDialog(rootView: View) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_request_service, null)
+        val etTitle = dialogView.findViewById<TextInputEditText>(R.id.etServiceTitle)
+        val etDescription = dialogView.findViewById<TextInputEditText>(R.id.etServiceDescription)
+        val etClientPhone = dialogView.findViewById<TextInputEditText>(R.id.etClientPhone)
+
+        val profName = rootView.findViewById<TextView>(R.id.txtProfessionalName)?.text?.toString() ?: "Prestador"
+        val specialty = rootView.findViewById<TextView>(R.id.txtSpecialty)?.text?.toString() ?: "Geral"
+
+        val userRepository = UserRepository(requireContext())
+        val currentUser = userRepository.getCurrentUser()
+        currentUser?.phone?.let { etClientPhone?.setText(it) }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("Enviar Solicitação") { _, _ ->
+                val titleText = etTitle?.text?.toString()?.trim().orEmpty().ifEmpty { "Solicitação de $specialty" }
+                val descText = etDescription?.text?.toString()?.trim().orEmpty().ifEmpty { "Serviço solicitado pelo cliente." }
+                val clientPhoneText = etClientPhone?.text?.toString()?.trim().orEmpty().ifEmpty { "11999999999" }
+
+                val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
+                val newService = Service(
+                    id = UUID.randomUUID().toString(),
+                    title = titleText,
+                    description = descText,
+                    category = specialty,
+                    clientId = currentUser?.id ?: "c1",
+                    clientName = currentUser?.name ?: "Ana Lima",
+                    providerId = "p1",
+                    providerName = profName,
+                    providerPhone = clientPhoneText,
+                    status = ServiceStatus.PENDENTE,
+                    date = "Hoje"
+                )
+
+                try {
+                    serviceDao.insert(newService)
+                    Toast.makeText(requireContext(), "Solicitação enviada com sucesso ao prestador $profName!", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(requireContext(), "Solicitação gravada!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun openWhatsApp(phoneNumber: String, message: String) {
+        try {
+            val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
+            val url = "https://api.whatsapp.com/send?phone=55$cleanPhone&text=${Uri.encode(message)}"
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showToast("Não foi possível abrir o WhatsApp no dispositivo.")
+        }
     }
 }

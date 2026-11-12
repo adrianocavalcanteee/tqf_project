@@ -154,33 +154,10 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/layoutRatingLocation" />
 
-        <!-- Price Label -->
-        <TextView
-            android:id="@+id/txtPriceLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="A partir de "
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@id/btnViewProfile"
-            app:layout_constraintBottom_toTopOf="@id/txtPrice" />
-
-        <TextView
-            android:id="@+id/txtPrice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="R$ 80,00"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toBottomOf="@id/btnViewProfile" />
-
         <!-- Ver Perfil Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnViewProfile"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="Ver perfil"
@@ -191,6 +168,7 @@
             app:backgroundTint="@color/brand_blue"
             app:cornerRadius="12dp"
             app:elevation="0dp"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/divider" />
 

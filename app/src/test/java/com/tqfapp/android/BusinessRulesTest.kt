@@ -13,33 +13,28 @@ import org.junit.Test
 
 class BusinessRulesTest {
 
-    // Regra 1: Serviço novo começa em EM_ABERTO
     @Test
-    fun testNewServiceStatusIsEmAberto() {
+    fun testNewServiceStatusIsPendente() {
         val service = Service(
             id = "s1",
             title = "Limpeza de Ar Condicionado",
             description = "Higienização completa",
             price = 150.0
         )
-        assertEquals(ServiceStatus.EM_ABERTO, service.status)
+        assertEquals(ServiceStatus.PENDENTE, service.status)
     }
 
-    // Regra 2: Serviço só pode seguir o fluxo: EM_ABERTO -> EM_NEGOCIACAO -> CONCLUIDO
     @Test
     fun testServiceStatusFlow() {
-        // Fluxos válidos
-        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.EM_ABERTO, ServiceStatus.EM_NEGOCIACAO))
-        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.EM_NEGOCIACAO, ServiceStatus.CONCLUIDO))
+        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.EM_ANDAMENTO))
+        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.RECUSADO))
+        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.EM_ANDAMENTO, ServiceStatus.CONCLUIDO))
 
-        // Fluxos inválidos (pular etapas ou voltar status)
-        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.EM_ABERTO, ServiceStatus.CONCLUIDO))
-        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.EM_NEGOCIACAO, ServiceStatus.EM_ABERTO))
-        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.CONCLUIDO, ServiceStatus.EM_NEGOCIACAO))
-        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.CONCLUIDO, ServiceStatus.EM_ABERTO))
+        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.CONCLUIDO))
+        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.EM_ANDAMENTO, ServiceStatus.PENDENTE))
+        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.CONCLUIDO, ServiceStatus.EM_ANDAMENTO))
     }
 
-    // Regra 3: Serviço sem título ou com preço negativo deve ser inválido
     @Test
     fun testServiceValidation() {
         assertFalse(ServiceRules.isValid("", 100.0))
@@ -50,7 +45,6 @@ class BusinessRulesTest {
         assertTrue(ServiceRules.isValid("Pintura de Parede", 200.0))
     }
 
-    // Regra 4: Proposta deve ter valor maior que zero
     @Test
     fun testProposalValueValidation() {
         assertFalse(ProposalRules.isValid(0.0))
@@ -58,31 +52,27 @@ class BusinessRulesTest {
         assertTrue(ProposalRules.isValid(50.0))
     }
 
-    // Regra 5: Não pode criar proposta para serviço CONCLUIDO
     @Test
     fun testProposalCreationRestrictions() {
-        assertTrue(ProposalRules.canCreateProposal(ServiceStatus.EM_ABERTO))
-        assertTrue(ProposalRules.canCreateProposal(ServiceStatus.EM_NEGOCIACAO))
+        assertTrue(ProposalRules.canCreateProposal(ServiceStatus.PENDENTE))
+        assertTrue(ProposalRules.canCreateProposal(ServiceStatus.EM_ANDAMENTO))
         assertFalse(ProposalRules.canCreateProposal(ServiceStatus.CONCLUIDO))
     }
 
-    // Regra 6: Ao aceitar uma proposta, o status do serviço deve ir para EM_NEGOCIACAO
     @Test
-    fun testAcceptedProposalChangesStatusToEmNegociacao() {
-        assertEquals(ServiceStatus.EM_NEGOCIACAO, ServiceRules.statusAfterAcceptedProposal(ServiceStatus.EM_ABERTO))
-        assertEquals(ServiceStatus.EM_NEGOCIACAO, ServiceRules.statusAfterAcceptedProposal(ServiceStatus.EM_NEGOCIACAO))
+    fun testAcceptedProposalChangesStatusToEmAndamento() {
+        assertEquals(ServiceStatus.EM_ANDAMENTO, ServiceRules.statusAfterAcceptedProposal(ServiceStatus.PENDENTE))
+        assertEquals(ServiceStatus.EM_ANDAMENTO, ServiceRules.statusAfterAcceptedProposal(ServiceStatus.EM_ANDAMENTO))
         assertEquals(ServiceStatus.CONCLUIDO, ServiceRules.statusAfterAcceptedProposal(ServiceStatus.CONCLUIDO))
     }
 
-    // Regra 7: Avaliação só pode ser feita se o serviço estiver CONCLUIDO
     @Test
     fun testReviewOnlyAllowedWhenServiceIsConcluido() {
-        assertFalse(ReviewRules.canReview(ServiceStatus.EM_ABERTO))
-        assertFalse(ReviewRules.canReview(ServiceStatus.EM_NEGOCIACAO))
+        assertFalse(ReviewRules.canReview(ServiceStatus.PENDENTE))
+        assertFalse(ReviewRules.canReview(ServiceStatus.EM_ANDAMENTO))
         assertTrue(ReviewRules.canReview(ServiceStatus.CONCLUIDO))
     }
 
-    // Regra 8: Nota deve estar entre 1 e 5
     @Test
     fun testReviewRatingValidation() {
         assertFalse(ReviewRules.isValidRating(0))
@@ -94,7 +84,6 @@ class BusinessRulesTest {
         assertTrue(ReviewRules.isValidRating(5))
     }
 
-    // Regra 9: Review deve estar vinculada ao serviceId, providerId e clientId
     @Test
     fun testReviewStructureWithRequiredIds() {
         val review = Review(
@@ -111,16 +100,10 @@ class BusinessRulesTest {
         assertEquals("c789", review.clientId)
     }
 
-    // Regra 10: Impedir mais de uma avaliação para o mesmo serviceId
     @Test
     fun testPreventMultipleReviewsForSameService() {
-        // Se já foi avaliado (alreadyReviewed = true), não pode criar avaliação
         assertFalse(ReviewRules.canCreateReview(ServiceStatus.CONCLUIDO, alreadyReviewed = true))
-
-        // Se o serviço está concluído e ainda não foi avaliado, pode criar
         assertTrue(ReviewRules.canCreateReview(ServiceStatus.CONCLUIDO, alreadyReviewed = false))
-
-        // Se o serviço não está concluído, mesmo se não tiver sido avaliado, não pode criar
-        assertFalse(ReviewRules.canCreateReview(ServiceStatus.EM_ABERTO, alreadyReviewed = false))
+        assertFalse(ReviewRules.canCreateReview(ServiceStatus.PENDENTE, alreadyReviewed = false))
     }
 }

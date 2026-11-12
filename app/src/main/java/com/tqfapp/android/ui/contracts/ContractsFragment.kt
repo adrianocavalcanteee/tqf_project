@@ -8,14 +8,10 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.tqfapp.android.R
-import com.tqfapp.android.data.local.database.AppDatabase
-import com.tqfapp.android.data.model.Proposal
 import com.tqfapp.android.databinding.FragmentContractsBinding
 import com.tqfapp.android.databinding.ItemContractBinding
-import com.tqfapp.android.ui.chat.ChatFragment
-import kotlinx.coroutines.runBlocking
+import com.tqfapp.android.utils.UserSessionManager
 
 class ContractsFragment : Fragment() {
 
@@ -24,32 +20,46 @@ class ContractsFragment : Fragment() {
 
     private val allContracts = listOf(
         ContractItem(
-            professionalName = "Carlos Mendes",
-            specialty = "Eletricista Residencial",
-            serviceTitle = "Instalação de tomadas e iluminação",
-            scheduleDate = "15 de mar. de 2025 • 09:00",
-            price = "R$ 150,00",
-            status = "Em andamento",
-            isVerified = true,
-            avatarRes = R.drawable.ic_profile
-        ),
-        ContractItem(
             professionalName = "Paulo Oliveira",
             specialty = "Climatização",
             serviceTitle = "Instalação de ar-condicionado 12000 BTUs",
             scheduleDate = "12 de mar. de 2025 • 14:00",
             price = "R$ 250,00",
             status = "Concluído",
+            rating = "★ 5.0",
+            isVerified = true,
+            avatarRes = R.drawable.ic_profile
+        ),
+        ContractItem(
+            professionalName = "Carlos Mendes",
+            specialty = "Eletricista Residencial",
+            serviceTitle = "Instalação de tomadas e iluminação LED",
+            scheduleDate = "05 de mar. de 2025 • 09:30",
+            price = "R$ 150,00",
+            status = "Concluído",
+            rating = "★ 4.9",
             isVerified = true,
             avatarRes = R.drawable.ic_profile
         ),
         ContractItem(
             professionalName = "Rafael Lima",
             specialty = "Encanador / Bombeiro Hidráulico",
-            serviceTitle = "Reparo em vazamento de tubulação",
-            scheduleDate = "20 de mar. de 2025 • 10:30",
+            serviceTitle = "Reparo em vazamento de tubulação da cozinha",
+            scheduleDate = "22 de fev. de 2025 • 10:00",
             price = "R$ 110,00",
-            status = "Agendado",
+            status = "Concluído",
+            rating = "★ 4.8",
+            isVerified = true,
+            avatarRes = R.drawable.ic_profile
+        ),
+        ContractItem(
+            professionalName = "Juliana Alves",
+            specialty = "Diarista e Faxineira",
+            serviceTitle = "Limpeza residencial completa e pós-obra",
+            scheduleDate = "10 de fev. de 2025 • 08:00",
+            price = "R$ 180,00",
+            status = "Concluído",
+            rating = "★ 5.0",
             isVerified = true,
             avatarRes = R.drawable.ic_profile
         )
@@ -74,32 +84,8 @@ class ContractsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         try {
-            seedProposalsInRoom()
             setupContractsList()
-            setupFilters()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun seedProposalsInRoom() {
-        try {
-            val proposalDao = AppDatabase.getDatabase(requireContext()).proposalDao()
-            runBlocking {
-                val existing = try { proposalDao.getAll() } catch (_: Exception) { emptyList() }
-                if (existing.isEmpty()) {
-                    val initialProposals = listOf(
-                        Proposal("p1", "s1", "prov1", "cli1", 150.0, "EM_NEGOCIACAO"),
-                        Proposal("p2", "s2", "prov2", "cli1", 250.0, "CONCLUIDO"),
-                        Proposal("p3", "s3", "prov3", "cli1", 110.0, "PENDENTE")
-                    )
-                    initialProposals.forEach {
-                        try {
-                            proposalDao.insert(it)
-                        } catch (_: Exception) {}
-                    }
-                }
-            }
+            setupSearch()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -107,14 +93,15 @@ class ContractsFragment : Fragment() {
 
     private fun setupContractsList() {
         try {
+            val isProvider = UserSessionManager.isProviderUser(requireContext())
+
+            if (isProvider) {
+                binding.txtHeaderTitle.text = "Contratações em Andamento"
+            } else {
+                binding.txtHeaderTitle.text = "Histórico de Serviços"
+            }
+
             contractAdapter = ContractAdapter(allContracts,
-                onChatClick = { _ ->
-                    activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
-                    parentFragmentManager.beginTransaction()
-                        .replace(R.id.fragmentContainer, ChatFragment())
-                        .addToBackStack(null)
-                        .commit()
-                },
                 onDetailsClick = { contract ->
                     try {
                         val detailsFragment = ServiceDetailsFragment.newInstance(
@@ -124,7 +111,7 @@ class ContractsFragment : Fragment() {
                             schedule = contract.scheduleDate,
                             price = contract.price,
                             status = contract.status,
-                            desc = "Serviço contratado com ${contract.professionalName}. Acompanhe o andamento ou entre em contato via chat em caso de dúvidas."
+                            desc = "Serviço contratado com ${contract.professionalName}."
                         )
                         parentFragmentManager.beginTransaction()
                             .replace(R.id.fragmentContainer, detailsFragment)
@@ -146,47 +133,10 @@ class ContractsFragment : Fragment() {
         }
     }
 
-    private fun setupFilters() {
+    private fun setupSearch() {
         try {
-            binding.chipAll.setOnClickListener {
-                filterByStatus(null)
-            }
-
-            binding.chipInProgress.setOnClickListener {
-                filterByStatus("Em andamento")
-            }
-
-            binding.chipScheduled.setOnClickListener {
-                filterByStatus("Agendado")
-            }
-
-            binding.chipCompleted.setOnClickListener {
-                filterByStatus("Concluído")
-            }
-
-            binding.chipCanceled.setOnClickListener {
-                filterByStatus("Cancelado")
-            }
-
             binding.btnSearchContract.setOnClickListener {
-                showToast("Buscar nas contratações")
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun filterByStatus(statusFilter: String?) {
-        try {
-            val filtered = if (statusFilter == null) {
-                allContracts
-            } else {
-                allContracts.filter { it.status.equals(statusFilter, ignoreCase = true) }
-            }
-
-            contractAdapter.updateList(filtered)
-            if (filtered.isEmpty()) {
-                showToast("Nenhuma contratação encontrada com o status '$statusFilter'")
+                showToast("Buscar no histórico por nome do prestador ou serviço")
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -212,14 +162,14 @@ class ContractsFragment : Fragment() {
         val scheduleDate: String,
         val price: String,
         val status: String,
-        val isVerified: Boolean,
-        val avatarRes: Int
+        val rating: String = "★ 5.0",
+        val isVerified: Boolean = true,
+        val avatarRes: Int = R.drawable.ic_profile
     )
 
-    // Adapter for Contracts
+    // Adapter for Contracts / History
     private inner class ContractAdapter(
         private var items: List<ContractItem>,
-        private val onChatClick: (ContractItem) -> Unit,
         private val onDetailsClick: (ContractItem) -> Unit
     ) : RecyclerView.Adapter<ContractAdapter.ViewHolder>() {
 
@@ -244,12 +194,9 @@ class ContractsFragment : Fragment() {
                 txtScheduleDate.text = item.scheduleDate
                 txtContractPrice.text = item.price
                 txtStatusBadge.text = item.status
+                txtRatingValue.text = item.rating
                 imgVerified.visibility = if (item.isVerified) View.VISIBLE else View.GONE
 
-                val isCompleted = item.status.equals("Concluído", ignoreCase = true) || item.status.equals("Concluídos", ignoreCase = true)
-                btnChat.visibility = if (isCompleted) View.GONE else View.VISIBLE
-
-                btnChat.setOnClickListener { onChatClick(item) }
                 btnDetails.setOnClickListener { onDetailsClick(item) }
             }
         }

@@ -4,11 +4,12 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.tqfapp.android.R
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityHomeBinding
 import com.tqfapp.android.ui.auth.LoginActivity
-import com.tqfapp.android.ui.chat.ChatFragment
 import com.tqfapp.android.ui.contracts.ContractsFragment
 import com.tqfapp.android.ui.profile.ProfileFragment
+import com.tqfapp.android.utils.UserSessionManager
 
 class HomeActivity : AppCompatActivity() {
 
@@ -17,54 +18,46 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityHomeBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        try {
+            binding = ActivityHomeBinding.inflate(layoutInflater)
+            setContentView(binding.root)
 
-        isProviderUser = intent.getBooleanExtra(LoginActivity.EXTRA_IS_PROVIDER, false)
+            val currentUser = UserRepository(this).getCurrentUser()
+            isProviderUser = currentUser?.isProvider 
+                ?: intent.getBooleanExtra(LoginActivity.EXTRA_IS_PROVIDER, UserSessionManager.isProviderUser(this))
 
-        if (savedInstanceState == null) {
+            if (savedInstanceState == null) {
+                if (isProviderUser) {
+                    replaceFragment(ProviderHomeFragment())
+                } else {
+                    replaceFragment(HomeFragment())
+                }
+            }
+
+            setupBottomNavigation()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun setupBottomNavigation() {
+        binding.btnNavHome.setOnClickListener {
             if (isProviderUser) {
-                // Prestador de serviço entra diretamente no Feed de Solicitações de Clientes
                 replaceFragment(ProviderHomeFragment())
             } else {
-                // Contratante entra na tela Home de busca de profissionais
                 replaceFragment(HomeFragment())
             }
         }
 
-        setupBottomNavigation()
-    }
+        binding.btnNavContracts.setOnClickListener {
+            replaceFragment(ContractsFragment())
+        }
 
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> {
-                    if (isProviderUser) {
-                        replaceFragment(ProviderHomeFragment())
-                    } else {
-                        replaceFragment(HomeFragment())
-                    }
-                    true
-                }
-                R.id.nav_contracts -> {
-                    replaceFragment(ContractsFragment())
-                    true
-                }
-                R.id.nav_chat -> {
-                    replaceFragment(ChatFragment())
-                    true
-                }
-                R.id.nav_profile -> {
-                    if (isProviderUser) {
-                        // Perfil do Prestador (Modo Dono / Gerenciamento e Edição)
-                        replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
-                    } else {
-                        // Perfil do Contratante ("Ana Lima")
-                        replaceFragment(ProfileFragment())
-                    }
-                    true
-                }
-                else -> false
+        binding.btnNavProfile.setOnClickListener {
+            if (isProviderUser) {
+                replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
+            } else {
+                replaceFragment(ProfileFragment())
             }
         }
     }

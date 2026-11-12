@@ -96,45 +96,29 @@
             android:maxLines="2"
             android:ellipsize="end" />
 
-        <!-- Location & Estimated Budget -->
-        <RelativeLayout
+        <!-- Location Only (Budget removed) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_marginTop="10dp">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_alignParentStart="true">
-
-                <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
-                    android:src="@drawable/ic_location"
-                    tools:ignore="ContentDescription" />
-
-                <TextView
-                    android:id="@+id/txtLocation"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:text="Pinheiros (1,8 km)"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/ic_location"
+                tools:ignore="ContentDescription" />
 
             <TextView
-                android:id="@+id/txtBudget"
+                android:id="@+id/txtLocation"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="R$ 200 - R$ 300"
-                android:textColor="@color/green_badge_text"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </RelativeLayout>
+                android:layout_marginStart="4dp"
+                android:text="Pinheiros (1,8 km)"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
 
         <!-- Divider -->
         <View
@@ -143,7 +127,7 @@
             android:layout_marginTop="12dp"
             android:background="@color/card_stroke" />
 
-        <!-- Action Buttons -->
+        <!-- Action Buttons: Recusar x Aceitar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -151,32 +135,29 @@
             android:layout_marginTop="12dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnChatClient"
+                android:id="@+id/btnRefuseService"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                android:text="Chat"
-                android:textColor="@color/brand_blue"
+                android:text="Recusar"
+                android:textColor="#DC2626"
                 android:textSize="12sp"
                 android:textAllCaps="false"
                 android:textStyle="bold"
-                app:icon="@drawable/ic_chat"
-                app:iconTint="@color/brand_blue"
-                app:iconGravity="textStart"
-                app:backgroundTint="#EEF4FF"
-                app:strokeColor="#D0E1FD"
+                app:backgroundTint="#FEE2E2"
+                app:strokeColor="#FCA5A5"
                 app:strokeWidth="1dp"
                 app:cornerRadius="10dp"
                 app:elevation="0dp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSendQuote"
+                android:id="@+id/btnAcceptService"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                android:text="Enviar Orçamento"
+                android:text="Aceitar Solicitação"
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:textAllCaps="false"

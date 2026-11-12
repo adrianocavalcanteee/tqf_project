@@ -11,13 +11,14 @@ object ServiceRules {
         newStatus: ServiceStatus
     ): Boolean {
         return when (current) {
-            ServiceStatus.EM_ABERTO ->
-                newStatus == ServiceStatus.EM_NEGOCIACAO
+            ServiceStatus.PENDENTE ->
+                newStatus == ServiceStatus.EM_ANDAMENTO || newStatus == ServiceStatus.RECUSADO
 
-            ServiceStatus.EM_NEGOCIACAO ->
+            ServiceStatus.EM_ANDAMENTO ->
                 newStatus == ServiceStatus.CONCLUIDO
 
             ServiceStatus.CONCLUIDO -> false
+            ServiceStatus.RECUSADO -> false
         }
     }
 
@@ -25,7 +26,7 @@ object ServiceRules {
         current: ServiceStatus
     ): ServiceStatus {
         return if (current != ServiceStatus.CONCLUIDO) {
-            ServiceStatus.EM_NEGOCIACAO
+            ServiceStatus.EM_ANDAMENTO
         } else {
             current
         }
