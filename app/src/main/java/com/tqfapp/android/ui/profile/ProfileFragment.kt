@@ -186,6 +186,7 @@ class ProfileFragment : Fragment() {
             isMapCreated = true
             binding.mapOffice.getMapAsync { map ->
                 googleMap = map
+                MapUtils.applyCustomMapStyle(requireContext(), map)
                 updateOfficeMapMarker()
             }
         } catch (e: Exception) {

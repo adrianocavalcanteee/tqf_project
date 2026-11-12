@@ -1,14 +1,61 @@
 package com.tqfapp.android.utils
 
+import android.content.Context
+import android.util.Log
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
+import com.tqfapp.android.R
 
 /**
- * Utilitário responsável pelo gerenciamento e configuração do Google Maps no app.
+ * Utilitário responsável pelo gerenciamento, estilização e configuração do Google Maps no app.
  */
 object MapUtils {
+
+    /**
+     * Aplica um estilo visual personalizado em formato JSON ao Google Maps a partir de um recurso raw.
+     *
+     * @param context Contexto da aplicação ou fragmento.
+     * @param googleMap Instância do GoogleMap.
+     * @param rawResId ID do recurso raw do arquivo JSON de estilo (padrão R.raw.map_style).
+     * @return Boolean indicando se o estilo foi aplicado com sucesso.
+     */
+    fun applyCustomMapStyle(
+        context: Context,
+        googleMap: GoogleMap,
+        rawResId: Int = R.raw.map_style
+    ): Boolean {
+        return try {
+            val style = MapStyleOptions.loadRawResourceStyle(context, rawResId)
+            val success = googleMap.setMapStyle(style)
+            if (!success) {
+                Log.e("MapUtils", "Falha ao aplicar a formatação do estilo no Google Maps.")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e("MapUtils", "Erro ao carregar o arquivo de estilo do mapa: ", e)
+            false
+        }
+    }
+
+    /**
+     * Aplica um estilo visual personalizado ao Google Maps a partir de uma String JSON.
+     */
+    fun applyCustomMapStyleFromJson(
+        googleMap: GoogleMap,
+        jsonStyle: String
+    ): Boolean {
+        return try {
+            val style = MapStyleOptions(jsonStyle)
+            googleMap.setMapStyle(style)
+        } catch (e: Exception) {
+            Log.e("MapUtils", "Erro ao carregar o estilo JSON do mapa: ", e)
+            false
+        }
+    }
 
     /**
      * Configura e centraliza o mapa na localização do escritório do prestador.
@@ -51,6 +98,25 @@ object MapUtils {
 
             // Move a câmera com animação até o local do escritório
             animateCamera(CameraUpdateFactory.newLatLngZoom(officeLatLng, zoomLevel))
+        }
+    }
+
+    /**
+     * Retorna a cor de matiz (Hue) do marcador correspondente para cada categoria de serviço.
+     */
+    fun getCategoryHue(category: String?): Float {
+        if (category.isNullOrBlank()) return BitmapDescriptorFactory.HUE_RED
+
+        return when (category.lowercase().trim()) {
+            "assistência técnica" -> BitmapDescriptorFactory.HUE_GREEN
+            "reformas e reparos" -> BitmapDescriptorFactory.HUE_ROSE
+            "serviços domésticos" -> BitmapDescriptorFactory.HUE_CYAN
+            "design e tecnologia" -> BitmapDescriptorFactory.HUE_ORANGE
+            "eventos" -> BitmapDescriptorFactory.HUE_YELLOW
+            "aulas e treinamentos" -> BitmapDescriptorFactory.HUE_VIOLET
+            "saúde e bem-estar" -> BitmapDescriptorFactory.HUE_RED
+            "autos e transporte" -> BitmapDescriptorFactory.HUE_MAGENTA
+            else -> BitmapDescriptorFactory.HUE_RED
         }
     }
 }

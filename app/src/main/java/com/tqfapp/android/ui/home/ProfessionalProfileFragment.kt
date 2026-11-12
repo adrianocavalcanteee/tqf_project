@@ -150,6 +150,7 @@ class ProfessionalProfileFragment : Fragment() {
             isMapCreated = true
             mapView?.getMapAsync { map ->
                 googleMap = map
+                MapUtils.applyCustomMapStyle(requireContext(), map)
                 updateOfficeMapMarker(view)
             }
         } catch (e: Exception) {
