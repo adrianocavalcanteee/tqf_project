@@ -359,7 +359,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Action CTA Buttons (2 Buttons) -->
+            <!-- Action CTA Button -->
             <LinearLayout
                 android:id="@+id/layoutActionButtons"
                 android:layout_width="match_parent"
@@ -367,48 +367,23 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="16dp">
 
-                <!-- Button 1: Contratar agora -->
+                <!-- Button: Solicitar Serviço -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnHireNow"
-                    android:layout_width="0dp"
+                    android:id="@+id/btnRequestService"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="48dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
                     android:paddingHorizontal="4dp"
-                    android:text="Contratar agora"
+                    android:text="Solicitar Serviço"
                     android:textColor="@color/white"
                     android:textSize="13sp"
                     android:textAllCaps="false"
                     android:textStyle="bold"
-                    app:icon="@drawable/ic_calendar_white"
+                    app:icon="@drawable/ic_briefcase"
+                    app:iconTint="@color/white"
                     app:iconGravity="textStart"
                     app:iconPadding="4dp"
                     app:backgroundTint="@color/brand_blue"
-                    app:cornerRadius="12dp"
-                    app:elevation="0dp" />
-
-                <!-- Button 2: Chamar no chat -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCallChat"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:paddingHorizontal="4dp"
-                    android:text="Chat"
-                    android:textColor="@color/brand_blue"
-                    android:textSize="13sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
-                    app:icon="@drawable/ic_chat"
-                    app:iconTint="@color/brand_blue"
-                    app:iconGravity="textStart"
-                    app:iconPadding="4dp"
-                    app:backgroundTint="#EEF4FF"
-                    app:strokeColor="#D0E1FD"
-                    app:strokeWidth="1dp"
                     app:cornerRadius="12dp"
                     app:elevation="0dp" />
             </LinearLayout>

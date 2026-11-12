@@ -11,11 +11,6 @@
         android:title="Contratações" />
 
     <item
-        android:id="@+id/nav_chat"
-        android:icon="@drawable/ic_chat"
-        android:title="Mensagens" />
-
-    <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_profile"
         android:title="Perfil" />

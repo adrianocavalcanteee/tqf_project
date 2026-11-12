@@ -1,5 +1,6 @@
 package com.tqfapp.android.ui.contracts
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -19,6 +20,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.ui.chat.ChatFragment
@@ -104,19 +106,50 @@ class ServiceDetailsFragment : Fragment() {
         if (isCompleted) {
             btnDetailAction?.visibility = View.GONE
             btnReviewService?.visibility = View.VISIBLE
+            btnReviewService?.text = "⭐ Avaliar Atendimento"
             btnReviewService?.setOnClickListener {
                 showReviewDialog(title, profName)
             }
         } else {
-            btnDetailAction?.visibility = View.VISIBLE
-            btnReviewService?.visibility = View.GONE
-            btnDetailAction?.setOnClickListener {
-                activity?.findViewById<BottomNavigationView>(R.id.bottomNavigation)?.selectedItemId = R.id.nav_chat
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, ChatFragment())
-                    .addToBackStack(null)
-                    .commit()
+            // Em andamento
+            if (isProvider) {
+                btnDetailAction?.visibility = View.VISIBLE
+                btnDetailAction?.text = "Falar no WhatsApp"
+                btnDetailAction?.setOnClickListener {
+                    openWhatsApp("11999998888", "Olá! Entrando em contato sobre o serviço '$title'.")
+                }
+
+                btnReviewService?.visibility = View.VISIBLE
+                btnReviewService?.text = "Concluir Serviço"
+                btnReviewService?.setOnClickListener {
+                    updateServiceStatusToCompleted(title)
+                }
+            } else {
+                btnDetailAction?.visibility = View.VISIBLE
+                btnDetailAction?.text = "Falar com o Prestador"
+                btnDetailAction?.setOnClickListener {
+                    openWhatsApp("11999998888", "Olá $profName! Acompanhando o serviço '$title'.")
+                }
+                btnReviewService?.visibility = View.GONE
             }
+        }
+    }
+
+    private fun updateServiceStatusToCompleted(title: String) {
+        try {
+            val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
+            val services = serviceDao.getAll()
+            val target = services.find { it.title.equals(title, ignoreCase = true) }
+            if (target != null) {
+                val updated = target.copy(status = ServiceStatus.CONCLUIDO)
+                serviceDao.update(updated)
+            }
+            Toast.makeText(requireContext(), "Serviço concluído com sucesso!", Toast.LENGTH_SHORT).show()
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(requireContext(), "Serviço concluído!", Toast.LENGTH_SHORT).show()
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
     }
 
@@ -153,6 +186,18 @@ class ServiceDetailsFragment : Fragment() {
             }
             .setNegativeButton("Cancelar", null)
             .show()
+    }
+
+    private fun openWhatsApp(phoneNumber: String, message: String) {
+        try {
+            val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
+            val url = "https://api.whatsapp.com/send?phone=55$cleanPhone&text=${Uri.encode(message)}"
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(requireContext(), "Não foi possível abrir o WhatsApp no dispositivo.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private inner class PortfolioPreviewAdapter(

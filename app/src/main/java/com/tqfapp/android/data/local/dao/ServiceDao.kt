@@ -7,17 +7,17 @@ import com.tqfapp.android.data.model.Service
 interface ServiceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(service: Service)
+    fun insert(service: Service)
 
     @Query("SELECT * FROM servicos")
-    suspend fun getAll(): List<Service>
+    fun getAll(): List<Service>
 
     @Query("SELECT * FROM servicos WHERE id = :id")
-    suspend fun getById(id: String): Service?
+    fun getById(id: String): Service?
 
     @Update
-    suspend fun update(service: Service)
+    fun update(service: Service)
 
     @Delete
-    suspend fun delete(service: Service)
+    fun delete(service: Service)
 }

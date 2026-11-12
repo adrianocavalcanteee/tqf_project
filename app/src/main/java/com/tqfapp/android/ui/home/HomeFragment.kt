@@ -24,6 +24,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceStatus
@@ -216,11 +217,11 @@ class HomeFragment : Fragment() {
         runBlocking {
             if (serviceDao.getAll().isEmpty()) {
                 val initialServices = listOf(
-                    Service("s1", "Eletricista Residencial e Predial", "Instalação e reparos elétricos", 80.0, ServiceStatus.EM_ABERTO),
-                    Service("s2", "Encanador / Bombeiro Hidráulico", "Reparos de vazamentos e tubulação", 90.0, ServiceStatus.EM_ABERTO),
-                    Service("s3", "Diarista e Faxineira", "Limpeza residencial completa", 70.0, ServiceStatus.EM_ABERTO),
-                    Service("s4", "Técnico em Manutenção de Notebooks", "Conserto de computadores", 100.0, ServiceStatus.EM_ABERTO),
-                    Service("s5", "Mecânico Automotivo / Eletricista Auto", "Revisão e manutenção veicular", 120.0, ServiceStatus.EM_ABERTO)
+                    Service("s1", "Eletricista Residencial e Predial", "Instalação e reparos elétricos", category = "Reformas e Reparos", price = 80.0, status = ServiceStatus.EM_ANDAMENTO),
+                    Service("s2", "Encanador / Bombeiro Hidráulico", "Reparos de vazamentos e tubulação", category = "Reformas e Reparos", price = 90.0, status = ServiceStatus.CONCLUIDO),
+                    Service("s3", "Diarista e Faxineira", "Limpeza residencial completa", category = "Serviços Domésticos", price = 70.0, status = ServiceStatus.PENDENTE),
+                    Service("s4", "Técnico em Manutenção de Notebooks", "Conserto de computadores", category = "Assistência Técnica", price = 100.0, status = ServiceStatus.EM_ANDAMENTO),
+                    Service("s5", "Mecânico Automotivo / Eletricista Auto", "Revisão e manutenção veicular", category = "Autos e Transporte", price = 120.0, status = ServiceStatus.PENDENTE)
                 )
                 initialServices.forEach { serviceDao.insert(it) }
             }
