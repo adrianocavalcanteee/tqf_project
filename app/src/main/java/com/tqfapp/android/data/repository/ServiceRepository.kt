@@ -4,30 +4,302 @@ import android.content.Context
 import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
+import com.tqfapp.android.data.network.dto.SolicitacaoServicoDto
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.put
+
+@Serializable
+private data class AceitarParams(@SerialName("p_solicitacao_id") val pSolicitacaoId: String)
+
+@Serializable
+private data class RecusarParams(@SerialName("p_solicitacao_id") val pSolicitacaoId: String)
+
+@Serializable
+private data class FinalizarParams(
+    @SerialName("p_solicitacao_id") val pSolicitacaoId: String,
+    @SerialName("p_novo_status") val pNovoStatus: String
+)
 
 /**
- * Repositório desacoplado para a entidade Serviço/Solicitação.
- * Concentra buscas, criações e atualizações de status.
+ * Repositório responsável pelo fluxo de Solicitações de Serviço integrado ao Supabase PostgREST e RPCs.
+ * Mantém sincronização e fallback no Room local.
  */
 class ServiceRepository(private val context: Context) {
 
     private val serviceDao = AppDatabase.getDatabase(context).serviceDao()
 
+    /**
+     * CLIENTE: Cria uma solicitação DIRETA para um prestador específico.
+     */
+    fun createDirectRequest(
+        targetProviderId: String,
+        category: String,
+        title: String,
+        description: String
+    ): Result<SolicitacaoServicoDto> = runBlocking {
+        try {
+            val clientId = SupabaseClient.auth.currentUserOrNull()?.id
+                ?: return@runBlocking Result.failure(IllegalStateException("Usuário não autenticado no Supabase."))
+
+            val dto = SolicitacaoServicoDto(
+                clientId = clientId,
+                targetProviderId = targetProviderId,
+                acceptedProviderId = null,
+                category = category,
+                title = title,
+                description = description,
+                status = "PENDENTE"
+            )
+
+            val inserted = SupabaseClient.postgrest.from("solicitacoes_servico")
+                .insert(dto) {
+                    select()
+                }
+                .decodeSingle<SolicitacaoServicoDto>()
+
+            // Cache local Room
+            try {
+                serviceDao.insert(
+                    Service(
+                        id = inserted.id ?: java.util.UUID.randomUUID().toString(),
+                        title = inserted.title,
+                        description = inserted.description,
+                        category = inserted.category,
+                        clientId = clientId,
+                        providerId = targetProviderId,
+                        status = ServiceStatus.PENDENTE
+                    )
+                )
+            } catch (_: Exception) {}
+
+            Result.success(inserted)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * CLIENTE: Cria uma solicitação GERAL por categoria (para todos os prestadores daquela categoria).
+     */
+    fun createGeneralRequest(
+        category: String,
+        title: String,
+        description: String
+    ): Result<SolicitacaoServicoDto> = runBlocking {
+        try {
+            val clientId = SupabaseClient.auth.currentUserOrNull()?.id
+                ?: return@runBlocking Result.failure(IllegalStateException("Usuário não autenticado no Supabase."))
+
+            val dto = SolicitacaoServicoDto(
+                clientId = clientId,
+                targetProviderId = null,
+                acceptedProviderId = null,
+                category = category,
+                title = title,
+                description = description,
+                status = "PENDENTE"
+            )
+
+            val inserted = SupabaseClient.postgrest.from("solicitacoes_servico")
+                .insert(dto) {
+                    select()
+                }
+                .decodeSingle<SolicitacaoServicoDto>()
+
+            // Cache local Room
+            try {
+                serviceDao.insert(
+                    Service(
+                        id = inserted.id ?: java.util.UUID.randomUUID().toString(),
+                        title = inserted.title,
+                        description = inserted.description,
+                        category = inserted.category,
+                        clientId = clientId,
+                        status = ServiceStatus.PENDENTE
+                    )
+                )
+            } catch (_: Exception) {}
+
+            Result.success(inserted)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * PRESTADOR: Consulta solicitações visíveis (Pendentes diretas/gerais da categoria, Em Andamento e Concluídas/Canceladas).
+     */
+    fun getProviderRequests(providerCategory: String): List<SolicitacaoServicoDto> = runBlocking {
+        try {
+            val currentProviderId = SupabaseClient.auth.currentUserOrNull()?.id ?: return@runBlocking emptyList()
+
+            SupabaseClient.postgrest.from("solicitacoes_servico")
+                .select()
+                .decodeList<SolicitacaoServicoDto>()
+                .filter { item ->
+                    val isPendingTarget = item.status == "PENDENTE" && item.targetProviderId == currentProviderId
+                    val isPendingGeneral = item.status == "PENDENTE" && item.targetProviderId == null && item.category.equals(providerCategory, ignoreCase = true)
+                    val isInProgress = item.status == "EM_ANDAMENTO" && item.acceptedProviderId == currentProviderId
+                    val isHistory = (item.status == "CONCLUIDO" || item.status == "CANCELADO") && (item.acceptedProviderId == currentProviderId || item.targetProviderId == currentProviderId)
+
+                    isPendingTarget || isPendingGeneral || isInProgress || isHistory
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * CLIENTE: Consulta todas as solicitações do próprio cliente autenticado via Supabase PostgREST.
+     * Os dados são recarregados a cada consulta (não utiliza Supabase Realtime).
+     */
+    fun getClientRequests(): List<SolicitacaoServicoDto> = runBlocking {
+        try {
+            val currentClientId = SupabaseClient.auth.currentUserOrNull()?.id ?: return@runBlocking emptyList()
+
+            SupabaseClient.postgrest.from("solicitacoes_servico")
+                .select {
+                    filter {
+                        eq("client_id", currentClientId)
+                    }
+                }
+                .decodeList<SolicitacaoServicoDto>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * PRESTADOR: Aceita uma solicitação chamando a RPC aceitar_solicitacao(id).
+     */
+    fun acceptRequest(solicitacaoId: String): Result<Boolean> = runBlocking {
+        try {
+            try {
+                SupabaseClient.postgrest.rpc(
+                    function = "aceitar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("p_solicitacao_id", solicitacaoId)
+                    }
+                )
+            } catch (_: Exception) {
+                SupabaseClient.postgrest.rpc(
+                    function = "aceitar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("id", solicitacaoId)
+                    }
+                )
+            }
+
+            try {
+                val localService = serviceDao.getById(solicitacaoId)
+                if (localService != null) {
+                    serviceDao.update(localService.copy(status = ServiceStatus.EM_ANDAMENTO))
+                }
+            } catch (_: Exception) {}
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * PRESTADOR: Recusa uma solicitação DIRETA chamando a RPC recusar_solicitacao(id).
+     */
+    fun refuseRequest(solicitacaoId: String): Result<Boolean> = runBlocking {
+        try {
+            try {
+                SupabaseClient.postgrest.rpc(
+                    function = "recusar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("p_solicitacao_id", solicitacaoId)
+                    }
+                )
+            } catch (_: Exception) {
+                SupabaseClient.postgrest.rpc(
+                    function = "recusar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("id", solicitacaoId)
+                    }
+                )
+            }
+
+            try {
+                val localService = serviceDao.getById(solicitacaoId)
+                if (localService != null) {
+                    serviceDao.update(localService.copy(status = ServiceStatus.RECUSADO))
+                }
+            } catch (_: Exception) {}
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * PRESTADOR: Finaliza uma solicitação (CONCLUIDO ou CANCELADO) chamando a RPC finalizar_solicitacao(id, novo_status).
+     */
+    fun finalizeRequest(solicitacaoId: String, newStatus: String): Result<Boolean> = runBlocking {
+        try {
+            try {
+                SupabaseClient.postgrest.rpc(
+                    function = "finalizar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("p_solicitacao_id", solicitacaoId)
+                        put("p_novo_status", newStatus)
+                    }
+                )
+            } catch (_: Exception) {
+                SupabaseClient.postgrest.rpc(
+                    function = "finalizar_solicitacao",
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("id", solicitacaoId)
+                        put("novo_status", newStatus)
+                    }
+                )
+            }
+
+            try {
+                val localService = serviceDao.getById(solicitacaoId)
+                if (localService != null) {
+                    val statusEnum = if (newStatus == "CONCLUIDO") ServiceStatus.CONCLUIDO else ServiceStatus.CANCELADO
+                    serviceDao.update(localService.copy(status = statusEnum))
+                }
+            } catch (_: Exception) {}
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Obtém o número de telefone de um usuário em dados_privados_usuario (para WhatsApp).
+     */
+    fun getUserPhone(userId: String): String? = runBlocking {
+        try {
+            val dto = SupabaseClient.postgrest.from("dados_privados_usuario")
+                .select {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+                .decodeSingleOrNull<DadosPrivadosUsuarioDto>()
+            dto?.phone
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Compatibilidade com código legado
     fun getAllServices(): List<Service> {
         return try {
-            val list = serviceDao.getAll()
-            if (list.isEmpty()) {
-                val initialServices = listOf(
-                    Service("s1", "Instalação de ar-condicionado 12000 BTUs", "Instalação de ar split na sala.", category = "Climatização", clientId = "c1", clientName = "Ana Lima", providerId = "p1", providerName = "Paulo Oliveira", price = 250.0, status = ServiceStatus.CONCLUIDO, date = "12 de mar. de 2025 • 14:00"),
-                    Service("s2", "Instalação de tomadas e iluminação LED", "Passagem de fiação e tomadas.", category = "Reformas e Reparos", clientId = "c1", clientName = "Ana Lima", providerId = "p2", providerName = "Carlos Mendes", price = 150.0, status = ServiceStatus.CONCLUIDO, date = "05 de mar. de 2025 • 09:30"),
-                    Service("s3", "Reparo em vazamento de tubulação", "Desentupimento e vazamentos.", category = "Reformas e Reparos", clientId = "c1", clientName = "Ana Lima", providerId = "p3", providerName = "Rafael Lima", price = 110.0, status = ServiceStatus.CONCLUIDO, date = "22 de fev. de 2025 • 10:00"),
-                    Service("s4", "Limpeza residencial completa", "Higienização completa.", category = "Serviços Domésticos", clientId = "c1", clientName = "Ana Lima", providerId = "p4", providerName = "Juliana Alves", price = 180.0, status = ServiceStatus.CONCLUIDO, date = "10 de fev. de 2025 • 08:00")
-                )
-                initialServices.forEach { try { serviceDao.insert(it) } catch (_: Exception) {} }
-                initialServices
-            } else {
-                list
-            }
+            serviceDao.getAll()
         } catch (e: Exception) {
             emptyList()
         }
@@ -35,7 +307,7 @@ class ServiceRepository(private val context: Context) {
 
     fun getServiceById(id: String): Service? {
         return try {
-            serviceDao.getById(id) ?: getAllServices().find { it.id == id }
+            serviceDao.getById(id)
         } catch (e: Exception) {
             null
         }

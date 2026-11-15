@@ -94,14 +94,34 @@ class ContractsFragment : Fragment() {
     private fun setupContractsList() {
         try {
             val isProvider = UserSessionManager.isProviderUser(requireContext())
+            val serviceRepository = com.tqfapp.android.data.repository.ServiceRepository(requireContext())
 
             if (isProvider) {
                 binding.txtHeaderTitle.text = "Contratações em Andamento"
             } else {
-                binding.txtHeaderTitle.text = "Histórico de Serviços"
+                binding.txtHeaderTitle.text = "Minhas Solicitações e Histórico"
             }
 
-            contractAdapter = ContractAdapter(allContracts,
+            val clientRequests = serviceRepository.getClientRequests()
+            val itemsList = if (clientRequests.isNotEmpty()) {
+                clientRequests.map { req ->
+                    ContractItem(
+                        professionalName = if (req.acceptedProviderId != null) "Prestador Aceito" else "Aguardando Prestador",
+                        specialty = req.category,
+                        serviceTitle = req.title,
+                        scheduleDate = req.createdAt?.substringBefore("T") ?: "Hoje",
+                        price = "Negociação via WhatsApp",
+                        status = req.status,
+                        rating = "★ 5.0",
+                        isVerified = true,
+                        avatarRes = R.drawable.ic_profile
+                    )
+                }
+            } else {
+                allContracts
+            }
+
+            contractAdapter = ContractAdapter(itemsList,
                 onDetailsClick = { contract ->
                     try {
                         val detailsFragment = ServiceDetailsFragment.newInstance(
@@ -111,7 +131,7 @@ class ContractsFragment : Fragment() {
                             schedule = contract.scheduleDate,
                             price = contract.price,
                             status = contract.status,
-                            desc = "Serviço contratado com ${contract.professionalName}."
+                            desc = "Serviço solicitado: ${contract.serviceTitle}. Status: ${contract.status}."
                         )
                         parentFragmentManager.beginTransaction()
                             .replace(R.id.fragmentContainer, detailsFragment)
