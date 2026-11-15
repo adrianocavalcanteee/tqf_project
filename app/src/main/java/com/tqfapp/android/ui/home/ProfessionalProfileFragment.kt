@@ -16,9 +16,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -342,6 +345,41 @@ class ProfessionalProfileFragment : Fragment() {
             }
         }
 
+        val cardDialogMap = dialogView.findViewById<View>(R.id.cardDialogMap)
+        val dialogMapView = dialogView.findViewById<MapView>(R.id.dialogMapView)
+        var dialogGoogleMap: GoogleMap? = null
+
+        fun updateDialogMapMarker(map: GoogleMap, coords: LatLng, title: String) {
+            map.clear()
+            map.uiSettings.isZoomControlsEnabled = true
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(coords, 15f))
+            map.addMarker(
+                MarkerOptions()
+                    .position(coords)
+                    .title("📍 $title")
+                    .snippet("Local do Escritório")
+            )?.showInfoWindow()
+        }
+
+        if (dialogMapView != null) {
+            try {
+                MapsInitializer.initialize(requireContext())
+                dialogMapView.onCreate(null)
+                dialogMapView.onResume()
+                dialogMapView.getMapAsync { map ->
+                    dialogGoogleMap = map
+                    MapUtils.applyCustomMapStyle(requireContext(), map)
+                    if (officeLatitude != 0.0 && officeLongitude != 0.0) {
+                        cardDialogMap?.visibility = View.VISIBLE
+                        updateDialogMapMarker(map,
+                            LatLng(officeLatitude, officeLongitude), etLocation?.text?.toString() ?: "Escritório")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
         // Converte as coordenadas atuais em endereço legível
         val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
         if (!currentAddress.isNullOrEmpty()) {
@@ -363,8 +401,16 @@ class ProfessionalProfileFragment : Fragment() {
                 etLongitude?.setText(coords.longitude.toString())
                 txtLocationStatus?.visibility = View.VISIBLE
                 txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
-                Toast.makeText(requireContext(), "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
+
+                cardDialogMap?.visibility = View.VISIBLE
+                dialogGoogleMap?.let { map ->
+                    updateDialogMapMarker(map, coords, addressText)
+                }
+
+                Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
             } else {
+                txtLocationStatus?.visibility = View.VISIBLE
+                txtLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
                 Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
