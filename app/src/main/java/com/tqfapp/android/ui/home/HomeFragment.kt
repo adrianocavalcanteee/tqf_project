@@ -5,8 +5,6 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -24,7 +22,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceStatus
@@ -209,7 +206,6 @@ class HomeFragment : Fragment() {
         setupCategories()
         setupMapFragment()
         setupMapTouchHandling()
-        setupSearchAndFilters()
         setupNotificationAndActions()
     }
 
@@ -523,33 +519,6 @@ class HomeFragment : Fragment() {
             .commit()
     }
 
-    private fun setupSearchAndFilters() {
-        binding.etSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                currentSearchQuery = s?.toString()?.trim() ?: ""
-                applyFilters()
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
-
-        binding.btnFilter.setOnClickListener { showFilterOptionsDialog() }
-    }
-
-    private fun showFilterOptionsDialog() {
-        val options = arrayOf("Filtrar por Categoria", "Filtrar por Avaliação", "Filtrar por Proximidade")
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Opções de Filtro")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showCategoryFilterDialog()
-                    1 -> showRatingFilterDialog()
-                    2 -> showDistanceFilterDialog()
-                }
-            }
-            .show()
-    }
-
     private fun setupNotificationAndActions() {
         binding.imgNotification.setOnClickListener {
             parentFragmentManager.beginTransaction()
@@ -564,7 +533,6 @@ class HomeFragment : Fragment() {
             minRatingFilter = 0.0
             maxDistanceFilter = 999.0
             currentSearchQuery = ""
-            binding.etSearch.setText("")
             centerMapOnManaus()
             applyFilters()
             Toast.makeText(requireContext(), "Exibindo todos os profissionais no mapa", Toast.LENGTH_SHORT).show()
