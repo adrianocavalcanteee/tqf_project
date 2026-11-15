@@ -1,6 +1,7 @@
 package com.tqfapp.android.ui.profile
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -18,6 +19,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
+import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -409,7 +411,7 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Diálogo de edição para Contratante
+     * Diálogo de edição para Contratante com busca por Geocodificação e Mapa de Confirmação
      */
     private fun showClientEditProfileDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_client_profile, null)
@@ -417,6 +419,10 @@ class ProfileFragment : Fragment() {
         val etClientAddress = dialogView.findViewById<TextInputEditText>(R.id.etClientAddress)
         val imgClientAvatarEdit = dialogView.findViewById<ImageView>(R.id.imgClientAvatarEdit)
         val btnChangeClientPhoto = dialogView.findViewById<View>(R.id.btnChangeClientPhoto)
+        val btnClientSearchAddress = dialogView.findViewById<View>(R.id.btnClientSearchAddress)
+        val txtClientLocationStatus = dialogView.findViewById<TextView>(R.id.txtClientLocationStatus)
+        val cardClientDialogMap = dialogView.findViewById<View>(R.id.cardClientDialogMap)
+        val dialogClientMapView = dialogView.findViewById<MapView>(R.id.dialogClientMapView)
 
         txtClientNameStatic?.text = binding.txtProfileName.text
         currentUser?.address?.let { etClientAddress?.setText(it) }
@@ -426,16 +432,124 @@ class ProfileFragment : Fragment() {
             clientPhotoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
+        var clientLat: Double? = currentUser?.latitude
+        var clientLng: Double? = currentUser?.longitude
+        var clientGoogleMap: GoogleMap? = null
+
+        fun updateClientDialogMapMarker(map: GoogleMap, coords: LatLng, title: String) {
+            map.clear()
+            map.uiSettings.isZoomControlsEnabled = true
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(coords, 15f))
+
+            val customDotIcon = MapUtils.getBitmapDescriptorFromVector(
+                requireContext(),
+                R.drawable.ic_user_location_dot
+            )
+
+            val markerOptions = MarkerOptions()
+                .position(coords)
+                .title("📍 $title")
+                .snippet("Seu Endereço de Entrega / Residência")
+                .anchor(0.5f, 0.5f)
+
+            if (customDotIcon != null) {
+                markerOptions.icon(customDotIcon)
+            }
+
+            map.addMarker(markerOptions)?.showInfoWindow()
+
+            map.addCircle(
+                CircleOptions()
+                    .center(coords)
+                    .radius(500.0)
+                    .strokeWidth(2f)
+                    .strokeColor(Color.parseColor("#007AFF"))
+                    .fillColor(Color.parseColor("#22007AFF"))
+            )
+        }
+
+        if (dialogClientMapView != null) {
+            try {
+                MapsInitializer.initialize(requireContext())
+                dialogClientMapView.onCreate(null)
+                dialogClientMapView.onResume()
+                dialogClientMapView.getMapAsync { map ->
+                    clientGoogleMap = map
+                    MapUtils.applyCustomMapStyle(requireContext(), map)
+
+                    val initialAddress = currentUser?.address
+                    if (!initialAddress.isNullOrBlank()) {
+                        val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), initialAddress)
+                        if (coords != null) {
+                            clientLat = coords.latitude
+                            clientLng = coords.longitude
+                            cardClientDialogMap?.visibility = View.VISIBLE
+                            txtClientLocationStatus?.visibility = View.VISIBLE
+                            txtClientLocationStatus?.text = "✓ Localização capturada no mapa"
+                            updateClientDialogMapMarker(map, coords, initialAddress)
+                        }
+                    } else if (clientLat != null && clientLng != null) {
+                        cardClientDialogMap?.visibility = View.VISIBLE
+                        updateClientDialogMapMarker(map, LatLng(clientLat!!, clientLng!!), "Sua Residência")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        btnClientSearchAddress?.setOnClickListener {
+            val addressText = etClientAddress?.text?.toString()?.trim().orEmpty()
+            if (addressText.isEmpty()) {
+                Toast.makeText(requireContext(), "Digite um endereço para localizar no mapa", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
+            if (coords != null) {
+                clientLat = coords.latitude
+                clientLng = coords.longitude
+
+                txtClientLocationStatus?.visibility = View.VISIBLE
+                txtClientLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+                cardClientDialogMap?.visibility = View.VISIBLE
+
+                clientGoogleMap?.let { map ->
+                    updateClientDialogMapMarker(map, coords, addressText)
+                }
+
+                Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
+            } else {
+                txtClientLocationStatus?.visibility = View.VISIBLE
+                txtClientLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
+                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            }
+        }
+
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Salvar") { _, _ ->
                 val newAddress = etClientAddress?.text?.toString()?.trim().orEmpty()
+
+                if (newAddress.isNotEmpty() && (clientLat == null || clientLng == null)) {
+                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), newAddress)
+                    if (coords != null) {
+                        clientLat = coords.latitude
+                        clientLng = coords.longitude
+                    }
+                }
+
                 val user = currentUser
                 if (user != null) {
-                    val updated = user.copy(address = newAddress)
+                    val updated = user.copy(
+                        address = newAddress,
+                        latitude = clientLat ?: user.latitude,
+                        longitude = clientLng ?: user.longitude
+                    )
                     userRepository.updateUser(updated)
                     currentUser = updated
-                    showToast("Endereço de entrega atualizado!")
+                    binding.txtClientAddressDisplay.text = newAddress
+                    showToast("Endereço de entrega atualizado com sucesso!")
                 }
             }
             .setNegativeButton("Cancelar", null)
