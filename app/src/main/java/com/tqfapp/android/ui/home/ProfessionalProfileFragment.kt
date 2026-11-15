@@ -162,29 +162,38 @@ class ProfessionalProfileFragment : Fragment() {
     }
 
     /**
-     * Atualiza o marcador do escritório e centraliza a câmera no mapa utilizando o Geocoder dinâmico
+     * Atualiza o marcador do escritório e o texto do card de endereço de forma sincronizada usando Geocoder dinâmico
      */
     private fun updateOfficeMapMarker(view: View) {
         val map = googleMap ?: return
         val txtName = view.findViewById<TextView>(R.id.txtProfessionalName)?.text?.toString() ?: "Prestador"
 
-        val currentUser = try { UserRepository(requireContext()).getCurrentUser() } catch (_: Exception) { null }
-        val savedAddress = currentUser?.address ?: arguments?.getString("arg_address")
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val currentUser = if (isOwner) try { UserRepository(requireContext()).getCurrentUser() } catch (_: Exception) { null } else null
 
-        // Converte as coordenadas de latitude e longitude do perfil em um endereço textual preciso usando Geocoder
-        val addressText = if (!savedAddress.isNullOrBlank()) {
-            savedAddress
-        } else {
-            LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-                ?: "Manaus - AM (Atendimento Presencial)"
+        // Se for o proprietário logado, consulta o endereço do usuário; senão, utiliza o endereço passado via argumento do prestador clicado
+        val passedAddress = arguments?.getString(ARG_ADDRESS)
+        val savedAddress = if (isOwner) currentUser?.address ?: passedAddress else passedAddress
+
+        // Geocodificação Reversa para garantir sincronização entre o texto e a Latitude/Longitude reais do prestador
+        val geocodedAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
+
+        val finalAddressText = when {
+            !passedAddress.isNullOrBlank() && !isOwner -> passedAddress
+            !savedAddress.isNullOrBlank() -> savedAddress
+            !geocodedAddress.isNullOrBlank() -> geocodedAddress
+            else -> "Manaus - AM (Atendimento Presencial)"
         }
+
+        // Sincroniza o TextView do subtítulo do endereço sobre o mapa
+        view.findViewById<TextView>(R.id.txtOfficeAddressSubtitle)?.text = "📍 $finalAddressText"
 
         MapUtils.setupOfficeLocationOnMap(
             googleMap = map,
             latitude = officeLatitude,
             longitude = officeLongitude,
             title = "Escritório de $txtName",
-            snippet = addressText
+            snippet = finalAddressText
         )
     }
 
@@ -603,6 +612,7 @@ class ProfessionalProfileFragment : Fragment() {
         private const val ARG_BIO = "arg_bio"
         private const val ARG_LATITUDE = "arg_latitude"
         private const val ARG_LONGITUDE = "arg_longitude"
+        private const val ARG_ADDRESS = "arg_address"
 
         // Coordenadas padrão de exemplo (Manaus, AM)
         const val DEFAULT_LATITUDE = -3.1190
@@ -615,7 +625,8 @@ class ProfessionalProfileFragment : Fragment() {
             rating: String? = null,
             bio: String? = null,
             latitude: Double = DEFAULT_LATITUDE,
-            longitude: Double = DEFAULT_LONGITUDE
+            longitude: Double = DEFAULT_LONGITUDE,
+            address: String? = null
         ): ProfessionalProfileFragment {
             val fragment = ProfessionalProfileFragment()
             val args = Bundle().apply {
@@ -626,6 +637,7 @@ class ProfessionalProfileFragment : Fragment() {
                 bio?.let { putString(ARG_BIO, it) }
                 putDouble(ARG_LATITUDE, latitude)
                 putDouble(ARG_LONGITUDE, longitude)
+                address?.let { putString(ARG_ADDRESS, it) }
             }
             fragment.arguments = args
             return fragment

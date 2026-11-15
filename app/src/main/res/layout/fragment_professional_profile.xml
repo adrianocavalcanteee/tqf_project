@@ -430,6 +430,15 @@
                 android:textSize="17sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/txtOfficeAddressSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Carregando endereço..."
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardMapContainer"
                 android:layout_width="match_parent"

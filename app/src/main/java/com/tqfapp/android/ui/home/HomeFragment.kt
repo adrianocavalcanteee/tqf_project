@@ -525,7 +525,8 @@ class HomeFragment : Fragment() {
             rating = professional.rating,
             bio = professional.bio,
             latitude = professional.latitude,
-            longitude = professional.longitude
+            longitude = professional.longitude,
+            address = professional.location
         )
 
         parentFragmentManager.beginTransaction()
