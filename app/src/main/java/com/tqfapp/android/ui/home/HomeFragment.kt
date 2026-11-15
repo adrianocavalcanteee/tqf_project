@@ -533,10 +533,21 @@ class HomeFragment : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        binding.chipFilterCategory.setOnClickListener { showCategoryFilterDialog() }
-        binding.chipFilterRating.setOnClickListener { showRatingFilterDialog() }
-        binding.chipFilterLocation.setOnClickListener { showDistanceFilterDialog() }
-        binding.btnFilter.setOnClickListener { showCategoryFilterDialog() }
+        binding.btnFilter.setOnClickListener { showFilterOptionsDialog() }
+    }
+
+    private fun showFilterOptionsDialog() {
+        val options = arrayOf("Filtrar por Categoria", "Filtrar por Avaliação", "Filtrar por Proximidade")
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Opções de Filtro")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showCategoryFilterDialog()
+                    1 -> showRatingFilterDialog()
+                    2 -> showDistanceFilterDialog()
+                }
+            }
+            .show()
     }
 
     private fun setupNotificationAndActions() {
