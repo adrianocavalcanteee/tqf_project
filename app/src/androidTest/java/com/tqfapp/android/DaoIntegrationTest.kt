@@ -52,7 +52,7 @@ class DaoIntegrationTest {
             title = "Reparo Elétrico",
             description = "Conserto de fiação residencial",
             price = 120.0,
-            status = ServiceStatus.EM_ABERTO
+            status = ServiceStatus.PENDENTE
         )
 
         // 1. Inserir um Service
@@ -73,7 +73,7 @@ class DaoIntegrationTest {
         val updatedService = savedService!!.copy(
             title = "Reparo Elétrico Atualizado",
             price = 150.0,
-            status = ServiceStatus.EM_NEGOCIACAO
+            status = ServiceStatus.EM_ANDAMENTO
         )
         serviceDao.update(updatedService)
 
@@ -81,7 +81,7 @@ class DaoIntegrationTest {
         assertNotNull(fetchedAfterUpdate)
         assertEquals("Reparo Elétrico Atualizado", fetchedAfterUpdate?.title)
         assertEquals(150.0, fetchedAfterUpdate?.price ?: 0.0, 0.001)
-        assertEquals(ServiceStatus.EM_NEGOCIACAO, fetchedAfterUpdate?.status)
+        assertEquals(ServiceStatus.EM_ANDAMENTO, fetchedAfterUpdate?.status)
 
         // 5. Excluir
         serviceDao.delete(fetchedAfterUpdate!!)

@@ -4,5 +4,6 @@ enum class ServiceStatus {
     PENDENTE,
     EM_ANDAMENTO,
     CONCLUIDO,
-    RECUSADO
+    RECUSADO,
+    CANCELADO
 }
