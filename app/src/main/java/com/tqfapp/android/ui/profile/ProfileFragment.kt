@@ -201,16 +201,31 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * Atualiza o marcador (Marker) do escritório e centraliza a câmera nas coordenadas do prestador
+     * Atualiza o marcador (Marker) do escritório e centraliza a câmera nas coordenadas do prestador com Geocoder dinâmico
      */
     private fun updateOfficeMapMarker() {
         val map = googleMap ?: return
+
+        // Converte as coordenadas de latitude e longitude reais em um endereço legível usando Geocoder
+        val userAddress = currentUser?.address
+        val addressText = if (!userAddress.isNullOrBlank()) {
+            userAddress
+        } else {
+            LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
+                ?: "Manaus - AM (Atendimento Presencial)"
+        }
+
+        // Sincroniza o card/bloco de texto do endereço no perfil
+        if (_binding != null) {
+            binding.txtClientAddressDisplay.text = addressText
+        }
+
         MapUtils.setupOfficeLocationOnMap(
             googleMap = map,
             latitude = officeLatitude,
             longitude = officeLongitude,
             title = "Escritório de " + binding.txtProfileName.text,
-            snippet = "São Paulo - SP (Atendimento Presencial)"
+            snippet = addressText
         )
     }
 
@@ -659,9 +674,9 @@ class ProfileFragment : Fragment() {
         private const val ARG_LONGITUDE = "arg_longitude"
         private const val ARG_PROVIDER_NAME = "arg_provider_name"
 
-        // Coordenadas estáticas de exemplo (São Paulo, SP)
-        const val DEFAULT_LATITUDE = -23.550520
-        const val DEFAULT_LONGITUDE = -46.633308
+        // Coordenadas padrão de exemplo (Manaus, AM)
+        const val DEFAULT_LATITUDE = -3.1190
+        const val DEFAULT_LONGITUDE = -60.0217
 
         fun newInstance(
             isProviderProfile: Boolean = true,
