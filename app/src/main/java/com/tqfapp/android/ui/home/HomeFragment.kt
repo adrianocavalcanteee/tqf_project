@@ -5,8 +5,6 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -209,7 +207,6 @@ class HomeFragment : Fragment() {
         setupCategories()
         setupMapFragment()
         setupMapTouchHandling()
-        setupSearchAndFilters()
         setupNotificationAndActions()
     }
 
@@ -535,22 +532,6 @@ class HomeFragment : Fragment() {
             .commit()
     }
 
-    private fun setupSearchAndFilters() {
-        binding.etSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                currentSearchQuery = s?.toString()?.trim() ?: ""
-                applyFilters()
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
-
-        binding.chipFilterCategory.setOnClickListener { showCategoryFilterDialog() }
-        binding.chipFilterRating.setOnClickListener { showRatingFilterDialog() }
-        binding.chipFilterLocation.setOnClickListener { showDistanceFilterDialog() }
-        binding.btnFilter.setOnClickListener { showCategoryFilterDialog() }
-    }
-
     private fun setupNotificationAndActions() {
         binding.imgNotification.setOnClickListener {
             parentFragmentManager.beginTransaction()
@@ -565,7 +546,6 @@ class HomeFragment : Fragment() {
             minRatingFilter = 0.0
             maxDistanceFilter = 999.0
             currentSearchQuery = ""
-            binding.etSearch.setText("")
             centerMapOnManaus()
             applyFilters()
             Toast.makeText(requireContext(), "Exibindo todos os profissionais no mapa", Toast.LENGTH_SHORT).show()

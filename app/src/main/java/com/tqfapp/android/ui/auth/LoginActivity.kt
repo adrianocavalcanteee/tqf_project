@@ -5,10 +5,13 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tqfapp.android.R
+import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityLoginBinding
 import com.tqfapp.android.ui.home.HomeActivity
 import com.tqfapp.android.utils.UserSessionManager
+import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.runBlocking
 
 class LoginActivity : AppCompatActivity() {
 
@@ -24,11 +27,35 @@ class LoginActivity : AppCompatActivity() {
 
             userRepository = UserRepository(this)
 
+            handleIncomingIntent(intent)
+
             setupUserTypeToggle()
             setupClickListeners()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Erro ao iniciar Login: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent != null) {
+            handleIncomingIntent(intent)
+        }
+    }
+
+    private fun handleIncomingIntent(intent: Intent) {
+        val data = intent.data
+        if (data != null && data.scheme == "com.tqfapp.android" && data.host == "login-callback") {
+            try {
+                runBlocking {
+                    SupabaseClient.client.handleDeeplinks(intent)
+                }
+                Toast.makeText(this, "E-mail confirmado com sucesso! Faça login para continuar.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -69,34 +96,28 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Tenta autenticar pelo banco de dados local
+            // Autentica no Supabase Auth + PostgREST via UserRepository
             val authResult = userRepository.loginUser(email, password)
 
-            val finalIsProvider = isProviderMode
-            val userName = if (authResult.isSuccess) {
-                authResult.getOrNull()?.name ?: email.substringBefore("@")
+            if (authResult.isSuccess) {
+                val dbUser = authResult.getOrNull()!!
+                val finalIsProvider = dbUser.isProvider
+                val userName = dbUser.name
+
+                val userTypeLabel = if (finalIsProvider) "Prestador de Serviço" else "Contratante"
+                Toast.makeText(this, "Bem-vindo, $userName! Login como $userTypeLabel", Toast.LENGTH_SHORT).show()
+
+                val intent = Intent(this, HomeActivity::class.java).apply {
+                    putExtra(EXTRA_IS_PROVIDER, finalIsProvider)
+                }
+                startActivity(intent)
+                finish()
             } else {
-                email.substringBefore("@")
+                val exception = authResult.exceptionOrNull()
+                val errorMsg = exception?.message ?: "Falha na autenticação. Verifique seu e-mail e senha."
+                binding.etEmail.error = errorMsg
+                Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
             }
-
-            // Atualiza o tipo do usuário no Room de acordo com o toggle selecionado
-            val currentUser = userRepository.getCurrentUser()
-            if (currentUser != null) {
-                val updated = currentUser.copy(isProvider = finalIsProvider, name = userName)
-                userRepository.updateUser(updated)
-            }
-
-            val userTypeLabel = if (finalIsProvider) "Prestador de Serviço" else "Contratante"
-            Toast.makeText(this, "Bem-vindo, $userName! Login como $userTypeLabel", Toast.LENGTH_SHORT).show()
-
-            // Salva o tipo e dados de usuário na sessão local
-            UserSessionManager.saveUserSession(this, finalIsProvider, userName, email)
-
-            val intent = Intent(this, HomeActivity::class.java).apply {
-                putExtra(EXTRA_IS_PROVIDER, finalIsProvider)
-            }
-            startActivity(intent)
-            finish()
         }
 
         binding.txtForgotPassword.setOnClickListener {

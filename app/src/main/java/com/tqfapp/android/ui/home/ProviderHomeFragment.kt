@@ -278,6 +278,8 @@ class ProviderHomeFragment : Fragment() {
     // Model for Service Request
     data class ServiceRequestItem(
         val serviceId: String = "s1",
+        val clientId: String = "c1",
+        val targetProviderId: String? = null,
         val clientName: String,
         val category: String,
         val title: String,

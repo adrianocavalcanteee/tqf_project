@@ -66,7 +66,20 @@ class ProfileFragment : Fragment() {
             if (_binding != null) {
                 binding.imgProfile.setImageURI(uri)
             }
-            Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
+            val storageRepository = com.tqfapp.android.data.repository.StorageRepository(requireContext())
+            val uploadResult = storageRepository.uploadProfilePicture(uri)
+            if (uploadResult.isSuccess) {
+                val publicUrl = uploadResult.getOrNull()
+                val user = currentUser
+                if (user != null && publicUrl != null) {
+                    val updated = user.copy(profilePictureUri = publicUrl)
+                    userRepository.updateUser(updated)
+                    currentUser = updated
+                }
+                Toast.makeText(requireContext(), "Foto enviada para o Supabase Storage com sucesso!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

@@ -2,7 +2,7 @@ package com.tqfapp.android.business
 
 object ServiceRules {
 
-    fun isValid(title: String, price: Double): Boolean {
+    fun isValid(title: String, price: Double = 0.0): Boolean {
         return title.isNotBlank() && price >= 0
     }
 

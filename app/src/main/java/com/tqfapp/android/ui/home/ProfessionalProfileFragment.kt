@@ -54,7 +54,19 @@ class ProfessionalProfileFragment : Fragment() {
     ) { uri ->
         if (uri != null) {
             view?.findViewById<ImageView>(R.id.imgAvatar)?.setImageURI(uri)
-            Toast.makeText(requireContext(), "Foto de perfil atualizada!", Toast.LENGTH_SHORT).show()
+            val storageRepository = com.tqfapp.android.data.repository.StorageRepository(requireContext())
+            val uploadResult = storageRepository.uploadProfilePicture(uri)
+            if (uploadResult.isSuccess) {
+                val publicUrl = uploadResult.getOrNull()
+                val userRepository = UserRepository(requireContext())
+                val user = userRepository.getCurrentUser()
+                if (user != null && publicUrl != null) {
+                    userRepository.updateUser(user.copy(profilePictureUri = publicUrl))
+                }
+                Toast.makeText(requireContext(), "Foto enviada para o Supabase Storage com sucesso!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Foto de perfil atualizada!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

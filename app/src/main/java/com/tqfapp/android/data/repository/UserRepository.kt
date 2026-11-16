@@ -1,152 +1,335 @@
 package com.tqfapp.android.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
+import com.tqfapp.android.data.network.dto.PerfilPrestadorDto
+import com.tqfapp.android.data.network.dto.UsuarioDto
 import com.tqfapp.android.utils.UserSessionManager
-import java.util.UUID
+import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.coroutines.runBlocking
 
 /**
  * Repositório responsável pela camada de dados do Usuário (Autenticação e Cadastro).
- * Integrado ao Banco de Dados Local (Room) e SharedPreferences (SessionManager).
+ * Integrado ao Supabase (Auth + PostgREST) com suporte a redirecionamento de deep link (login-callback),
+ * tratamento amigável de erros e logs de diagnóstico seguros.
  */
 class UserRepository(private val context: Context) {
 
     private val userDao = AppDatabase.getDatabase(context).userDao()
     private val sessionManager = SessionManager(context)
 
-    /**
-     * Registra o usuário no banco Room e inicia a sessão.
-     */
-    fun registerUser(user: User, passwordRaw: String): Result<User> {
-        try {
-            val existingUsers = try { userDao.getAll() } catch (_: Exception) { emptyList() }
-            if (existingUsers.any { it.email.equals(user.email, ignoreCase = true) }) {
-                return Result.failure(IllegalArgumentException("Este e-mail já está cadastrado."))
-            }
+    companion object {
+        private const val TAG = "AuthFlow"
+        private const val REDIRECT_URL = "com.tqfapp.android://login-callback"
+    }
 
-            userDao.insert(user)
-            sessionManager.saveLogin(user.id)
-            UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
+    private fun savePendingRegistrationData(user: User) {
+        val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
+        val key = user.email.trim().lowercase()
+        prefs.edit().apply {
+            putString("${key}_name", user.name)
+            putBoolean("${key}_is_provider", user.isProvider)
+            putString("${key}_phone", user.phone)
+            putString("${key}_category", user.category)
+            putString("${key}_specialty", user.specialty)
+            putString("${key}_bio", user.bio)
+            putString("${key}_address", user.address)
+            if (user.latitude != null) putFloat("${key}_latitude", user.latitude.toFloat())
+            if (user.longitude != null) putFloat("${key}_longitude", user.longitude.toFloat())
+            putString("${key}_profile_pic", user.profilePictureUri)
+            apply()
+        }
+    }
 
-            return Result.success(user)
-        } catch (e: Exception) {
-            return Result.failure(e)
+    private fun getPendingRegistrationData(email: String): User? {
+        val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
+        val key = email.trim().lowercase()
+        val name = prefs.getString("${key}_name", null) ?: return null
+        val isProvider = prefs.getBoolean("${key}_is_provider", false)
+        val phone = prefs.getString("${key}_phone", null)
+        val category = prefs.getString("${key}_category", null)
+        val specialty = prefs.getString("${key}_specialty", null)
+        val bio = prefs.getString("${key}_bio", null)
+        val address = prefs.getString("${key}_address", null)
+        val lat = if (prefs.contains("${key}_latitude")) prefs.getFloat("${key}_latitude", 0f).toDouble() else null
+        val lng = if (prefs.contains("${key}_longitude")) prefs.getFloat("${key}_longitude", 0f).toDouble() else null
+        val profilePic = prefs.getString("${key}_profile_pic", null)
+
+        return User(
+            id = "",
+            name = name,
+            email = email,
+            isProvider = isProvider,
+            category = category,
+            specialty = specialty,
+            bio = bio,
+            address = address,
+            phone = phone,
+            profilePictureUri = profilePic,
+            latitude = lat,
+            longitude = lng
+        )
+    }
+
+    private fun clearPendingRegistrationData(email: String) {
+        val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
+        val key = email.trim().lowercase()
+        prefs.edit().apply {
+            remove("${key}_name")
+            remove("${key}_is_provider")
+            remove("${key}_phone")
+            remove("${key}_category")
+            remove("${key}_specialty")
+            remove("${key}_bio")
+            remove("${key}_address")
+            remove("${key}_latitude")
+            remove("${key}_longitude")
+            remove("${key}_profile_pic")
+            apply()
         }
     }
 
     /**
-     * Autentica o usuário pelo banco de dados Room.
+     * Registra o usuário no Supabase Auth usando redirectUrl para deep link.
      */
-    fun loginUser(email: String, passwordRaw: String): Result<User> {
+    fun registerUser(user: User, passwordRaw: String): Result<User> = runBlocking {
         try {
-            val allUsers = try { userDao.getAll() } catch (_: Exception) { emptyList() }
-            var user = allUsers.find { it.email.equals(email, ignoreCase = true) }
+            Log.d(TAG, "signUp iniciado para e-mail domain: ${user.email.substringAfter("@")}")
+            savePendingRegistrationData(user)
 
-            val isProvider = UserSessionManager.isProviderUser(context)
-            val userName = context.getSharedPreferences("tqf_user_session", Context.MODE_PRIVATE)
-                .getString("key_user_name", email.substringBefore("@")) ?: email.substringBefore("@")
+            SupabaseClient.auth.signUpWith(Email, redirectUrl = "com.tqfapp.android://login-callback") {
+                email = user.email
+                password = passwordRaw
+            }
 
-            if (user == null) {
-                user = User(
-                    id = UUID.randomUUID().toString(),
-                    name = userName,
-                    email = email,
-                    isProvider = isProvider
+            Log.d(TAG, "signUp resposta recebida com sucesso")
+
+            val authUser = SupabaseClient.auth.currentUserOrNull()
+            val authSession = SupabaseClient.auth.currentSessionOrNull()
+
+            if (authUser == null) {
+                return@runBlocking Result.failure(
+                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
                 )
-                try {
-                    userDao.insert(user)
-                } catch (_: Exception) {}
-            } else {
-                // Atualiza o isProvider para respeitar o toggle de login
-                user = user.copy(isProvider = isProvider)
-                try {
-                    userDao.insert(user)
-                } catch (_: Exception) {}
             }
 
-            sessionManager.saveLogin(user.id)
+            val authUid = authUser.id
+
+            if (authSession == null) {
+                return@runBlocking Result.failure(
+                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
+                )
+            }
+
+            createPublicProfileTablesInSupabase(authUid, user)
+            clearPendingRegistrationData(user.email)
+
+            sessionManager.saveLogin(authUid)
             UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
-            return Result.success(user)
+
+            val roomUser = user.copy(id = authUid)
+            try { userDao.insert(roomUser) } catch (_: Exception) {}
+
+            Result.success(roomUser)
         } catch (e: Exception) {
-            return Result.failure(e)
+            Log.e(TAG, "signUp erro: ${e.javaClass.simpleName} - ${e.message}")
+            val errorMsg = mapAuthExceptionToFriendlyMessage(e)
+            Result.failure(IllegalArgumentException(errorMsg, e))
         }
     }
 
     /**
-     * Obtém o usuário atualmente logado na sessão do Room/SessionManager.
+     * Autentica o usuário pelo Supabase Auth e finaliza a criação das tabelas públicas
+     * caso o perfil ainda não exista no Supabase (primeiro login após confirmação de e-mail).
      */
-    fun getCurrentUser(): User? {
+    fun loginUser(email: String, passwordRaw: String): Result<User> = runBlocking {
         try {
-            val prefs = context.getSharedPreferences("tqf_user_session", Context.MODE_PRIVATE)
-            val sessionEmail = prefs.getString("key_user_email", null)
-            val allUsers = try { userDao.getAll() } catch (_: Exception) { emptyList() }
+            Log.d(TAG, "signIn iniciado para e-mail domain: ${email.substringAfter("@")}")
+            SupabaseClient.auth.signInWith(Email) {
+                this.email = email
+                this.password = passwordRaw
+            }
+            Log.d(TAG, "signIn resposta recebida com sucesso")
 
-            if (!sessionEmail.isNullOrBlank()) {
-                val found = allUsers.find { it.email.equals(sessionEmail, ignoreCase = true) }
-                if (found != null) {
-                    sessionManager.saveLogin(found.id)
-                    return found
+            val authUser = SupabaseClient.auth.currentUserOrNull()
+                ?: return@runBlocking Result.failure(IllegalArgumentException("E-mail ou senha incorretos."))
+
+            val authUid = authUser.id
+
+            var usuarioDto = try {
+                SupabaseClient.postgrest.from("usuarios")
+                    .select {
+                        filter {
+                            eq("id", authUid)
+                        }
+                    }
+                    .decodeSingleOrNull<UsuarioDto>()
+            } catch (_: Exception) { null }
+
+            if (usuarioDto == null) {
+                val pendingData = getPendingRegistrationData(email)
+                val userToCreate = pendingData ?: User(
+                    id = authUid,
+                    name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
+                    email = email,
+                    isProvider = UserSessionManager.isProviderUser(context)
+                )
+
+                createPublicProfileTablesInSupabase(authUid, userToCreate)
+                clearPendingRegistrationData(email)
+
+                usuarioDto = UsuarioDto(
+                    id = authUid,
+                    name = userToCreate.name,
+                    isProvider = userToCreate.isProvider,
+                    profilePictureUrl = userToCreate.profilePictureUri
+                )
+            }
+
+            sessionManager.saveLogin(authUid)
+            UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
+
+            val roomUser = User(
+                id = authUid,
+                name = usuarioDto.name,
+                email = email,
+                isProvider = usuarioDto.isProvider,
+                profilePictureUri = usuarioDto.profilePictureUrl
+            )
+            try { userDao.insert(roomUser) } catch (_: Exception) {}
+
+            Result.success(roomUser)
+        } catch (e: Exception) {
+            Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
+            val errorMsg = mapAuthExceptionToFriendlyMessage(e)
+            Result.failure(IllegalArgumentException(errorMsg, e))
+        }
+    }
+
+    private suspend fun createPublicProfileTablesInSupabase(authUid: String, user: User) {
+        val usuarioDto = UsuarioDto(
+            id = authUid,
+            name = user.name,
+            isProvider = user.isProvider,
+            profilePictureUrl = user.profilePictureUri
+        )
+        SupabaseClient.postgrest.from("usuarios").insert(usuarioDto)
+
+        val dadosPrivadosDto = DadosPrivadosUsuarioDto(
+            id = authUid,
+            phone = user.phone
+        )
+        SupabaseClient.postgrest.from("dados_privados_usuario").insert(dadosPrivadosDto)
+
+        if (user.isProvider) {
+            val perfilPrestadorDto = PerfilPrestadorDto(
+                userId = authUid,
+                category = user.category,
+                specialty = user.specialty,
+                bio = user.bio,
+                officeAddress = user.address,
+                latitude = user.latitude,
+                longitude = user.longitude,
+                portfolioUrls = user.portfolioUris,
+                serviceTags = emptyList()
+            )
+            SupabaseClient.postgrest.from("perfis_prestador").insert(perfilPrestadorDto)
+        }
+    }
+
+    /**
+     * Mapeia exceções técnicas do Supabase Auth para mensagens amigáveis em português.
+     */
+    private fun mapAuthExceptionToFriendlyMessage(e: Throwable): String {
+        val msg = e.message?.lowercase().orEmpty()
+        return when {
+            msg.contains("over_email_send_rate_limit") || msg.contains("rate limit") ->
+                "Muitos e-mails de confirmação foram solicitados. Aguarde um pouco e tente novamente."
+            msg.contains("already registered") || msg.contains("user_already_exists") || msg.contains("already exists") ->
+                "Este e-mail já possui uma conta."
+            msg.contains("invalid_email") || msg.contains("invalid email") ->
+                "Informe um endereço de e-mail válido."
+            msg.contains("network") || msg.contains("connect") || msg.contains("socket") || msg.contains("unknownhost") ->
+                "Não foi possível concluir o cadastro. Verifique sua conexão e tente novamente."
+            msg.contains("invalid login credentials") || msg.contains("invalid credentials") ->
+                "E-mail ou senha incorretos."
+            msg.contains("email not confirmed") ->
+                "Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada."
+            else ->
+                e.message ?: "Não foi possível concluir a operação. Tente novamente."
+        }
+    }
+
+    fun getCurrentUser(): User? = runBlocking {
+        try {
+            val authUser = SupabaseClient.auth.currentUserOrNull()
+            if (authUser != null) {
+                val authUid = authUser.id
+                val usuarioDto = try {
+                    SupabaseClient.postgrest.from("usuarios")
+                        .select {
+                            filter {
+                                eq("id", authUid)
+                            }
+                        }
+                        .decodeSingleOrNull<UsuarioDto>()
+                } catch (_: Exception) { null }
+
+                if (usuarioDto != null) {
+                    val email = authUser.email ?: "usuario@tqf.com"
+                    UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
+                    return@runBlocking User(
+                        id = authUid,
+                        name = usuarioDto.name,
+                        email = email,
+                        isProvider = usuarioDto.isProvider,
+                        profilePictureUri = usuarioDto.profilePictureUrl
+                    )
                 }
             }
 
             val userId = sessionManager.getUserId()
             if (userId != null) {
-                val user = try { userDao.getById(userId) } catch (_: Exception) { null }
-                if (user != null) return user
+                val localUser = userDao.getById(userId)
+                if (localUser != null) return@runBlocking localUser
             }
 
-            val isProvider = UserSessionManager.isProviderUser(context)
-            val byRole = allUsers.find { it.isProvider == isProvider }
-            if (byRole != null) {
-                sessionManager.saveLogin(byRole.id)
-                return byRole
-            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
 
-            if (allUsers.isNotEmpty()) {
-                return allUsers.first()
-            }
-
-            val defaultUser = User(
-                id = UUID.randomUUID().toString(),
-                name = prefs.getString("key_user_name", "Usuário TQF") ?: "Usuário TQF",
-                email = sessionEmail ?: "usuario@tqf.com",
-                isProvider = isProvider,
-                category = if (isProvider) "Assistência Técnica" else null,
-                specialty = if (isProvider) "Profissional TQF" else null
+    fun updateUser(user: User): Boolean = runBlocking {
+        try {
+            userDao.insert(user)
+            val usuarioDto = UsuarioDto(
+                id = user.id,
+                name = user.name,
+                isProvider = user.isProvider,
+                profilePictureUrl = user.profilePictureUri
             )
             try {
-                userDao.insert(defaultUser)
-                sessionManager.saveLogin(defaultUser.id)
+                SupabaseClient.postgrest.from("usuarios").upsert(usuarioDto)
             } catch (_: Exception) {}
-            return defaultUser
-        } catch (e: Exception) {
-            return null
-        }
-    }
 
-    /**
-     * Atualiza os dados do usuário no Room e atualiza os dados da sessão.
-     */
-    fun updateUser(user: User): Boolean {
-        try {
-            userDao.insert(user) // Upsert using OnConflictStrategy.REPLACE
-            sessionManager.saveLogin(user.id)
             UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
-            return true
+            true
         } catch (e: Exception) {
-            return false
+            false
         }
     }
 
-    /**
-     * Encerra a sessão do usuário limpando o SharedPreferences.
-     */
-    fun logout() {
+    fun logout() = runBlocking {
         try {
-            sessionManager.logout()
-            UserSessionManager.clearSession(context)
+            SupabaseClient.auth.signOut()
         } catch (_: Exception) {}
+        sessionManager.logout()
+        UserSessionManager.clearSession(context)
     }
 }
