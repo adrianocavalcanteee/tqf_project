@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
 /**
  * Repositório responsável pela camada de dados do Usuário (Autenticação e Cadastro).
  * Integrado ao Supabase (Auth + PostgREST) com suporte a redirecionamento de deep link (login-callback),
- * tratamento amigável de erros e logs de diagnóstico seguros.
+ * tratamento amigável de erros, logs de diagnóstico seguros e persistência completa em usuarios, dados_privados_usuario e perfis_prestador.
  */
 class UserRepository(private val context: Context) {
 
@@ -25,7 +25,6 @@ class UserRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "AuthFlow"
-        private const val REDIRECT_URL = "com.tqfapp.android://login-callback"
     }
 
     private fun savePendingRegistrationData(user: User) {
@@ -194,16 +193,16 @@ class UserRepository(private val context: Context) {
             sessionManager.saveLogin(authUid)
             UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
 
-            val roomUser = User(
+            val currentUser = getCurrentUser() ?: User(
                 id = authUid,
                 name = usuarioDto.name,
                 email = email,
                 isProvider = usuarioDto.isProvider,
                 profilePictureUri = usuarioDto.profilePictureUrl
             )
-            try { userDao.insert(roomUser) } catch (_: Exception) {}
+            try { userDao.insert(currentUser) } catch (_: Exception) {}
 
-            Result.success(roomUser)
+            Result.success(currentUser)
         } catch (e: Exception) {
             Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
@@ -222,7 +221,8 @@ class UserRepository(private val context: Context) {
 
         val dadosPrivadosDto = DadosPrivadosUsuarioDto(
             id = authUid,
-            phone = user.phone
+            phone = user.phone,
+            address = user.address
         )
         SupabaseClient.postgrest.from("dados_privados_usuario").insert(dadosPrivadosDto)
 
@@ -242,9 +242,6 @@ class UserRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Mapeia exceções técnicas do Supabase Auth para mensagens amigáveis em português.
-     */
     private fun mapAuthExceptionToFriendlyMessage(e: Throwable): String {
         val msg = e.message?.lowercase().orEmpty()
         return when {
@@ -282,13 +279,55 @@ class UserRepository(private val context: Context) {
 
                 if (usuarioDto != null) {
                     val email = authUser.email ?: "usuario@tqf.com"
+
+                    val dadosPrivados = try {
+                        SupabaseClient.postgrest.from("dados_privados_usuario")
+                            .select { filter { eq("id", authUid) } }
+                            .decodeSingleOrNull<DadosPrivadosUsuarioDto>()
+                    } catch (_: Exception) { null }
+
+                    var category: String? = null
+                    var specialty: String? = null
+                    var bio: String? = null
+                    var address: String? = dadosPrivados?.address
+                    val phone: String? = dadosPrivados?.phone
+                    var latitude: Double? = null
+                    var longitude: Double? = null
+                    var portfolioUris: List<String> = emptyList()
+
+                    if (usuarioDto.isProvider) {
+                        val perfil = try {
+                            SupabaseClient.postgrest.from("perfis_prestador")
+                                .select { filter { eq("user_id", authUid) } }
+                                .decodeSingleOrNull<PerfilPrestadorDto>()
+                        } catch (_: Exception) { null }
+
+                        if (perfil != null) {
+                            category = perfil.category
+                            specialty = perfil.specialty
+                            bio = perfil.bio
+                            if (address.isNullOrBlank()) address = perfil.officeAddress
+                            latitude = perfil.latitude
+                            longitude = perfil.longitude
+                            portfolioUris = perfil.portfolioUrls
+                        }
+                    }
+
                     UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
                     return@runBlocking User(
                         id = authUid,
                         name = usuarioDto.name,
                         email = email,
                         isProvider = usuarioDto.isProvider,
-                        profilePictureUri = usuarioDto.profilePictureUrl
+                        category = category,
+                        specialty = specialty,
+                        bio = bio,
+                        address = address,
+                        phone = phone,
+                        profilePictureUri = usuarioDto.profilePictureUrl,
+                        portfolioUris = portfolioUris,
+                        latitude = latitude,
+                        longitude = longitude
                     )
                 }
             }
@@ -317,6 +356,32 @@ class UserRepository(private val context: Context) {
             try {
                 SupabaseClient.postgrest.from("usuarios").upsert(usuarioDto)
             } catch (_: Exception) {}
+
+            val dadosPrivadosDto = DadosPrivadosUsuarioDto(
+                id = user.id,
+                phone = user.phone,
+                address = user.address
+            )
+            try {
+                SupabaseClient.postgrest.from("dados_privados_usuario").upsert(dadosPrivadosDto)
+            } catch (_: Exception) {}
+
+            if (user.isProvider) {
+                val perfilPrestadorDto = PerfilPrestadorDto(
+                    userId = user.id,
+                    category = user.category,
+                    specialty = user.specialty,
+                    bio = user.bio,
+                    officeAddress = user.address,
+                    latitude = user.latitude,
+                    longitude = user.longitude,
+                    portfolioUrls = user.portfolioUris,
+                    serviceTags = emptyList()
+                )
+                try {
+                    SupabaseClient.postgrest.from("perfis_prestador").upsert(perfilPrestadorDto)
+                } catch (_: Exception) {}
+            }
 
             UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
             true
