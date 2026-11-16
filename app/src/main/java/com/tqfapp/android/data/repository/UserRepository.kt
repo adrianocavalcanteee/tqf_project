@@ -1,6 +1,7 @@
 package com.tqfapp.android.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
@@ -14,17 +15,19 @@ import kotlinx.coroutines.runBlocking
 
 /**
  * Repositório responsável pela camada de dados do Usuário (Autenticação e Cadastro).
- * Suporta o fluxo de confirmação de e-mail do Supabase Auth finalizando a criação
- * do perfil em public.usuarios, dados_privados_usuario e perfis_prestador após o primeiro login.
+ * Integrado ao Supabase (Auth + PostgREST) com suporte a redirecionamento de deep link (login-callback),
+ * tratamento amigável de erros e logs de diagnóstico seguros.
  */
 class UserRepository(private val context: Context) {
 
     private val userDao = AppDatabase.getDatabase(context).userDao()
     private val sessionManager = SessionManager(context)
 
-    /**
-     * Preserva temporariamente os dados de cadastro até a confirmação do e-mail.
-     */
+    companion object {
+        private const val TAG = "AuthFlow"
+        private const val REDIRECT_URL = "com.tqfapp.android://login-callback"
+    }
+
     private fun savePendingRegistrationData(user: User) {
         val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
         val key = user.email.trim().lowercase()
@@ -43,9 +46,6 @@ class UserRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Recupera os dados salvos do cadastro pendente por e-mail.
-     */
     private fun getPendingRegistrationData(email: String): User? {
         val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
         val key = email.trim().lowercase()
@@ -76,9 +76,6 @@ class UserRepository(private val context: Context) {
         )
     }
 
-    /**
-     * Limpa os dados de cadastro pendente após a criação bem-sucedida do perfil público.
-     */
     private fun clearPendingRegistrationData(email: String) {
         val prefs = context.getSharedPreferences("tqf_pending_registration", Context.MODE_PRIVATE)
         val key = email.trim().lowercase()
@@ -98,43 +95,40 @@ class UserRepository(private val context: Context) {
     }
 
     /**
-     * Registra o usuário no Supabase Auth. Salva os dados de perfil no Supabase se houver sessão ativa
-     * ou preserva os dados com segurança para criação no primeiro login se a confirmação de e-mail for exigida.
+     * Registra o usuário no Supabase Auth usando redirectUrl para deep link.
      */
     fun registerUser(user: User, passwordRaw: String): Result<User> = runBlocking {
         try {
-            // Salva dados do cadastro temporariamente
+            Log.d(TAG, "signUp iniciado para e-mail domain: ${user.email.substringAfter("@")}")
             savePendingRegistrationData(user)
 
-            // 1. Criar a conta no Supabase Auth
-            SupabaseClient.auth.signUpWith(Email) {
+            SupabaseClient.auth.signUpWith(Email, redirectUrl = "com.tqfapp.android://login-callback") {
                 email = user.email
                 password = passwordRaw
             }
+
+            Log.d(TAG, "signUp resposta recebida com sucesso")
 
             val authUser = SupabaseClient.auth.currentUserOrNull()
             val authSession = SupabaseClient.auth.currentSessionOrNull()
 
             if (authUser == null) {
                 return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado! Foi enviado um link de confirmação para o seu e-mail. Por favor, confirme para ativar sua conta.")
+                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
                 )
             }
 
             val authUid = authUser.id
 
-            // Se a confirmação de e-mail estiver ativa e não houver sessão autenticada de imediato
             if (authSession == null) {
                 return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado com sucesso! Por favor, acesse seu e-mail para confirmar a conta antes do primeiro acesso.")
+                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
                 )
             }
 
-            // 2. Se houver sessão autenticada ativa, insere as tabelas públicas imediatamente no Supabase
             createPublicProfileTablesInSupabase(authUid, user)
             clearPendingRegistrationData(user.email)
 
-            // Salva sessão local no SharedPreferences e Room
             sessionManager.saveLogin(authUid)
             UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
 
@@ -143,13 +137,9 @@ class UserRepository(private val context: Context) {
 
             Result.success(roomUser)
         } catch (e: Exception) {
-            val errorMessage = when {
-                e.message?.contains("already registered", ignoreCase = true) == true -> "Este e-mail já está cadastrado no sistema."
-                e.message?.contains("Password should be at least", ignoreCase = true) == true -> "A senha deve conter no mínimo 6 caracteres."
-                e.message?.contains("row-level security", ignoreCase = true) == true -> "Cadastro realizado! Por favor, confirme seu e-mail antes de fazer o primeiro login."
-                else -> e.message ?: "Falha ao realizar cadastro no Supabase."
-            }
-            Result.failure(IllegalArgumentException(errorMessage, e))
+            Log.e(TAG, "signUp erro: ${e.javaClass.simpleName} - ${e.message}")
+            val errorMsg = mapAuthExceptionToFriendlyMessage(e)
+            Result.failure(IllegalArgumentException(errorMsg, e))
         }
     }
 
@@ -159,18 +149,18 @@ class UserRepository(private val context: Context) {
      */
     fun loginUser(email: String, passwordRaw: String): Result<User> = runBlocking {
         try {
-            // 1. Autenticar com e-mail e senha no Supabase Auth
+            Log.d(TAG, "signIn iniciado para e-mail domain: ${email.substringAfter("@")}")
             SupabaseClient.auth.signInWith(Email) {
                 this.email = email
                 this.password = passwordRaw
             }
+            Log.d(TAG, "signIn resposta recebida com sucesso")
 
             val authUser = SupabaseClient.auth.currentUserOrNull()
-                ?: return@runBlocking Result.failure(IllegalArgumentException("Falha na autenticação. Verifique suas credenciais."))
+                ?: return@runBlocking Result.failure(IllegalArgumentException("E-mail ou senha incorretos."))
 
             val authUid = authUser.id
 
-            // 2. Verificar se o perfil público já existe em public.usuarios
             var usuarioDto = try {
                 SupabaseClient.postgrest.from("usuarios")
                     .select {
@@ -181,7 +171,6 @@ class UserRepository(private val context: Context) {
                     .decodeSingleOrNull<UsuarioDto>()
             } catch (_: Exception) { null }
 
-            // 3. Se o perfil não existir (primeiro login pós-confirmação), cria usando a sessão recém-autenticada
             if (usuarioDto == null) {
                 val pendingData = getPendingRegistrationData(email)
                 val userToCreate = pendingData ?: User(
@@ -202,7 +191,6 @@ class UserRepository(private val context: Context) {
                 )
             }
 
-            // 4. Salvar sessão usando Supabase Auth como fonte principal
             sessionManager.saveLogin(authUid)
             UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
 
@@ -217,19 +205,12 @@ class UserRepository(private val context: Context) {
 
             Result.success(roomUser)
         } catch (e: Exception) {
-            val errorMessage = when {
-                e.message?.contains("Invalid login credentials", ignoreCase = true) == true -> "E-mail ou senha incorretos."
-                e.message?.contains("Email not confirmed", ignoreCase = true) == true -> "Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada."
-                else -> e.message ?: "Falha na conexão com o Supabase."
-            }
-            Result.failure(IllegalArgumentException(errorMessage, e))
+            Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
+            val errorMsg = mapAuthExceptionToFriendlyMessage(e)
+            Result.failure(IllegalArgumentException(errorMsg, e))
         }
     }
 
-    /**
-     * Método auxiliar para inserir o perfil público (usuarios, dados_privados_usuario e perfis_prestador)
-     * no Supabase sob a sessão autenticada ativa.
-     */
     private suspend fun createPublicProfileTablesInSupabase(authUid: String, user: User) {
         val usuarioDto = UsuarioDto(
             id = authUid,
@@ -262,8 +243,28 @@ class UserRepository(private val context: Context) {
     }
 
     /**
-     * Obtém o usuário atualmente logado na sessão do Supabase Auth.
+     * Mapeia exceções técnicas do Supabase Auth para mensagens amigáveis em português.
      */
+    private fun mapAuthExceptionToFriendlyMessage(e: Throwable): String {
+        val msg = e.message?.lowercase().orEmpty()
+        return when {
+            msg.contains("over_email_send_rate_limit") || msg.contains("rate limit") ->
+                "Muitos e-mails de confirmação foram solicitados. Aguarde um pouco e tente novamente."
+            msg.contains("already registered") || msg.contains("user_already_exists") || msg.contains("already exists") ->
+                "Este e-mail já possui uma conta."
+            msg.contains("invalid_email") || msg.contains("invalid email") ->
+                "Informe um endereço de e-mail válido."
+            msg.contains("network") || msg.contains("connect") || msg.contains("socket") || msg.contains("unknownhost") ->
+                "Não foi possível concluir o cadastro. Verifique sua conexão e tente novamente."
+            msg.contains("invalid login credentials") || msg.contains("invalid credentials") ->
+                "E-mail ou senha incorretos."
+            msg.contains("email not confirmed") ->
+                "Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada."
+            else ->
+                e.message ?: "Não foi possível concluir a operação. Tente novamente."
+        }
+    }
+
     fun getCurrentUser(): User? = runBlocking {
         try {
             val authUser = SupabaseClient.auth.currentUserOrNull()
@@ -292,7 +293,6 @@ class UserRepository(private val context: Context) {
                 }
             }
 
-            // Fallback para Room local se offline
             val userId = sessionManager.getUserId()
             if (userId != null) {
                 val localUser = userDao.getById(userId)
@@ -305,9 +305,6 @@ class UserRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Atualiza o usuário no Room local e no Supabase PostgREST.
-     */
     fun updateUser(user: User): Boolean = runBlocking {
         try {
             userDao.insert(user)
@@ -328,9 +325,6 @@ class UserRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Encerra a sessão no Supabase Auth e no SharedPreferences.
-     */
     fun logout() = runBlocking {
         try {
             SupabaseClient.auth.signOut()

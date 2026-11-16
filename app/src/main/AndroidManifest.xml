@@ -32,13 +32,23 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyB_McFoH4B2jNyGJLi_yg3OaD61fSWdYtY" />
 
-        <!-- Tela Inicial de Login (LAUNCHER) -->
+        <!-- Tela Inicial de Login (LAUNCHER e Deep Link Supabase) -->
         <activity
             android:name=".ui.auth.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep Link Callback do Supabase Auth -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.tqfapp.android"
+                    android:host="login-callback" />
             </intent-filter>
         </activity>
 

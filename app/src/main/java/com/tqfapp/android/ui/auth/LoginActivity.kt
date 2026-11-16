@@ -5,10 +5,13 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tqfapp.android.R
+import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityLoginBinding
 import com.tqfapp.android.ui.home.HomeActivity
 import com.tqfapp.android.utils.UserSessionManager
+import io.github.jan.supabase.auth.handleDeeplinks
+import kotlinx.coroutines.runBlocking
 
 class LoginActivity : AppCompatActivity() {
 
@@ -24,11 +27,35 @@ class LoginActivity : AppCompatActivity() {
 
             userRepository = UserRepository(this)
 
+            handleIncomingIntent(intent)
+
             setupUserTypeToggle()
             setupClickListeners()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Erro ao iniciar Login: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent != null) {
+            handleIncomingIntent(intent)
+        }
+    }
+
+    private fun handleIncomingIntent(intent: Intent) {
+        val data = intent.data
+        if (data != null && data.scheme == "com.tqfapp.android" && data.host == "login-callback") {
+            try {
+                runBlocking {
+                    SupabaseClient.client.handleDeeplinks(intent)
+                }
+                Toast.makeText(this, "E-mail confirmado com sucesso! Faça login para continuar.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
