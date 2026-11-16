@@ -12,21 +12,20 @@ object ServiceRules {
     ): Boolean {
         return when (current) {
             ServiceStatus.PENDENTE ->
-                newStatus == ServiceStatus.EM_ANDAMENTO || newStatus == ServiceStatus.RECUSADO || newStatus == ServiceStatus.CANCELADO
+                newStatus == ServiceStatus.EM_ANDAMENTO || newStatus == ServiceStatus.RECUSADO
 
             ServiceStatus.EM_ANDAMENTO ->
-                newStatus == ServiceStatus.CONCLUIDO || newStatus == ServiceStatus.CANCELADO
+                newStatus == ServiceStatus.CONCLUIDO
 
             ServiceStatus.CONCLUIDO -> false
             ServiceStatus.RECUSADO -> false
-            ServiceStatus.CANCELADO -> false
         }
     }
 
     fun statusAfterAcceptedProposal(
         current: ServiceStatus
     ): ServiceStatus {
-        return if (current != ServiceStatus.CONCLUIDO && current != ServiceStatus.CANCELADO) {
+        return if (current != ServiceStatus.CONCLUIDO) {
             ServiceStatus.EM_ANDAMENTO
         } else {
             current

@@ -151,38 +151,61 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun acceptServiceRequest(request: ServiceRequestItem) {
-        val serviceRepository = com.tqfapp.android.data.repository.ServiceRepository(requireContext())
-        val result = serviceRepository.acceptRequest(request.serviceId)
+        val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
+        val acceptedService = Service(
+            id = request.serviceId.ifEmpty { UUID.randomUUID().toString() },
+            title = request.title,
+            description = request.description,
+            category = request.category,
+            clientId = "c1",
+            clientName = request.clientName,
+            providerId = "p1",
+            providerName = "João Ferreira",
+            providerPhone = request.clientPhone,
+            status = ServiceStatus.EM_ANDAMENTO,
+            date = "Hoje"
+        )
 
-        if (result.isSuccess) {
-            allRequests.remove(request)
-            requestAdapter.updateList(allRequests)
-
-            val phone = serviceRepository.getUserPhone(request.clientId) ?: request.clientPhone
-            Toast.makeText(requireContext(), "Solicitação aceita via Supabase RPC! Abrindo WhatsApp...", Toast.LENGTH_SHORT).show()
-
-            openWhatsApp(phone, "Olá ${request.clientName}! Aceitei sua solicitação no TQFapp: '${request.title}'. Vamos acertar os detalhes?")
-        } else {
-            showToast("Falha ao aceitar solicitação: ${result.exceptionOrNull()?.message}")
+        try {
+            serviceDao.insert(acceptedService)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+
+        allRequests.remove(request)
+        requestAdapter.updateList(allRequests)
+
+        Toast.makeText(requireContext(), "Solicitação aceita! Adicionada à aba 'Contratações'. Liberação do WhatsApp...", Toast.LENGTH_LONG).show()
+
+        // Abre direcionamento direto no WhatsApp
+        openWhatsApp(request.clientPhone, "Olá ${request.clientName}! Aceitei sua solicitação de serviço no TQFapp: '${request.title}'. Vamos alinhar os detalhes?")
     }
 
     private fun refuseServiceRequest(request: ServiceRequestItem) {
-        if (request.targetProviderId == null) {
-            showToast("Solicitação geral não pode ser recusada individualmente.")
-            return
+        val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
+        val refusedService = Service(
+            id = request.serviceId.ifEmpty { UUID.randomUUID().toString() },
+            title = request.title,
+            description = request.description,
+            category = request.category,
+            clientId = "c1",
+            clientName = request.clientName,
+            providerId = "p1",
+            providerName = "João Ferreira",
+            status = ServiceStatus.RECUSADO,
+            date = "Hoje"
+        )
+
+        try {
+            serviceDao.insert(refusedService)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
 
-        val serviceRepository = com.tqfapp.android.data.repository.ServiceRepository(requireContext())
-        val result = serviceRepository.refuseRequest(request.serviceId)
+        allRequests.remove(request)
+        requestAdapter.updateList(allRequests)
 
-        if (result.isSuccess) {
-            allRequests.remove(request)
-            requestAdapter.updateList(allRequests)
-            showToast("Solicitação recusada. O cliente receberá sugestões de outros prestadores.")
-        } else {
-            showToast("Falha ao recusar solicitação: ${result.exceptionOrNull()?.message}")
-        }
+        showToast("Solicitação recusada. O cliente receberá sugestões de outros prestadores.")
     }
 
     private fun openWhatsApp(phoneNumber: String, message: String) {
@@ -262,10 +285,10 @@ class ProviderHomeFragment : Fragment() {
         val title: String,
         val description: String,
         val location: String,
-        val budget: String = "",
-        val postedTime: String = "Agora",
+        val budget: String,
+        val postedTime: String,
         val clientPhone: String = "11999998888",
-        val avatarRes: Int = R.drawable.ic_profile
+        val avatarRes: Int
     )
 
     // Adapter for Service Requests

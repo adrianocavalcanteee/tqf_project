@@ -443,24 +443,35 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Plota o Marcador Azul e o Círculo de alcance da localização do Cliente no Mapa
+     * Plota a Bolinha Azul Clássica e o Círculo de alcance da localização do Cliente no Mapa
      */
     private fun setupClientLocationMarker() {
         val map = googleMap ?: return
         val currentUser = try { UserRepository(requireContext()).getCurrentUser() } catch (_: Exception) { null }
         val clientPos = getOrInitClientLocation()
 
-        val clientName = currentUser?.name ?: "Cliente (Você)"
+        val clientName = currentUser?.name ?: "Casa (Sua Localização)"
         val clientAddress = currentUser?.address ?: "Av. Djalma Batista, 1661 - Chapada, Manaus - AM"
 
-        // Marcador Azul (Azure Pin) da Localização Cadastrada do Cliente
-        map.addMarker(
-            MarkerOptions()
-                .position(clientPos)
-                .title("📍 $clientName")
-                .snippet("Endereço: $clientAddress")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+        // Converte o Vector Drawable da Bolinha Azul estilo Google Maps
+        val customDotIcon = MapUtils.getBitmapDescriptorFromVector(
+            requireContext(),
+            R.drawable.ic_user_location_dot
         )
+
+        val markerOptions = MarkerOptions()
+            .position(clientPos)
+            .title("📍 $clientName")
+            .snippet("Endereço: $clientAddress")
+            .anchor(0.5f, 0.5f) // Centraliza a bolinha exatamente sobre o ponto das coordenadas
+
+        if (customDotIcon != null) {
+            markerOptions.icon(customDotIcon)
+        } else {
+            markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+        }
+
+        map.addMarker(markerOptions)
 
         // Círculo Translúcido Azul indicando o raio da área do cliente
         map.addCircle(
@@ -511,7 +522,8 @@ class HomeFragment : Fragment() {
             rating = professional.rating,
             bio = professional.bio,
             latitude = professional.latitude,
-            longitude = professional.longitude
+            longitude = professional.longitude,
+            address = professional.location
         )
 
         parentFragmentManager.beginTransaction()

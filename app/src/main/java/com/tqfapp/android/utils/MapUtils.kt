@@ -1,9 +1,14 @@
 package com.tqfapp.android.utils
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.util.Log
+import androidx.annotation.DrawableRes
+import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -16,12 +21,27 @@ import com.tqfapp.android.R
 object MapUtils {
 
     /**
+     * Converte um Vector Drawable (ex: R.drawable.ic_user_location_dot) em um BitmapDescriptor
+     * para uso como ícone de Marcador personalizado no Google Maps.
+     */
+    fun getBitmapDescriptorFromVector(
+        context: Context,
+        @DrawableRes vectorResId: Int
+    ): BitmapDescriptor? {
+        val drawable = ContextCompat.getDrawable(context, vectorResId) ?: return null
+        drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
+        val bitmap = Bitmap.createBitmap(
+            drawable.intrinsicWidth,
+            drawable.intrinsicHeight,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        drawable.draw(canvas)
+        return BitmapDescriptorFactory.fromBitmap(bitmap)
+    }
+
+    /**
      * Aplica um estilo visual personalizado em formato JSON ao Google Maps a partir de um recurso raw.
-     *
-     * @param context Contexto da aplicação ou fragmento.
-     * @param googleMap Instância do GoogleMap.
-     * @param rawResId ID do recurso raw do arquivo JSON de estilo (padrão R.raw.map_style).
-     * @return Boolean indicando se o estilo foi aplicado com sucesso.
      */
     fun applyCustomMapStyle(
         context: Context,
@@ -59,13 +79,6 @@ object MapUtils {
 
     /**
      * Configura e centraliza o mapa na localização do escritório do prestador.
-     *
-     * @param googleMap Instância do GoogleMap inicializada.
-     * @param latitude Coordenada de latitude do escritório.
-     * @param longitude Coordenada de longitude do escritório.
-     * @param title Título exibido no marcador (ex: "Escritório do Prestador").
-     * @param snippet Subtítulo ou detalhes adicionais no marcador.
-     * @param zoomLevel Nível de zoom inicial do mapa (padrão 15f).
      */
     fun setupOfficeLocationOnMap(
         googleMap: GoogleMap,
