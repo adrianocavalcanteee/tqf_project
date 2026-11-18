@@ -74,7 +74,15 @@ class DescricaoServicoActivity : AppCompatActivity() {
         setLoading(true)
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                ServiceRepository(applicationContext).createDirectRequest(
+                val repository = ServiceRepository(applicationContext)
+                // O número digitado é o que o prestador consultará após o aceite (dados_privados_usuario).
+                val phoneSaved = repository.saveCurrentUserPhone(phone)
+                if (phoneSaved.isFailure) {
+                    return@withContext Result.failure<Unit>(
+                        IllegalStateException("Não foi possível salvar seu WhatsApp. Tente novamente.")
+                    )
+                }
+                repository.createDirectRequest(
                     title = title,
                     description = description,
                     category = provider.category.orEmpty(),
@@ -82,7 +90,7 @@ class DescricaoServicoActivity : AppCompatActivity() {
                     providerName = provider.name,
                     clientName = currentUser?.name.orEmpty(),
                     clientPhone = phone
-                )
+                ).map { }
             }
             setLoading(false)
 

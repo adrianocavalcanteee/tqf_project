@@ -61,7 +61,10 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
 
         val isPending = solicitacao.status == StatusSolicitacao.PENDENTE
         val inProgress = solicitacao.status == StatusSolicitacao.EM_ANDAMENTO
+        // Chamado geral (sem prestador alvo) não pode ser recusado individualmente: só aceito.
+        val isDirected = solicitacao.providerId.isNotBlank()
         layoutDecision.visibility = if (isPending) View.VISIBLE else View.GONE
+        btnRefuse.visibility = if (isDirected) View.VISIBLE else View.GONE
         btnFinish.visibility = if (inProgress) View.VISIBLE else View.GONE
 
         val whatsAppUrl = solicitacao.whatsAppUrl(
@@ -71,6 +74,7 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
         btnWhatsApp.setOnClickListener { whatsAppUrl?.let { openWhatsApp(it) } }
 
         txtStateHint.text = when {
+            isPending && !isDirected -> "Chamado geral da sua categoria. Aceite para liberar o contato com o cliente pelo WhatsApp."
             isPending -> "Aceite para liberar o contato com o cliente pelo WhatsApp. Se recusar, o cliente receberá sugestões de outros prestadores."
             inProgress && whatsAppUrl == null -> "Serviço aceito, mas o cliente não informou um telefone válido."
             inProgress -> "Serviço aceito. Combine os detalhes pelo WhatsApp e conclua ao finalizar."
@@ -116,19 +120,19 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
     }
 
     private fun runAction(
-        action: () -> Solicitacao?,
+        action: () -> Result<Solicitacao>,
         successMessage: String,
         finishAfter: Boolean = false
     ) {
         setLoading(true)
         lifecycleScope.launch {
-            val updated = withContext(Dispatchers.IO) { action() }
+            val result = withContext(Dispatchers.IO) { action() }
             setLoading(false)
 
-            if (updated == null) {
+            val updated = result.getOrElse { e ->
                 Toast.makeText(
                     this@AvaliarSolicitacaoActivity,
-                    "Ação não permitida para o status atual (${solicitacao.status.label()}).",
+                    e.message ?: "Não foi possível atualizar a solicitação. Tente novamente.",
                     Toast.LENGTH_LONG
                 ).show()
                 return@launch

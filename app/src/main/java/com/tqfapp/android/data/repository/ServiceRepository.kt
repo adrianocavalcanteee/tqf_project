@@ -7,10 +7,17 @@ import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.contratacoesDoPrestador
 import com.tqfapp.android.data.model.historicoDoCliente
+import com.tqfapp.android.data.model.label
 import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
 import com.tqfapp.android.data.network.dto.SolicitacaoServicoDto
+import io.github.jan.supabase.exceptions.HttpRequestException
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
+import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.UUID
 
 /**
@@ -177,42 +184,22 @@ class ServiceRepository(private val context: Context) {
     }
 
     /**
-     * Aceite: PENDENTE -> EM_ANDAMENTO. Retorna a solicitação atualizada (com o telefone do cliente
-     * para liberar o WhatsApp) ou null se a transição não for permitida.
+     * Aceite: PENDENTE -> EM_ANDAMENTO via RPC `aceitar_solicitacao` (o RLS não permite UPDATE direto).
+     * O Room só é atualizado após a confirmação do Supabase. Em caso de sucesso, a solicitação volta
+     * com o telefone do cliente (liberado pelo RLS após o aceite) para habilitar o WhatsApp.
      */
-    fun acceptRequest(service: Service): Service? = runBlocking {
-        if (!ServiceRules.canChangeStatus(service.status, ServiceStatus.EM_ANDAMENTO)) return@runBlocking null
-        val providerId = SupabaseClient.auth.currentUserOrNull()?.id ?: service.providerId
+    fun acceptRequest(service: Service): Result<Service> =
+        runStatusRpc(service, ServiceStatus.EM_ANDAMENTO, "aceitar_solicitacao")
 
-        try {
-            SupabaseClient.postgrest.from("solicitacoes_servico")
-                .update(
-                    mapOf(
-                        "status" to ServiceStatus.EM_ANDAMENTO.name,
-                        "accepted_provider_id" to providerId
-                    )
-                ) {
-                    filter { eq("id", service.id) }
-                }
-        } catch (_: Exception) {}
+    /** Recusa: PENDENTE -> RECUSADO via RPC. Só vale para solicitações direcionadas ao prestador. */
+    fun refuseRequest(service: Service): Result<Service> =
+        runStatusRpc(service, ServiceStatus.RECUSADO, "recusar_solicitacao")
 
-        val phone = service.clientPhone?.takeIf { it.isNotBlank() } ?: getUserPhone(service.clientId)
-        val updated = service.copy(
-            status = ServiceStatus.EM_ANDAMENTO,
-            providerId = providerId,
-            clientPhone = phone.ifBlank { null }
-        )
-        try { serviceDao.insert(updated) } catch (_: Exception) {}
-        updated
-    }
-
-    /** Recusa: PENDENTE -> RECUSADO. O cliente recebe sugestões da mesma categoria. */
-    fun refuseRequest(service: Service): Service? =
-        changeStatus(service, ServiceStatus.RECUSADO)
-
-    /** Conclusão (exclusiva do prestador): EM_ANDAMENTO -> CONCLUIDO. */
-    fun finalizeRequest(service: Service): Service? =
-        changeStatus(service, ServiceStatus.CONCLUIDO)
+    /** Conclusão (exclusiva do prestador aceito): EM_ANDAMENTO -> CONCLUIDO via RPC. */
+    fun finalizeRequest(service: Service): Result<Service> =
+        runStatusRpc(service, ServiceStatus.CONCLUIDO, "finalizar_solicitacao") {
+            put("p_status", ServiceStatus.CONCLUIDO.name)
+        }
 
     fun getUserPhone(userId: String): String = runBlocking {
         try {
@@ -225,19 +212,70 @@ class ServiceRepository(private val context: Context) {
         }
     }
 
-    private fun changeStatus(service: Service, newStatus: ServiceStatus): Service? = runBlocking {
-        if (!ServiceRules.canChangeStatus(service.status, newStatus)) return@runBlocking null
-
+    /**
+     * Salva o WhatsApp informado pelo contratante em dados_privados_usuario (RLS: id = auth.uid()),
+     * para que o prestador leia esse mesmo número após o aceite. Atualiza só o telefone,
+     * preservando endereço/CEP; cria a linha caso ainda não exista.
+     */
+    fun saveCurrentUserPhone(phone: String): Result<Unit> = runBlocking {
         try {
-            SupabaseClient.postgrest.from("solicitacoes_servico")
-                .update(mapOf("status" to newStatus.name)) {
-                    filter { eq("id", service.id) }
+            val userId = SupabaseClient.auth.currentUserOrNull()?.id
+                ?: throw IllegalStateException("Usuário não autenticado.")
+            val updated = SupabaseClient.postgrest.from("dados_privados_usuario")
+                .update(mapOf("phone" to phone)) {
+                    select()
+                    filter { eq("id", userId) }
                 }
-        } catch (_: Exception) {}
+                .decodeList<DadosPrivadosUsuarioDto>()
+            if (updated.isEmpty()) {
+                SupabaseClient.postgrest.from("dados_privados_usuario")
+                    .insert(DadosPrivadosUsuarioDto(id = userId, phone = phone))
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
-        val updated = service.copy(status = newStatus)
+    private fun runStatusRpc(
+        service: Service,
+        newStatus: ServiceStatus,
+        function: String,
+        extraParams: JsonObjectBuilder.() -> Unit = {}
+    ): Result<Service> = runBlocking {
+        if (!ServiceRules.canChangeStatus(service.status, newStatus)) {
+            return@runBlocking Result.failure(
+                IllegalStateException("Ação não permitida para o status atual (${service.status.label()}).")
+            )
+        }
+
+        val dto = try {
+            SupabaseClient.postgrest.rpc(function, buildJsonObject {
+                put("p_solicitacao_id", service.id)
+                extraParams()
+            }).decodeAs<SolicitacaoServicoDto>()
+        } catch (e: Exception) {
+            return@runBlocking Result.failure(IllegalStateException(friendlyError(e), e))
+        }
+
+        val remoteStatus = ServiceStatus.entries.firstOrNull { it.name.equals(dto.status, ignoreCase = true) }
+            ?: newStatus
+        val providerId = dto.acceptedProviderId ?: dto.targetProviderId ?: service.providerId
+        val phone = if (remoteStatus == ServiceStatus.EM_ANDAMENTO) {
+            getUserPhone(service.clientId).ifBlank { service.clientPhone.orEmpty() }.ifBlank { null }
+        } else {
+            service.clientPhone
+        }
+
+        val updated = service.copy(status = remoteStatus, providerId = providerId, clientPhone = phone)
         try { serviceDao.insert(updated) } catch (_: Exception) {}
-        updated
+        Result.success(updated)
+    }
+
+    private fun friendlyError(e: Exception): String = when (e) {
+        is PostgrestRestException -> e.error.ifBlank { "O servidor recusou a operação." }
+        is HttpRequestException -> "Sem conexão com o servidor. Verifique sua internet e tente novamente."
+        else -> "Não foi possível atualizar a solicitação. Tente novamente."
     }
 
     /** Converte o DTO remoto preservando dados que só existem no cache local (nomes, telefone). */
