@@ -6,9 +6,11 @@ import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.dto.AvaliacaoDto
 import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
 import com.tqfapp.android.data.network.dto.PerfilPrestadorDto
 import com.tqfapp.android.data.network.dto.UsuarioDto
+import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.UserSessionManager
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.runBlocking
@@ -33,7 +35,7 @@ class UserRepository(private val context: Context) {
         prefs.edit().apply {
             putString("${key}_name", user.name)
             putBoolean("${key}_is_provider", user.isProvider)
-            putString("${key}_phone", user.phone)
+            putString("${key}_phone", user.telephone)
             putString("${key}_category", user.category)
             putString("${key}_specialty", user.specialty)
             putString("${key}_bio", user.bio)
@@ -68,7 +70,7 @@ class UserRepository(private val context: Context) {
             specialty = specialty,
             bio = bio,
             address = address,
-            phone = phone,
+            telephone = phone,
             profilePictureUri = profilePic,
             latitude = lat,
             longitude = lng
@@ -90,6 +92,84 @@ class UserRepository(private val context: Context) {
             remove("${key}_longitude")
             remove("${key}_profile_pic")
             apply()
+        }
+    }
+
+    /**
+     * Busca os prestadores reais cadastrados no Supabase PostgREST (public.usuarios + public.perfis_prestador)
+     * com fallback de Geocoder para o endereço cadastrado e cache no Room local.
+     */
+    fun getProviders(): List<User> = runBlocking {
+        try {
+            val usuariosDtoList = try {
+                SupabaseClient.postgrest.from("usuarios")
+                    .select {
+                        filter {
+                            eq("is_provider", true)
+                        }
+                    }
+                    .decodeList<UsuarioDto>()
+            } catch (_: Exception) { emptyList() }
+
+            val perfisDtoList = try {
+                SupabaseClient.postgrest.from("perfis_prestador")
+                    .select()
+                    .decodeList<PerfilPrestadorDto>()
+            } catch (_: Exception) { emptyList() }
+
+            // Nota média e quantidade de avaliações reais por prestador
+            val ratingsByProvider = try {
+                SupabaseClient.postgrest.from("avaliacoes")
+                    .select()
+                    .decodeList<AvaliacaoDto>()
+                    .groupBy { it.reviewedId }
+            } catch (_: Exception) { emptyMap() }
+
+            if (usuariosDtoList.isNotEmpty()) {
+                val resultList = usuariosDtoList.map { uDto ->
+                    val perfilDto = perfisDtoList.find { it.userId == uDto.id }
+                    val reviews = ratingsByProvider[uDto.id].orEmpty()
+
+                    var lat = perfilDto?.latitude
+                    var lng = perfilDto?.longitude
+                    val officeAddr = perfilDto?.officeAddress
+
+                    if ((lat == null || lng == null || (lat == 0.0 && lng == 0.0)) && !officeAddr.isNullOrBlank()) {
+                        val coords = LocationUtils.getCoordinatesFromAddress(context, officeAddr)
+                        if (coords != null) {
+                            lat = coords.latitude
+                            lng = coords.longitude
+                        }
+                    }
+
+                    User(
+                        id = uDto.id,
+                        name = uDto.name,
+                        email = "",
+                        isProvider = true,
+                        category = perfilDto?.category,
+                        specialty = perfilDto?.specialty,
+                        bio = perfilDto?.bio,
+                        services = perfilDto?.serviceTags ?: emptyList(),
+                        address = officeAddr,
+                        profilePictureUri = uDto.profilePictureUrl,
+                        portfolioUris = perfilDto?.portfolioUrls ?: emptyList(),
+                        rating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average(),
+                        reviewCount = reviews.size,
+                        latitude = lat,
+                        longitude = lng
+                    )
+                }
+                resultList.forEach { try { userDao.insert(it) } catch (_: Exception) {} }
+                return@runBlocking resultList
+            }
+
+            val localProviders = try { userDao.getAll().filter { it.isProvider } } catch (_: Exception) { emptyList() }
+            if (localProviders.isNotEmpty()) return@runBlocking localProviders
+
+            emptyList()
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 
@@ -221,7 +301,7 @@ class UserRepository(private val context: Context) {
 
         val dadosPrivadosDto = DadosPrivadosUsuarioDto(
             id = authUid,
-            phone = user.phone,
+            phone = user.telephone,
             address = user.address
         )
         SupabaseClient.postgrest.from("dados_privados_usuario").insert(dadosPrivadosDto)
@@ -236,7 +316,7 @@ class UserRepository(private val context: Context) {
                 latitude = user.latitude,
                 longitude = user.longitude,
                 portfolioUrls = user.portfolioUris,
-                serviceTags = emptyList()
+                serviceTags = user.services
             )
             SupabaseClient.postgrest.from("perfis_prestador").insert(perfilPrestadorDto)
         }
@@ -294,6 +374,7 @@ class UserRepository(private val context: Context) {
                     var latitude: Double? = null
                     var longitude: Double? = null
                     var portfolioUris: List<String> = emptyList()
+                    var services: List<String> = emptyList()
 
                     if (usuarioDto.isProvider) {
                         val perfil = try {
@@ -310,6 +391,7 @@ class UserRepository(private val context: Context) {
                             latitude = perfil.latitude
                             longitude = perfil.longitude
                             portfolioUris = perfil.portfolioUrls
+                            services = perfil.serviceTags
                         }
                     }
 
@@ -322,8 +404,9 @@ class UserRepository(private val context: Context) {
                         category = category,
                         specialty = specialty,
                         bio = bio,
+                        services = services,
                         address = address,
-                        phone = phone,
+                        telephone = phone,
                         profilePictureUri = usuarioDto.profilePictureUrl,
                         portfolioUris = portfolioUris,
                         latitude = latitude,
@@ -359,7 +442,7 @@ class UserRepository(private val context: Context) {
 
             val dadosPrivadosDto = DadosPrivadosUsuarioDto(
                 id = user.id,
-                phone = user.phone,
+                phone = user.telephone,
                 address = user.address
             )
             try {
@@ -376,7 +459,7 @@ class UserRepository(private val context: Context) {
                     latitude = user.latitude,
                     longitude = user.longitude,
                     portfolioUrls = user.portfolioUris,
-                    serviceTags = emptyList()
+                    serviceTags = user.services
                 )
                 try {
                     SupabaseClient.postgrest.from("perfis_prestador").upsert(perfilPrestadorDto)

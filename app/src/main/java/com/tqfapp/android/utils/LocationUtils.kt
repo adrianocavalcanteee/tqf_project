@@ -3,6 +3,7 @@ package com.tqfapp.android.utils
 import android.content.Context
 import android.location.Address
 import android.location.Geocoder
+import android.location.Location
 import com.google.android.gms.maps.model.LatLng
 import java.util.Locale
 
@@ -11,6 +12,15 @@ import java.util.Locale
  * e obter o endereço formatado a partir de latitude e longitude (Reverse Geocoding).
  */
 object LocationUtils {
+
+    /**
+     * Distância em linha reta (km) entre dois pontos, usada no card "• 2,1 km" da Home.
+     */
+    fun distanceKm(from: LatLng, to: LatLng): Double {
+        val result = FloatArray(1)
+        Location.distanceBetween(from.latitude, from.longitude, to.latitude, to.longitude, result)
+        return result[0] / 1000.0
+    }
 
     /**
      * Converte um texto de endereço (ex: "Av. Paulista, 1000, São Paulo") em coordenadas LatLng.

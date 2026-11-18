@@ -6,40 +6,30 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.repository.ServiceRepository
+import com.tqfapp.android.data.repository.UserRepository
+import com.tqfapp.android.ui.request.AvaliarSolicitacaoActivity
+import com.tqfapp.android.ui.request.SugestaoPrestadoresActivity
+import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+/**
+ * Notificações derivadas do status real das solicitações (sem itens fixos e sem chat interno).
+ * Push remoto (FCM) ainda é uma lacuna de backend; ver REGRAS_DE_NEGOCIO_E_FLUXO.md.
+ */
 class NotificationsFragment : Fragment() {
 
-    private val notificationsList = mutableListOf(
-        NotificationItem(
-            id = "1",
-            title = "Proposta Aceita",
-            message = "Sua proposta para o serviço de Instalação de Ar-Condicionado foi aceita pelo cliente.",
-            time = "Há 10 min",
-            iconRes = R.drawable.ic_check_circle,
-            isUnread = true
-        ),
-        NotificationItem(
-            id = "2",
-            title = "Nova Mensagem no Chat",
-            message = "Mariana Costa enviou uma nova mensagem: 'Qual o horário previsto para a visita?'",
-            time = "Há 45 min",
-            iconRes = R.drawable.ic_chat,
-            isUnread = true
-        ),
-        NotificationItem(
-            id = "3",
-            title = "Serviço Concluído",
-            message = "O serviço de Reparo Hidráulico foi marcado como concluído. Deixe uma avaliação!",
-            time = "Ontem",
-            iconRes = R.drawable.ic_briefcase,
-            isUnread = false
-        )
-    )
+    private val notificationsList = mutableListOf<NotificationItem>()
+    private var adapter: NotificationAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -55,15 +45,14 @@ class NotificationsFragment : Fragment() {
         val btnBack = view.findViewById<View>(R.id.btnBackNotifications)
         val btnClearAll = view.findViewById<View>(R.id.btnClearAllNotifications)
         val rvNotifications = view.findViewById<RecyclerView>(R.id.rvNotifications)
-        val layoutEmpty = view.findViewById<View>(R.id.layoutEmptyNotifications)
 
         btnBack?.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
-        val adapter = NotificationAdapter(notificationsList) { item ->
+        adapter = NotificationAdapter(notificationsList) { item ->
             item.isUnread = false
-            Toast.makeText(requireContext(), item.title, Toast.LENGTH_SHORT).show()
+            item.onOpen?.invoke()
         }
 
         rvNotifications?.layoutManager = LinearLayoutManager(requireContext())
@@ -71,11 +60,85 @@ class NotificationsFragment : Fragment() {
 
         btnClearAll?.setOnClickListener {
             notificationsList.clear()
-            adapter.notifyDataSetChanged()
-            rvNotifications?.visibility = View.GONE
-            layoutEmpty?.visibility = View.VISIBLE
-            Toast.makeText(requireContext(), "Todas as notificações foram limpas", Toast.LENGTH_SHORT).show()
+            renderList(view)
         }
+
+        loadNotifications(view)
+    }
+
+    private fun loadNotifications(view: View) {
+        val appContext = requireContext().applicationContext
+        val isProvider = UserSessionManager.isProviderUser(appContext)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val services = withContext(Dispatchers.IO) {
+                try {
+                    val user = UserRepository(appContext).getCurrentUser() ?: return@withContext emptyList()
+                    val repository = ServiceRepository(appContext)
+                    if (isProvider) {
+                        repository.getProviderRequests(user.id, user.category)
+                    } else {
+                        repository.getClientRequests(user.id).filter { it.status != ServiceStatus.PENDENTE }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList()
+                }
+            }
+
+            if (this@NotificationsFragment.view == null) return@launch
+            val seenRefused = UserSessionManager.getSeenRefusedRequestIds(appContext)
+            notificationsList.clear()
+            notificationsList.addAll(services.mapNotNull { toNotification(it, seenRefused) })
+            renderList(view)
+        }
+    }
+
+    private fun toNotification(service: Service, seenRefused: Set<String>): NotificationItem? {
+        val who = service.providerName.ifBlank { "O prestador" }
+        return when (service.status) {
+            ServiceStatus.PENDENTE -> NotificationItem(
+                id = service.id,
+                title = "Nova solicitação",
+                message = "${service.clientName.ifBlank { "Um cliente" }} solicitou: ${service.title}",
+                time = service.date,
+                iconRes = R.drawable.ic_briefcase,
+                isUnread = true,
+                onOpen = { startActivity(AvaliarSolicitacaoActivity.newIntent(requireContext(), service)) }
+            )
+            ServiceStatus.EM_ANDAMENTO -> NotificationItem(
+                id = service.id,
+                title = "Solicitação aceita",
+                message = "$who aceitou \"${service.title}\" e entrará em contato pelo seu WhatsApp.",
+                time = service.date,
+                iconRes = R.drawable.ic_check_circle,
+                isUnread = false
+            )
+            ServiceStatus.RECUSADO -> NotificationItem(
+                id = service.id,
+                title = "Prestador indisponível",
+                message = "$who não pode atender \"${service.title}\". Toque para ver outros prestadores de ${service.category}.",
+                time = service.date,
+                iconRes = R.drawable.ic_bell,
+                isUnread = service.id !in seenRefused,
+                onOpen = { startActivity(SugestaoPrestadoresActivity.newIntent(requireContext(), service)) }
+            )
+            ServiceStatus.CONCLUIDO -> NotificationItem(
+                id = service.id,
+                title = "Serviço concluído",
+                message = "\"${service.title}\" foi concluído. Avalie o atendimento no seu Histórico.",
+                time = service.date,
+                iconRes = R.drawable.ic_star,
+                isUnread = false
+            )
+            ServiceStatus.CANCELADO -> null
+        }
+    }
+
+    private fun renderList(view: View) {
+        adapter?.notifyDataSetChanged()
+        val isEmpty = notificationsList.isEmpty()
+        view.findViewById<View>(R.id.rvNotifications)?.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        view.findViewById<View>(R.id.layoutEmptyNotifications)?.visibility = if (isEmpty) View.VISIBLE else View.GONE
     }
 
     data class NotificationItem(
@@ -84,7 +147,8 @@ class NotificationsFragment : Fragment() {
         val message: String,
         val time: String,
         val iconRes: Int,
-        var isUnread: Boolean
+        var isUnread: Boolean,
+        val onOpen: (() -> Unit)? = null
     )
 
     private inner class NotificationAdapter(

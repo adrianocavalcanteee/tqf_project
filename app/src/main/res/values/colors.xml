@@ -10,6 +10,10 @@
     <color name="green_badge_text">#10B981</color>
     <color name="star_yellow">#FFB800</color>
     <color name="notification_red">#FF3B30</color>
+    <color name="refused_bg">#FFF4F2</color>
+    <color name="refused_stroke">#FFD5CF</color>
+    <color name="refused_text">#C2410C</color>
+    <color name="whatsapp_green">#1FA855</color>
 
     <!-- Neutrals & Backgrounds -->
     <color name="bg_app">#F8F9FD</color>

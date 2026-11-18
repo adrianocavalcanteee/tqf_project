@@ -16,7 +16,7 @@ import com.tqfapp.android.data.model.User
 
 @Database(
     entities = [User::class, Service::class, Proposal::class, Review::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Card de prestador (Home e Sugestões). Leitura em Z/F:
+    1) Nome + Categoria + Badge de disponibilidade
+    2) Métricas agrupadas: nota • avaliações • distância
+    3) Preço à esquerda e CTA "Ver perfil" à direita (alvo de toque >= 48dp)
+    Todos os textos são preenchidos pelo ProfessionalAdapter; os valores tools: são só para o preview.
+-->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,6 +14,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
+    android:clickable="true"
+    android:focusable="true"
     app:cardCornerRadius="16dp"
     app:cardElevation="1dp"
     app:strokeColor="@color/card_stroke"
@@ -18,132 +27,85 @@
         android:layout_height="wrap_content"
         android:padding="14dp">
 
-        <!-- Avatar Image -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imgAvatar"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_profile"
+            android:importantForAccessibility="no"
             app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.SmallComponent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="ContentDescription" />
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Online Green Dot -->
-        <View
-            android:id="@+id/viewOnlineDot"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:background="@drawable/bg_online_dot"
-            app:layout_constraintEnd_toEndOf="@id/imgAvatar"
-            app:layout_constraintTop_toTopOf="@id/imgAvatar" />
-
-        <!-- Name + Verified -->
-        <LinearLayout
-            android:id="@+id/layoutName"
+        <!-- 1. Nome -->
+        <TextView
+            android:id="@+id/txtName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
             android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
             app:layout_constraintStart_toEndOf="@id/imgAvatar"
             app:layout_constraintEnd_toStartOf="@id/txtStatusBadge"
-            app:layout_constraintTop_toTopOf="@id/imgAvatar">
+            app:layout_constraintTop_toTopOf="@id/imgAvatar"
+            tools:text="Carlos Mendes" />
 
-            <TextView
-                android:id="@+id/txtName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Carlos Mendes"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:id="@+id/imgVerified"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_marginStart="4dp"
-                android:src="@drawable/ic_verified"
-                tools:ignore="ContentDescription" />
-        </LinearLayout>
-
-        <!-- Status Badge "Atende hoje" -->
+        <!-- 1. Badge de disponibilidade -->
         <TextView
             android:id="@+id/txtStatusBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_green"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
             android:text="⚡ Atende hoje"
             android:textColor="@color/green_badge_text"
             android:textSize="11sp"
             android:textStyle="bold"
-            android:background="@drawable/bg_badge_green"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/layoutName"
-            app:layout_constraintBottom_toBottomOf="@id/layoutName" />
+            app:layout_constraintTop_toTopOf="@id/txtName"
+            app:layout_constraintBottom_toBottomOf="@id/txtName"
+            tools:visibility="visible" />
 
-        <!-- Specialty / Profession -->
+        <!-- 1. Categoria / especialidade -->
         <TextView
-            android:id="@+id/txtSpecialty"
+            android:id="@+id/txtCategory"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Eletricista Residencial"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
-            app:layout_constraintStart_toStartOf="@id/layoutName"
+            app:layout_constraintStart_toStartOf="@id/txtName"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/layoutName" />
+            app:layout_constraintTop_toBottomOf="@id/txtName"
+            tools:text="Reformas e Reparos • Eletricista" />
 
-        <!-- Rating + Location Info -->
-        <LinearLayout
-            android:id="@+id/layoutRatingLocation"
+        <!-- 2. Métricas agrupadas -->
+        <TextView
+            android:id="@+id/txtMetrics"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
             android:layout_marginTop="6dp"
-            app:layout_constraintStart_toStartOf="@id/layoutName"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            app:drawableStartCompat="@drawable/ic_star"
+            app:layout_constraintStart_toStartOf="@id/txtName"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/txtSpecialty">
+            app:layout_constraintTop_toBottomOf="@id/txtCategory"
+            tools:text="4,9 • 86 avaliações • 2,1 km" />
 
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_star"
-                tools:ignore="ContentDescription" />
-
-            <TextView
-                android:id="@+id/txtRating"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:text="4,9 (86)"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginStart="12dp"
-                android:src="@drawable/ic_location"
-                tools:ignore="ContentDescription" />
-
-            <TextView
-                android:id="@+id/txtLocation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:text="2,1 km • Centro"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Divider Line -->
         <View
             android:id="@+id/divider"
             android:layout_width="0dp"
@@ -152,23 +114,40 @@
             android:background="@color/card_stroke"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/layoutRatingLocation" />
+            app:layout_constraintTop_toBottomOf="@id/txtMetrics" />
 
-        <!-- Ver Perfil Button -->
+        <!-- 3. Preço transparente (à esquerda) -->
+        <TextView
+            android:id="@+id/txtPrice"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnViewProfile"
+            app:layout_constraintTop_toTopOf="@id/btnViewProfile"
+            app:layout_constraintBottom_toBottomOf="@id/btnViewProfile"
+            tools:text="R$ 80,00 / hora" />
+
+        <!-- 3. CTA (à direita), alvo de toque mínimo 48x48dp -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnViewProfile"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:paddingHorizontal="20dp"
             android:text="Ver perfil"
+            android:textAllCaps="false"
             android:textColor="@color/white"
             android:textSize="13sp"
-            android:textAllCaps="false"
             android:textStyle="bold"
             app:backgroundTint="@color/brand_blue"
             app:cornerRadius="12dp"
             app:elevation="0dp"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/divider" />
 
