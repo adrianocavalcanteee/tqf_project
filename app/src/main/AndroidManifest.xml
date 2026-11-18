@@ -60,6 +60,25 @@
         <!-- Tela Principal Home -->
         <activity
             android:name=".ui.home.HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- Fluxo de Solicitação de Serviço -->
+        <activity
+            android:name=".ui.request.ProviderProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.request.DescricaoServicoActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.request.AvaliarSolicitacaoActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.request.SugestaoPrestadoresActivity"
             android:exported="false" />
 
     </application>

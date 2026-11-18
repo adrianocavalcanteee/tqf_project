@@ -1,6 +1,5 @@
 package com.tqfapp.android.ui.contracts
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -20,10 +19,10 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
-import com.tqfapp.android.business.ServiceStatus
-import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.business.ReviewRules
 import com.tqfapp.android.data.model.Review
-import com.tqfapp.android.ui.chat.ChatFragment
+import com.tqfapp.android.data.repository.ReviewRepository
+import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.utils.UserSessionManager
 import java.util.UUID
 
@@ -57,13 +56,13 @@ class ServiceDetailsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val title = arguments?.getString(ARG_TITLE) ?: "Instalação de tomadas e iluminação"
-        val profName = arguments?.getString(ARG_PROFESSIONAL) ?: "Carlos Mendes"
-        val specialty = arguments?.getString(ARG_SPECIALTY) ?: "Eletricista Residencial"
-        val schedule = arguments?.getString(ARG_SCHEDULE) ?: "15 de mar. de 2025 • 09:00"
-        val price = arguments?.getString(ARG_PRICE) ?: "R$ 150,00"
-        val status = arguments?.getString(ARG_STATUS) ?: "Em andamento"
-        val description = arguments?.getString(ARG_DESC) ?: "Serviço completo de passagem de fiação, instalação de tomadas 20A e luminárias LED em cômodos residenciais."
+        val title = arguments?.getString(ARG_TITLE).orEmpty()
+        val profName = arguments?.getString(ARG_PROFESSIONAL).orEmpty()
+        val specialty = arguments?.getString(ARG_SPECIALTY).orEmpty()
+        val schedule = arguments?.getString(ARG_SCHEDULE).orEmpty()
+        val price = arguments?.getString(ARG_PRICE).orEmpty()
+        val status = arguments?.getString(ARG_STATUS).orEmpty()
+        val description = arguments?.getString(ARG_DESC).orEmpty()
 
         view.findViewById<TextView>(R.id.txtDetailTitle)?.text = title
         view.findViewById<TextView>(R.id.txtDetailProfessionalName)?.text = profName
@@ -99,61 +98,32 @@ class ServiceDetailsFragment : Fragment() {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
-        val btnDetailAction = view.findViewById<MaterialButton>(R.id.btnDetailAction)
         val btnReviewService = view.findViewById<MaterialButton>(R.id.btnReviewService)
         val isCompleted = status.equals("Concluído", ignoreCase = true) || status.equals("Concluídos", ignoreCase = true)
 
-        if (isCompleted) {
-            btnDetailAction?.visibility = View.GONE
+        // Somente o Contratante avalia, e somente serviços CONCLUIDO.
+        if (isCompleted && !isProvider) {
             btnReviewService?.visibility = View.VISIBLE
             btnReviewService?.text = "⭐ Avaliar Atendimento"
             btnReviewService?.setOnClickListener {
                 showReviewDialog(title, profName)
             }
         } else {
-            // Em andamento
-            if (isProvider) {
-                btnDetailAction?.visibility = View.VISIBLE
-                btnDetailAction?.text = "Falar no WhatsApp"
-                btnDetailAction?.setOnClickListener {
-                    openWhatsApp("11999998888", "Olá! Entrando em contato sobre o serviço '$title'.")
-                }
-
-                btnReviewService?.visibility = View.VISIBLE
-                btnReviewService?.text = "Concluir Serviço"
-                btnReviewService?.setOnClickListener {
-                    updateServiceStatusToCompleted(title)
-                }
-            } else {
-                btnDetailAction?.visibility = View.VISIBLE
-                btnDetailAction?.text = "Falar com o Prestador"
-                btnDetailAction?.setOnClickListener {
-                    openWhatsApp("11999998888", "Olá $profName! Acompanhando o serviço '$title'.")
-                }
-                btnReviewService?.visibility = View.GONE
-            }
-        }
-    }
-
-    private fun updateServiceStatusToCompleted(title: String) {
-        try {
-            val serviceDao = AppDatabase.getDatabase(requireContext()).serviceDao()
-            val services = serviceDao.getAll()
-            val target = services.find { it.title.equals(title, ignoreCase = true) }
-            if (target != null) {
-                val updated = target.copy(status = ServiceStatus.CONCLUIDO)
-                serviceDao.update(updated)
-            }
-            Toast.makeText(requireContext(), "Serviço concluído com sucesso!", Toast.LENGTH_SHORT).show()
-            requireActivity().onBackPressedDispatcher.onBackPressed()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(requireContext(), "Serviço concluído!", Toast.LENGTH_SHORT).show()
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+            // Serviços em andamento: o contato é feito pelo prestador via WhatsApp e a conclusão
+            // acontece na aba "Contratações" (AvaliarSolicitacaoActivity). Sem chat interno.
+            btnReviewService?.visibility = View.GONE
         }
     }
 
     private fun showReviewDialog(title: String, targetName: String) {
+        // Avaliação exige a solicitação real e o prestador real; não há IDs de fallback.
+        val serviceId = arguments?.getString(ARG_SERVICE_ID).orEmpty()
+        val providerId = arguments?.getString(ARG_PROVIDER_ID).orEmpty()
+        if (serviceId.isBlank() || providerId.isBlank()) {
+            Toast.makeText(requireContext(), "Não foi possível identificar este serviço para avaliação.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_review, null)
         val ratingBar = dialogView.findViewById<RatingBar>(R.id.ratingBar)
         val etComment = dialogView.findViewById<TextInputEditText>(R.id.etReviewComment)
@@ -164,40 +134,18 @@ class ServiceDetailsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton("Enviar Avaliação") { _, _ ->
-                val ratingValue = ratingBar?.rating?.toInt() ?: 5
-                val commentText = etComment?.text?.toString()?.trim().orEmpty().ifEmpty { "Atendimento excelente e serviço concluído com sucesso." }
-
-                val reviewDao = AppDatabase.getDatabase(requireContext()).reviewDao()
-                val review = Review(
-                    id = UUID.randomUUID().toString(),
-                    serviceId = "s1",
-                    providerId = "p1",
-                    clientId = "c1",
-                    rating = ratingValue,
-                    comment = commentText,
-                    date = "Hoje"
-                )
-                try {
-                    reviewDao.insert(review)
-                    Toast.makeText(requireContext(), "Avaliação enviada com sucesso!", Toast.LENGTH_SHORT).show()
-                } catch (_: Exception) {
-                    Toast.makeText(requireContext(), "Avaliação registrada!", Toast.LENGTH_SHORT).show()
+                val ratingValue = ratingBar?.rating?.toInt() ?: 0
+                if (!ReviewRules.isValidRating(ratingValue)) {
+                    Toast.makeText(requireContext(), "Escolha de 1 a 5 estrelas.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
                 }
+                val commentText = etComment?.text?.toString()?.trim().orEmpty()
+
+                ReviewRepository(requireContext()).addReview(serviceId, providerId, ratingValue, commentText)
+                Toast.makeText(requireContext(), "Avaliação registrada para $targetName!", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancelar", null)
             .show()
-    }
-
-    private fun openWhatsApp(phoneNumber: String, message: String) {
-        try {
-            val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
-            val url = "https://api.whatsapp.com/send?phone=55$cleanPhone&text=${Uri.encode(message)}"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(requireContext(), "Não foi possível abrir o WhatsApp no dispositivo.", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private inner class PortfolioPreviewAdapter(
@@ -231,6 +179,9 @@ class ServiceDetailsFragment : Fragment() {
         private const val ARG_PRICE = "arg_price"
         private const val ARG_STATUS = "arg_status"
         private const val ARG_DESC = "arg_desc"
+        private const val ARG_SERVICE_ID = "arg_service_id"
+        private const val ARG_PROVIDER_ID = "arg_provider_id"
+        private const val ARG_CLIENT_ID = "arg_client_id"
 
         fun newInstance(
             title: String,
@@ -239,7 +190,10 @@ class ServiceDetailsFragment : Fragment() {
             schedule: String,
             price: String,
             status: String,
-            desc: String
+            desc: String,
+            serviceId: String = "",
+            providerId: String = "",
+            clientId: String = ""
         ): ServiceDetailsFragment {
             val fragment = ServiceDetailsFragment()
             val args = Bundle().apply {
@@ -250,6 +204,9 @@ class ServiceDetailsFragment : Fragment() {
                 putString(ARG_PRICE, price)
                 putString(ARG_STATUS, status)
                 putString(ARG_DESC, desc)
+                putString(ARG_SERVICE_ID, serviceId)
+                putString(ARG_PROVIDER_ID, providerId)
+                putString(ARG_CLIENT_ID, clientId)
             }
             fragment.arguments = args
             return fragment

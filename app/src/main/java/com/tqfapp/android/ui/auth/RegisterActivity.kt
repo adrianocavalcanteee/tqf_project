@@ -259,7 +259,7 @@ class RegisterActivity : AppCompatActivity() {
             id = UUID.randomUUID().toString(),
             name = name,
             email = email,
-            phone = phone,
+            telephone = phone,
             isProvider = isProviderMode,
             category = category,
             specialty = specialty,

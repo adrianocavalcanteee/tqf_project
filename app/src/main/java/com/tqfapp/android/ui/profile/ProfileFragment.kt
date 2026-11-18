@@ -25,9 +25,12 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
+import com.tqfapp.android.data.model.label
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.repository.ReviewRepository
+import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentProfileBinding
 import com.tqfapp.android.databinding.ItemRecentServiceBinding
@@ -608,40 +611,50 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupRecentServices() {
-        val services = listOf(
-            RecentServiceItem(
-                title = "Instalação de ar-condicionado",
-                providerName = "com Paulo Oliveira",
-                date = "12 de mar. de 2025",
-                status = "Concluído",
-                imageRes = R.drawable.ic_profile
-            ),
-            RecentServiceItem(
-                title = "Reparo em vazamento",
-                providerName = "com Roberto Silva",
-                date = "03 de mar. de 2025",
-                status = "Concluído",
-                imageRes = R.drawable.ic_profile
-            )
-        )
-
-        binding.rvRecentServices.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = RecentServiceAdapter(services) { service ->
-                val detailsFragment = ServiceDetailsFragment.newInstance(
-                    title = service.title,
-                    professional = service.providerName.removePrefix("com "),
-                    specialty = "Especialista TQF",
-                    schedule = service.date,
-                    price = "R$ 150,00",
-                    status = service.status,
-                    desc = "Serviço contratado. Acompanhe os detalhes e avaliações."
-                )
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, detailsFragment)
-                    .addToBackStack(null)
-                    .commit()
+        if (_binding == null) return
+        try {
+            val user = currentUser
+            val filteredServices = when {
+                user == null -> emptyList()
+                isProviderProfile -> ServiceRepository(requireContext()).getAllServices().filter { it.providerId == user.id }
+                else -> ServiceRepository(requireContext()).getAllServices().filter { it.clientId == user.id }
             }
+
+            val recentServices = filteredServices.take(4)
+            val mappedRecentItems = recentServices.map { s ->
+                RecentServiceItem(
+                    title = s.title,
+                    providerName = if (isProviderProfile) "Cliente: ${s.clientName}" else "com ${s.providerName}",
+                    date = s.date,
+                    status = s.status.label(),
+                    imageRes = R.drawable.ic_profile
+                )
+            }
+
+            binding.rvRecentServices.apply {
+                layoutManager = LinearLayoutManager(requireContext())
+                adapter = RecentServiceAdapter(mappedRecentItems) { item ->
+                    val s = recentServices[mappedRecentItems.indexOfFirst { it === item }]
+                    val detailsFragment = ServiceDetailsFragment.newInstance(
+                        title = s.title,
+                        professional = s.providerName.ifBlank { "Prestador" },
+                        specialty = s.category,
+                        schedule = s.date,
+                        price = if (s.price > 0) User.formatCurrency(s.price) else "Valor negociado",
+                        status = s.status.label(),
+                        desc = s.description,
+                        serviceId = s.id,
+                        providerId = s.providerId,
+                        clientId = s.clientId
+                    )
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, detailsFragment)
+                        .addToBackStack(null)
+                        .commit()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -652,6 +665,11 @@ class ProfileFragment : Fragment() {
     // Repasse de ciclo de vida do MapView
     override fun onResume() {
         super.onResume()
+        try {
+            loadUserDataFromRoom()
+            setupRecentServices()
+            setupClientReviews()
+        } catch (_: Exception) {}
         if (isMapCreated && _binding != null) {
             try { binding.mapOffice.onResume() } catch (_: Exception) {}
         }
@@ -749,27 +767,16 @@ class ProfileFragment : Fragment() {
     private fun setupClientReviews() {
         if (_binding == null) return
         try {
-            val db = try { AppDatabase.getDatabase(requireContext()) } catch (_: Exception) { null }
-            val reviewDao = db?.reviewDao()
-            val dbReviews = try { reviewDao?.getAll() } catch (_: Exception) { null } ?: emptyList()
+            val reviewRepository = ReviewRepository(requireContext())
+            val currentUserId = currentUser?.id ?: return
+            val dbReviews = reviewRepository.getReviewsByClient(currentUserId)
 
-            val reviewsList = if (dbReviews.isNotEmpty()) {
-                dbReviews.map {
-                    ClientReviewItem(
-                        reviewerName = "Prestador de Serviço",
-                        date = it.date,
-                        comment = "⭐ ${it.rating}/5 - ${it.comment}",
-                        avatarRes = R.drawable.ic_profile
-                    )
-                }
-            } else {
-                listOf(
-                    ClientReviewItem(
-                        reviewerName = "Paulo Oliveira",
-                        date = "12 de mar. de 2025",
-                        comment = "⭐ 5/5 - Ótima cliente! Comunicação excelente e pagamento pontual.",
-                        avatarRes = R.drawable.ic_profile
-                    )
+            val reviewsList = dbReviews.map {
+                ClientReviewItem(
+                    reviewerName = "Prestador Avaliado",
+                    date = it.date,
+                    comment = "⭐ ${it.rating}/5 - ${it.comment}",
+                    avatarRes = R.drawable.ic_profile
                 )
             }
 

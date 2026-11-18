@@ -12,6 +12,7 @@ object UserSessionManager {
     private const val KEY_IS_PROVIDER = "key_is_provider"
     private const val KEY_USER_NAME = "key_user_name"
     private const val KEY_USER_EMAIL = "key_user_email"
+    private const val KEY_SEEN_REFUSED_IDS = "key_seen_refused_ids"
 
     private fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -34,6 +35,18 @@ object UserSessionManager {
      */
     fun isProviderUser(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_IS_PROVIDER, false)
+    }
+
+    /**
+     * IDs de solicitações recusadas cujo aviso/sugestões o contratante já visualizou.
+     */
+    fun getSeenRefusedRequestIds(context: Context): Set<String> {
+        return getPreferences(context).getStringSet(KEY_SEEN_REFUSED_IDS, emptySet()) ?: emptySet()
+    }
+
+    fun markRefusedRequestSeen(context: Context, requestId: String) {
+        val updated = getSeenRefusedRequestIds(context) + requestId
+        getPreferences(context).edit().putStringSet(KEY_SEEN_REFUSED_IDS, updated).apply()
     }
 
     /**

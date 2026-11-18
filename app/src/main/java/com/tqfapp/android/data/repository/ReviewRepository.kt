@@ -3,42 +3,108 @@ package com.tqfapp.android.data.repository
 import android.content.Context
 import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.model.Review
+import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.dto.AvaliacaoDto
+import kotlinx.coroutines.runBlocking
+import java.util.UUID
 
-/**
- * Repositório desacoplado para Avaliações.
- * Concentra buscas por prestador/cliente e inclusão de avaliações.
- */
 class ReviewRepository(private val context: Context) {
 
     private val reviewDao = AppDatabase.getDatabase(context).reviewDao()
 
-    fun getAllReviews(): List<Review> {
-        return try {
+    fun getAllReviews(): List<Review> = runBlocking {
+        try {
             reviewDao.getAll()
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    fun getReviewsByProvider(providerId: String): List<Review> {
-        return try {
+    fun getReviewsByProvider(providerId: String): List<Review> = runBlocking {
+        try {
+            val dtoList = try {
+                SupabaseClient.postgrest.from("avaliacoes")
+                    .select { filter { eq("reviewed_id", providerId) } }
+                    .decodeList<AvaliacaoDto>()
+            } catch (_: Exception) { emptyList() }
+
+            if (dtoList.isNotEmpty()) {
+                dtoList.map { dto ->
+                    Review(
+                        id = dto.id ?: UUID.randomUUID().toString(),
+                        serviceId = dto.serviceRequestId,
+                        providerId = dto.reviewedId,
+                        clientId = dto.reviewerId,
+                        rating = dto.rating,
+                        comment = dto.comment ?: "",
+                        date = dto.createdAt?.take(10) ?: "Hoje"
+                    )
+                }
+            } else {
+                reviewDao.getByProvider(providerId)
+            }
+        } catch (e: Exception) {
             reviewDao.getByProvider(providerId)
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 
-    fun getReviewsByClient(clientId: String): List<Review> {
-        return try {
+    fun getReviewsByClient(clientId: String): List<Review> = runBlocking {
+        try {
+            val dtoList = try {
+                SupabaseClient.postgrest.from("avaliacoes")
+                    .select { filter { eq("reviewer_id", clientId) } }
+                    .decodeList<AvaliacaoDto>()
+            } catch (_: Exception) { emptyList() }
+
+            if (dtoList.isNotEmpty()) {
+                dtoList.map { dto ->
+                    Review(
+                        id = dto.id ?: UUID.randomUUID().toString(),
+                        serviceId = dto.serviceRequestId,
+                        providerId = dto.reviewedId,
+                        clientId = dto.reviewerId,
+                        rating = dto.rating,
+                        comment = dto.comment ?: "",
+                        date = dto.createdAt?.take(10) ?: "Hoje"
+                    )
+                }
+            } else {
+                reviewDao.getByClient(clientId)
+            }
+        } catch (e: Exception) {
             reviewDao.getByClient(clientId)
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 
-    fun addReview(review: Review): Boolean {
-        return try {
+    fun addReview(serviceRequestId: String, reviewedId: String, rating: Int, comment: String): Boolean = runBlocking {
+        try {
+            val authUser = SupabaseClient.auth.currentUserOrNull()
+            val reviewerId = authUser?.id ?: throw IllegalStateException("Usuário não autenticado.")
+
+            val existing = reviewDao.existsForService(serviceRequestId)
+            if (existing) return@runBlocking false
+
+            val dto = AvaliacaoDto(
+                serviceRequestId = serviceRequestId,
+                reviewerId = reviewerId,
+                reviewedId = reviewedId,
+                rating = rating,
+                comment = comment
+            )
+
+            SupabaseClient.postgrest.from("avaliacoes").insert(dto)
+
+            val review = Review(
+                id = UUID.randomUUID().toString(),
+                serviceId = serviceRequestId,
+                providerId = reviewedId,
+                clientId = reviewerId,
+                rating = rating,
+                comment = comment,
+                date = "Hoje"
+            )
             reviewDao.insert(review)
+
             true
         } catch (e: Exception) {
             false
