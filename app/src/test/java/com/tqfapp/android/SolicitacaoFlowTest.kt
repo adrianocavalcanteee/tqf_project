@@ -6,6 +6,7 @@ import com.tqfapp.android.data.model.StatusSolicitacao
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.model.contratacoesDoPrestador
 import com.tqfapp.android.data.model.historicoDoCliente
+import com.tqfapp.android.data.model.resumoParaPrestador
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -84,5 +85,14 @@ class SolicitacaoFlowTest {
     fun priceLabelIsTransparent() {
         assertEquals("Valor negociável", provider("a", "Eventos").priceLabel())
         assertTrue(provider("a", "Eventos").copy(hourlyRate = 80.0).priceLabel().endsWith("/ hora"))
+    }
+
+    @Test
+    fun providerSummaryShowsOpenRequestUrgencyLocationAndDistance() {
+        val aberto = solicitacao("1", StatusSolicitacao.PENDENTE, providerId = "")
+            .copy(urgency = "HOJE", locationText = "Centro, Recife")
+
+        assertEquals("Pedido aberto • Hoje • Centro, Recife • 2,5 km", aberto.resumoParaPrestador(2.5))
+        assertEquals("Solicitação direta", solicitacao("2", StatusSolicitacao.PENDENTE).resumoParaPrestador(null))
     }
 }

@@ -769,11 +769,13 @@ class ProfileFragment : Fragment() {
         try {
             val reviewRepository = ReviewRepository(requireContext())
             val currentUserId = currentUser?.id ?: return
-            val dbReviews = reviewRepository.getReviewsByClient(currentUserId)
+            // Avaliações RECEBIDAS pelo cliente (reviewed_id = cliente). As que ele escreveu
+            // pertencem ao perfil do prestador avaliado e não devem aparecer aqui.
+            val dbReviews = reviewRepository.getReviewsByProvider(currentUserId)
 
             val reviewsList = dbReviews.map {
                 ClientReviewItem(
-                    reviewerName = "Prestador Avaliado",
+                    reviewerName = "Prestador",
                     date = it.date,
                     comment = "⭐ ${it.rating}/5 - ${it.comment}",
                     avatarRes = R.drawable.ic_profile

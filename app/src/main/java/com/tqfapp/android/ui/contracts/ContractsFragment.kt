@@ -4,11 +4,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.model.label
@@ -17,6 +19,7 @@ import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentContractsBinding
 import com.tqfapp.android.databinding.ItemContractBinding
 import com.tqfapp.android.ui.request.AvaliarSolicitacaoActivity
+import com.tqfapp.android.ui.request.SugestaoPrestadoresActivity
 import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,7 +27,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Aba por papel do usuário:
- * - Contratante ➔ "Histórico": SOMENTE solicitações CONCLUIDO.
+ * - Contratante ➔ "Minhas Solicitações": todas as solicitações com o status atual
+ *   (pendente, aceita/em andamento, recusada, concluída), para acompanhar a resposta do prestador.
  * - Prestador ➔ "Contratações": SOMENTE solicitações aceitas (EM_ANDAMENTO).
  */
 class ContractsFragment : Fragment() {
@@ -52,8 +56,8 @@ class ContractsFragment : Fragment() {
             binding.txtHeaderTitle.text = "Contratações em Andamento"
             binding.txtHeaderSubtitle.text = "Serviços que você aceitou"
         } else {
-            binding.txtHeaderTitle.text = "Histórico de Serviços"
-            binding.txtHeaderSubtitle.text = "Serviços concluídos"
+            binding.txtHeaderTitle.text = "Minhas Solicitações"
+            binding.txtHeaderSubtitle.text = "Acompanhe a resposta dos prestadores"
         }
 
         contractAdapter = ContractAdapter(isProvider) { service -> openDetails(service) }
@@ -79,7 +83,7 @@ class ContractsFragment : Fragment() {
                     val list = when {
                         user == null -> emptyList()
                         isProvider -> repository.getProviderContracts(user.id)
-                        else -> repository.getClientHistory(user.id)
+                        else -> repository.getClientRequests(user.id).sortedByDescending { it.date }
                     }
                     user to list
                 } catch (e: Exception) {
@@ -100,7 +104,7 @@ class ContractsFragment : Fragment() {
         binding.txtEmptyContracts.text = when {
             user == null -> "Faça login para ver seus serviços."
             isProvider -> "Nenhuma contratação em andamento. Aceite solicitações na tela inicial."
-            else -> "Você ainda não tem serviços concluídos."
+            else -> "Você ainda não fez solicitações."
         }
     }
 
@@ -111,7 +115,13 @@ class ContractsFragment : Fragment() {
             return
         }
 
-        // Contratante: detalhes do serviço concluído + avaliação
+        // Contratante: recusada ➔ sugestões de outros prestadores da mesma categoria
+        if (service.status == ServiceStatus.RECUSADO) {
+            startActivity(SugestaoPrestadoresActivity.newIntent(requireContext(), service))
+            return
+        }
+
+        // Contratante: detalhes da solicitação (avaliação liberada somente se concluída)
         val detailsFragment = ServiceDetailsFragment.newInstance(
             title = service.title,
             professional = service.providerName.ifBlank { "Prestador" },
@@ -161,16 +171,29 @@ class ContractsFragment : Fragment() {
                 txtProfessionalName.text = if (isProvider) {
                     item.clientName.ifBlank { "Cliente" }
                 } else {
-                    item.providerName.ifBlank { "Prestador" }
+                    item.providerName.ifBlank {
+                        // Pedido aberto ainda sem prestador: aguardando o primeiro aceite da categoria.
+                        if (item.providerId.isBlank()) "Aguardando prestador" else "Prestador"
+                    }
                 }
                 txtSpecialty.text = item.category
                 txtServiceTitle.text = item.title
                 txtScheduleDate.text = item.date
                 txtContractPrice.text = formatPrice(item.price)
                 txtStatusBadge.text = item.status.label()
+                txtStatusBadge.setTextColor(
+                    ContextCompat.getColor(
+                        root.context,
+                        if (item.status == ServiceStatus.RECUSADO) R.color.refused_text else R.color.green_badge_text
+                    )
+                )
                 txtRatingValue.visibility = View.GONE
                 imgVerified.visibility = View.GONE
-                btnDetails.text = if (isProvider) "Contato e conclusão" else "Detalhes"
+                btnDetails.text = when {
+                    isProvider -> "Contato e conclusão"
+                    item.status == ServiceStatus.RECUSADO -> "Ver outros prestadores"
+                    else -> "Detalhes"
+                }
 
                 btnDetails.setOnClickListener { onDetailsClick(item) }
                 root.setOnClickListener { onDetailsClick(item) }

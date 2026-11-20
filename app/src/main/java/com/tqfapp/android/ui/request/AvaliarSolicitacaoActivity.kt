@@ -13,6 +13,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tqfapp.android.data.model.Solicitacao
 import com.tqfapp.android.data.model.StatusSolicitacao
 import com.tqfapp.android.data.model.label
+import com.tqfapp.android.data.model.resumoParaPrestador
 import com.tqfapp.android.data.model.whatsAppUrl
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.databinding.ActivityAvaliarSolicitacaoBinding
@@ -57,11 +58,14 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
             "Cliente: ${solicitacao.clientName.ifBlank { "Cliente" }}",
             solicitacao.date
         ).filter { it.isNotBlank() }.joinToString(" • ")
-        txtDescription.text = solicitacao.description
+        txtDescription.text = listOf(
+            solicitacao.description,
+            solicitacao.resumoParaPrestador(distanceKm = null)
+        ).filter { it.isNotBlank() }.joinToString("\n\n")
 
         val isPending = solicitacao.status == StatusSolicitacao.PENDENTE
         val inProgress = solicitacao.status == StatusSolicitacao.EM_ANDAMENTO
-        // Chamado geral (sem prestador alvo) não pode ser recusado individualmente: só aceito.
+        // Pedido aberto (sem prestador alvo) não pode ser recusado individualmente: só aceito.
         val isDirected = solicitacao.providerId.isNotBlank()
         layoutDecision.visibility = if (isPending) View.VISIBLE else View.GONE
         btnRefuse.visibility = if (isDirected) View.VISIBLE else View.GONE
@@ -74,7 +78,7 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
         btnWhatsApp.setOnClickListener { whatsAppUrl?.let { openWhatsApp(it) } }
 
         txtStateHint.text = when {
-            isPending && !isDirected -> "Chamado geral da sua categoria. Aceite para liberar o contato com o cliente pelo WhatsApp."
+            isPending && !isDirected -> "Pedido aberto da sua categoria. Aceite para liberar o contato com o cliente pelo WhatsApp."
             isPending -> "Aceite para liberar o contato com o cliente pelo WhatsApp. Se recusar, o cliente receberá sugestões de outros prestadores."
             inProgress && whatsAppUrl == null -> "Serviço aceito, mas o cliente não informou um telefone válido."
             inProgress -> "Serviço aceito. Combine os detalhes pelo WhatsApp e conclua ao finalizar."

@@ -17,17 +17,21 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.tqfapp.android.R
+import com.google.android.gms.maps.model.LatLng
 import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.model.resumoParaPrestador
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.ui.request.AvaliarSolicitacaoActivity
+import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Feed do Prestador: chamados PENDENTE direcionados a ele (ou gerais da sua categoria).
+ * Feed do Prestador: chamados PENDENTE direcionados a ele (ou pedidos abertos da sua categoria),
+ * do mais urgente para o menos urgente.
  * Fluxo: Recebe Solicitação ➔ Avalia a Descrição (AvaliarSolicitacaoActivity) ➔ Aceita ou Recusa.
  */
 class ProviderHomeFragment : Fragment() {
@@ -39,6 +43,8 @@ class ProviderHomeFragment : Fragment() {
     private lateinit var rvRequests: RecyclerView
     private lateinit var etSearchRequests: EditText
     private var txtEmptyRequests: TextView? = null
+    /** Localização do escritório do prestador, para mostrar a distância até o pedido. */
+    private var providerLocation: LatLng? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -68,7 +74,7 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun setupRequestsList() {
-        requestAdapter = ServiceRequestAdapter { request ->
+        requestAdapter = ServiceRequestAdapter({ request -> distanceTo(request) }) { request ->
             startActivity(AvaliarSolicitacaoActivity.newIntent(requireContext(), request))
         }
 
@@ -84,6 +90,7 @@ class ProviderHomeFragment : Fragment() {
             val requests = withContext(Dispatchers.IO) {
                 try {
                     val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext emptyList()
+                    providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
                     ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -96,6 +103,13 @@ class ProviderHomeFragment : Fragment() {
         }
     }
 
+    private fun distanceTo(request: Service): Double? {
+        val from = providerLocation ?: return null
+        val lat = request.latitude ?: return null
+        val lng = request.longitude ?: return null
+        return LocationUtils.distanceKm(from, LatLng(lat, lng))
+    }
+
     private fun applySearch(rawQuery: String) {
         val query = rawQuery.trim()
         val filtered = if (query.isEmpty()) {
@@ -105,6 +119,7 @@ class ProviderHomeFragment : Fragment() {
                 it.title.contains(query, ignoreCase = true) ||
                         it.clientName.contains(query, ignoreCase = true) ||
                         it.category.contains(query, ignoreCase = true) ||
+                        it.locationText.orEmpty().contains(query, ignoreCase = true) ||
                         it.description.contains(query, ignoreCase = true)
             }
         }
@@ -156,6 +171,7 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private class ServiceRequestAdapter(
+        private val distanceOf: (Service) -> Double?,
         private val onEvaluateClick: (Service) -> Unit
     ) : RecyclerView.Adapter<ServiceRequestAdapter.ViewHolder>() {
 
@@ -188,7 +204,7 @@ class ProviderHomeFragment : Fragment() {
             holder.txtPostedTime.text = item.date
             holder.txtRequestTitle.text = item.title
             holder.txtRequestDescription.text = item.description
-            holder.txtLocation.text = if (item.providerId.isNotBlank()) "Solicitação direta" else "Chamado da região"
+            holder.txtLocation.text = item.resumoParaPrestador(distanceOf(item))
 
             holder.btnEvaluateService.setOnClickListener { onEvaluateClick(item) }
             holder.view.setOnClickListener { onEvaluateClick(item) }

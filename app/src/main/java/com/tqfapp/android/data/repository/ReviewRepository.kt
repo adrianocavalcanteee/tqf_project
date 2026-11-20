@@ -76,13 +76,17 @@ class ReviewRepository(private val context: Context) {
         }
     }
 
-    fun addReview(serviceRequestId: String, reviewedId: String, rating: Int, comment: String): Boolean = runBlocking {
+    /**
+     * Grava a avaliação vinculada ao prestador avaliado (reviewed_id) e à solicitação (service_request_id).
+     * Retorna falha se o Supabase recusar (ex.: serviço ainda não concluído) — nada é salvo localmente nesse caso.
+     */
+    fun addReview(serviceRequestId: String, reviewedId: String, rating: Int, comment: String): Result<Unit> = runBlocking {
         try {
             val authUser = SupabaseClient.auth.currentUserOrNull()
             val reviewerId = authUser?.id ?: throw IllegalStateException("Usuário não autenticado.")
 
             val existing = reviewDao.existsForService(serviceRequestId)
-            if (existing) return@runBlocking false
+            if (existing) throw IllegalStateException("Você já avaliou este serviço.")
 
             val dto = AvaliacaoDto(
                 serviceRequestId = serviceRequestId,
@@ -105,9 +109,11 @@ class ReviewRepository(private val context: Context) {
             )
             reviewDao.insert(review)
 
-            true
+            Result.success(Unit)
+        } catch (e: IllegalStateException) {
+            Result.failure(e)
         } catch (e: Exception) {
-            false
+            Result.failure(IllegalStateException("Não foi possível registrar a avaliação. Tente novamente.", e))
         }
     }
 }

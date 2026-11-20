@@ -32,6 +32,7 @@ import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentHomeBinding
 import com.tqfapp.android.databinding.ItemCategoryBinding
 import com.tqfapp.android.ui.notifications.NotificationsFragment
+import com.tqfapp.android.ui.request.DescricaoServicoActivity
 import com.tqfapp.android.ui.request.ProviderProfileActivity
 import com.tqfapp.android.ui.request.SugestaoPrestadoresActivity
 import com.tqfapp.android.utils.LocationUtils
@@ -104,7 +105,17 @@ class HomeFragment : Fragment() {
         setupMapFragment()
         setupMapTouchHandling()
         setupNotificationAndActions()
+        setupOpenRequestButton()
         loadProviders()
+    }
+
+    /** "+": pedido aberto para todos os prestadores da categoria (pré-seleciona o filtro atual). */
+    private fun setupOpenRequestButton() {
+        val isClient = !UserSessionManager.isProviderUser(requireContext())
+        binding.fabOpenRequest.visibility = if (isClient) View.VISIBLE else View.GONE
+        binding.fabOpenRequest.setOnClickListener {
+            startActivity(DescricaoServicoActivity.newOpenRequestIntent(requireContext(), selectedCategoryFilter))
+        }
     }
 
     override fun onResume() {
@@ -441,11 +452,11 @@ class HomeFragment : Fragment() {
         binding.mapTouchOverlay.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    binding.root.requestDisallowInterceptTouchEvent(true)
+                    binding.scrollHome.requestDisallowInterceptTouchEvent(true)
                     false
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    binding.root.requestDisallowInterceptTouchEvent(false)
+                    binding.scrollHome.requestDisallowInterceptTouchEvent(false)
                     false
                 }
                 else -> false

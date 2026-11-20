@@ -35,6 +35,7 @@ import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
+import java.util.Locale
 
 class ProfessionalProfileFragment : Fragment() {
 
@@ -112,7 +113,8 @@ class ProfessionalProfileFragment : Fragment() {
         // Carrega dados dinâmicos passados via Bundle ou do Usuário logado
         val name = currentUser?.name ?: arguments?.getString(ARG_NAME)
         val specialty = currentUser?.specialty ?: currentUser?.category ?: arguments?.getString(ARG_SPECIALTY)
-        val rating = arguments?.getString(ARG_RATING) ?: "4,9 (86 avaliações)"
+        // Sem argumento, a nota é calculada a partir das avaliações reais do prestador (setupReviews).
+        val rating = arguments?.getString(ARG_RATING)
         val bio = currentUser?.bio ?: arguments?.getString(ARG_BIO) ?: "Profissional autônomo com ampla experiência."
         val services = currentUser?.services.orEmpty()
 
@@ -529,6 +531,17 @@ class ProfessionalProfileFragment : Fragment() {
             ReviewRepository(requireContext()).getReviewsByProvider(providerId)
         } else {
             emptyList()
+        }
+
+        if (arguments?.getString(ARG_RATING) == null) {
+            view.findViewById<TextView>(R.id.txtRating)?.text = if (providerReviews.isEmpty()) {
+                "Novo no TQF"
+            } else {
+                val average = providerReviews.map { it.rating }.average()
+                val count = providerReviews.size
+                String.format(Locale.forLanguageTag("pt-BR"), "%.1f (%d %s)", average, count,
+                    if (count == 1) "avaliação" else "avaliações")
+            }
         }
 
         val reviewsList = providerReviews.map {
