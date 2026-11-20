@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -24,6 +25,9 @@ import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.repository.ReviewRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class ServiceDetailsFragment : Fragment() {
@@ -141,8 +145,17 @@ class ServiceDetailsFragment : Fragment() {
                 }
                 val commentText = etComment?.text?.toString()?.trim().orEmpty()
 
-                ReviewRepository(requireContext()).addReview(serviceId, providerId, ratingValue, commentText)
-                Toast.makeText(requireContext(), "Avaliação registrada para $targetName!", Toast.LENGTH_SHORT).show()
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        ReviewRepository(appContext).addReview(serviceId, providerId, ratingValue, commentText)
+                    }
+                    val message = result.fold(
+                        onSuccess = { "Avaliação registrada para $targetName!" },
+                        onFailure = { it.message ?: "Não foi possível registrar a avaliação." }
+                    )
+                    Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+                }
             }
             .setNegativeButton("Cancelar", null)
             .show()
