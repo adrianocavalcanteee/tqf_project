@@ -281,10 +281,12 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/txtCompletedCount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="89"
+                            android:text="0"
+                            tools:text="89"
                             android:textColor="@color/text_primary"
                             android:textSize="14sp"
                             android:textStyle="bold" />

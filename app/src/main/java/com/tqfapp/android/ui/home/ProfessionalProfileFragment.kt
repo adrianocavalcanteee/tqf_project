@@ -30,6 +30,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.repository.ReviewRepository
+import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.LocationUtils
@@ -141,6 +142,7 @@ class ProfessionalProfileFragment : Fragment() {
         setupClickListeners(view, isOwner)
         setupPortfolio(view)
         setupReviews(view)
+        setupCompletedServicesCount(view)
 
         // REGRA: Como este fragmento exibe o perfil de um Prestador, o mapa e o marcador SEMPRE aparecem
         val txtOfficeMapTitle = view.findViewById<View>(R.id.txtOfficeMapTitle)
@@ -578,6 +580,21 @@ class ProfessionalProfileFragment : Fragment() {
                 showToast("Avaliação de ${it.reviewerName}")
             }
         }
+    }
+
+    private fun setupCompletedServicesCount(view: View) {
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val userRepository = UserRepository(requireContext())
+        val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+        val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID)
+
+        val completedCount = if (!targetProviderId.isNullOrEmpty()) {
+            ServiceRepository(requireContext()).getProviderCompletedServices(targetProviderId).size
+        } else {
+            0
+        }
+
+        view.findViewById<TextView>(R.id.txtCompletedCount)?.text = completedCount.toString()
     }
 
 
