@@ -78,20 +78,22 @@
                     android:gravity="center"
                     android:layout_marginBottom="16dp">
 
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/containerAvatar"
-                        android:layout_width="100dp"
-                        android:layout_height="100dp"
-                        app:cardCornerRadius="50dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="@color/brand_blue"
-                        app:strokeWidth="2dp"
-                        android:clickable="true"
-                        android:focusable="true">
+                    <FrameLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clipChildren="false"
+                        android:clipToPadding="false">
 
-                        <FrameLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent">
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/containerAvatar"
+                            android:layout_width="100dp"
+                            android:layout_height="100dp"
+                            app:cardCornerRadius="50dp"
+                            app:cardElevation="0dp"
+                            app:strokeColor="@color/brand_blue"
+                            app:strokeWidth="2dp"
+                            android:clickable="true"
+                            android:focusable="true">
 
                             <ImageView
                                 android:id="@+id/imgRegisterAvatar"
@@ -100,25 +102,28 @@
                                 android:scaleType="centerCrop"
                                 android:src="@drawable/ic_profile"
                                 tools:ignore="ContentDescription" />
+                        </com.google.android.material.card.MaterialCardView>
 
-                            <!-- Camera Badge Overlay -->
-                            <ImageView
-                                android:layout_width="28dp"
-                                android:layout_height="28dp"
-                                android:layout_gravity="bottom|end"
-                                android:background="@drawable/bg_circle_blue"
-                                android:src="@drawable/ic_camera"
-                                android:padding="5dp"
-                                app:tint="@color/white"
-                                tools:ignore="ContentDescription" />
-                        </FrameLayout>
-                    </com.google.android.material.card.MaterialCardView>
+                        <!-- Camera Badge Overlay (posicionado sobre a borda inferior direita) -->
+                        <ImageView
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_marginEnd="-4dp"
+                            android:layout_marginBottom="-4dp"
+                            android:elevation="4dp"
+                            android:background="@drawable/bg_circle_blue"
+                            android:src="@drawable/ic_camera"
+                            android:padding="6dp"
+                            app:tint="@color/white"
+                            tools:ignore="ContentDescription" />
+                    </FrameLayout>
 
                     <TextView
                         android:id="@+id/txtSelectAvatarLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginTop="10dp"
                         android:text="Adicionar Foto de Perfil"
                         android:textColor="@color/brand_blue"
                         android:textSize="13sp"
