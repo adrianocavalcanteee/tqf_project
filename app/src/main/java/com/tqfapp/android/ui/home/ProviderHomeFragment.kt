@@ -186,8 +186,20 @@ class ProviderHomeFragment : Fragment() {
         }
 
         view.findViewById<TextView>(R.id.btnSeeAllRequests)?.setOnClickListener {
-            etSearchRequests.setText("")
-            loadRequests()
+            val appContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val provider = withContext(Dispatchers.IO) {
+                    UserRepository(appContext).getCurrentUser()
+                }
+                val providerId = provider?.id ?: ""
+                val providerCategory = provider?.category
+
+                val fragment = AllRequestsFragment.newInstance(providerId, providerCategory)
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, fragment)
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
     }
 
