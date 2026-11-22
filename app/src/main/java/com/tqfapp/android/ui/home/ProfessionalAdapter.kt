@@ -36,7 +36,6 @@ class ProfessionalAdapter(
             txtPrice.text = provider.priceLabel()
 
             root.setOnClickListener { onProfileClick(provider) }
-            btnViewProfile.setOnClickListener { onProfileClick(provider) }
         }
     }
 
