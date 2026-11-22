@@ -152,10 +152,12 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtQuotesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="8"
+                        android:text="0"
+                        tools:text="8"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -184,10 +186,12 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtActiveServicesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="3"
+                        android:text="0"
+                        tools:text="3"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -216,10 +220,12 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtEarningsCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="R$ 2.450"
+                        android:text="R$ 0,00"
+                        tools:text="R$ 2.450"
                         android:textColor="@color/green_badge_text"
                         android:textSize="15sp"
                         android:textStyle="bold" />
