@@ -179,7 +179,6 @@ class ContractsFragment : Fragment() {
                 txtSpecialty.text = item.category
                 txtServiceTitle.text = item.title
                 txtScheduleDate.text = item.date
-                txtContractPrice.text = formatPrice(item.price)
                 txtStatusBadge.text = item.status.label()
                 txtStatusBadge.setTextColor(
                     ContextCompat.getColor(
