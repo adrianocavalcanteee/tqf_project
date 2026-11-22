@@ -526,19 +526,25 @@ class ProfessionalProfileFragment : Fragment() {
     }
 
     private fun setupReviews(view: View) {
-        val providerId = UserRepository(requireContext()).getCurrentUser()?.id
-        val providerReviews = if (providerId != null) {
-            ReviewRepository(requireContext()).getReviewsByProvider(providerId)
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val userRepository = UserRepository(requireContext())
+        val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+        val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID)
+
+        val providerReviews = if (!targetProviderId.isNullOrEmpty()) {
+            ReviewRepository(requireContext()).getReviewsByProvider(targetProviderId)
         } else {
             emptyList()
         }
+
+        val count = providerReviews.size
+        view.findViewById<TextView>(R.id.txtReviewsTitle)?.text = "Avaliações ($count)"
 
         if (arguments?.getString(ARG_RATING) == null) {
             view.findViewById<TextView>(R.id.txtRating)?.text = if (providerReviews.isEmpty()) {
                 "Novo no TQF"
             } else {
                 val average = providerReviews.map { it.rating }.average()
-                val count = providerReviews.size
                 String.format(Locale.forLanguageTag("pt-BR"), "%.1f (%d %s)", average, count,
                     if (count == 1) "avaliação" else "avaliações")
             }
@@ -599,6 +605,7 @@ class ProfessionalProfileFragment : Fragment() {
 
     companion object {
         private const val ARG_IS_OWNER = "arg_is_owner"
+        private const val ARG_PROVIDER_ID = "arg_provider_id"
         private const val ARG_NAME = "arg_name"
         private const val ARG_SPECIALTY = "arg_specialty"
         private const val ARG_RATING = "arg_rating"
@@ -613,6 +620,7 @@ class ProfessionalProfileFragment : Fragment() {
 
         fun newInstance(
             isOwner: Boolean = false,
+            providerId: String? = null,
             name: String? = null,
             specialty: String? = null,
             rating: String? = null,
@@ -624,6 +632,7 @@ class ProfessionalProfileFragment : Fragment() {
             val fragment = ProfessionalProfileFragment()
             val args = Bundle().apply {
                 putBoolean(ARG_IS_OWNER, isOwner)
+                providerId?.let { putString(ARG_PROVIDER_ID, it) }
                 name?.let { putString(ARG_NAME, it) }
                 specialty?.let { putString(ARG_SPECIALTY, it) }
                 rating?.let { putString(ARG_RATING, it) }

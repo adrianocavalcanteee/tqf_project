@@ -241,7 +241,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:text="5,0 (289 avaliações)"
+                    android:text="Novo no TQF"
+                    tools:text="5,0 (0 avaliações)"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -601,7 +602,8 @@
                     android:id="@+id/txtReviewsTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Avaliações (289)"
+                    android:text="Avaliações (0)"
+                    tools:text="Avaliações (0)"
                     android:textColor="@color/text_primary"
                     android:textSize="17sp"
                     android:textStyle="bold" />
