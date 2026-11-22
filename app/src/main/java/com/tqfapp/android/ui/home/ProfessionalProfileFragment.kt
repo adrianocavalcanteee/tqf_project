@@ -275,9 +275,22 @@ class ProfessionalProfileFragment : Fragment() {
             showToast("Ver todo o portfólio")
         }
 
-        view.findViewById<View>(R.id.btnSeeAllReviews)?.setOnClickListener {
-            showToast("Ver todas as avaliações")
+        val openAllReviews = {
+            val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+            val userRepository = UserRepository(requireContext())
+            val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+            val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID) ?: ""
+            val providerName = currentUser?.name ?: arguments?.getString(ARG_NAME) ?: "Prestador"
+
+            val fragment = AllReviewsFragment.newInstance(targetProviderId, providerName)
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .addToBackStack(null)
+                .commit()
         }
+
+        view.findViewById<View>(R.id.btnSeeAllReviews)?.setOnClickListener { openAllReviews() }
+        view.findViewById<View>(R.id.txtReviewsTitle)?.setOnClickListener { openAllReviews() }
     }
 
     /**
@@ -566,6 +579,8 @@ class ProfessionalProfileFragment : Fragment() {
             }
         }
     }
+
+
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
