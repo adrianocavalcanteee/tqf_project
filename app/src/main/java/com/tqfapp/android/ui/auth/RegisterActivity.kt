@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceCategories
+import com.tqfapp.android.data.repository.EmailConfirmationPendingException
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityRegisterBinding
@@ -277,6 +278,13 @@ class RegisterActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }.onFailure { exception ->
+            if (exception is EmailConfirmationPendingException) {
+                // Conta criada: volta ao login com e-mail e tipo de conta já preenchidos.
+                Toast.makeText(this, exception.message, Toast.LENGTH_LONG).show()
+                startActivity(LoginActivity.newIntent(this, email, isProviderMode))
+                finish()
+                return@onFailure
+            }
             binding.tilEmail.error = exception.message ?: "Erro ao cadastrar usuário"
             Toast.makeText(this, exception.message ?: "Falha no cadastro", Toast.LENGTH_SHORT).show()
         }

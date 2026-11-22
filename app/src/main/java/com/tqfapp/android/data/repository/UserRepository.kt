@@ -6,6 +6,8 @@ import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.safeLogDescription
+import com.tqfapp.android.data.network.userMessage
 import com.tqfapp.android.data.network.dto.AvaliacaoDto
 import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
 import com.tqfapp.android.data.network.dto.PerfilPrestadorDto
@@ -181,6 +183,10 @@ class UserRepository(private val context: Context) {
             Log.d(TAG, "signUp iniciado para e-mail domain: ${user.email.substringAfter("@")}")
             savePendingRegistrationData(user)
 
+            // Sessão de outra conta neste aparelho: o signUp com confirmação de e-mail não a substitui,
+            // e currentUserOrNull() devolveria o usuário anterior (dados gravados no id errado).
+            logout()
+
             SupabaseClient.auth.signUpWith(Email, redirectUrl = "com.tqfapp.android://login-callback") {
                 email = user.email
                 password = passwordRaw
@@ -191,18 +197,14 @@ class UserRepository(private val context: Context) {
             val authUser = SupabaseClient.auth.currentUserOrNull()
             val authSession = SupabaseClient.auth.currentSessionOrNull()
 
-            if (authUser == null) {
-                return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
-                )
+            if (authUser == null || !authUser.email.equals(user.email, ignoreCase = true)) {
+                return@runBlocking Result.failure(EmailConfirmationPendingException())
             }
 
             val authUid = authUser.id
 
             if (authSession == null) {
-                return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
-                )
+                return@runBlocking Result.failure(EmailConfirmationPendingException())
             }
 
             createPublicProfileTablesInSupabase(authUid, user)
@@ -215,8 +217,10 @@ class UserRepository(private val context: Context) {
             try { userDao.insert(roomUser) } catch (_: Exception) {}
 
             Result.success(roomUser)
+        } catch (e: EmailConfirmationPendingException) {
+            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "signUp erro: ${e.javaClass.simpleName} - ${e.message}")
+            Log.e(TAG, "signUp erro: ${e.safeLogDescription()}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
             Result.failure(IllegalArgumentException(errorMsg, e))
         }
@@ -301,7 +305,7 @@ class UserRepository(private val context: Context) {
         } catch (e: AccountTypeMismatchException) {
             Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
+            Log.e(TAG, "signIn erro: ${e.safeLogDescription()}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
             Result.failure(IllegalArgumentException(errorMsg, e))
         }
@@ -354,8 +358,8 @@ class UserRepository(private val context: Context) {
                 "E-mail ou senha incorretos."
             msg.contains("email not confirmed") ->
                 "Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada."
-            else ->
-                e.message ?: "Não foi possível concluir a operação. Tente novamente."
+            // Nunca repassa e.message bruto: contém URL, cabeçalhos e o token da requisição.
+            else -> e.userMessage("Não foi possível concluir a operação. Tente novamente.")
         }
     }
 
@@ -503,3 +507,10 @@ class UserRepository(private val context: Context) {
 
 /** Login pela aba errada: a conta existe, mas é de outro tipo (contratante x prestador). */
 class AccountTypeMismatchException(message: String) : IllegalArgumentException(message)
+
+/**
+ * Cadastro criado no Supabase Auth, mas a conta só pode logar após confirmar o e-mail.
+ * Não é erro: a tela de cadastro deve levar o usuário ao login.
+ */
+class EmailConfirmationPendingException :
+    IllegalStateException("Cadastro realizado! Confirme seu e-mail pelo link enviado e depois faça login.")

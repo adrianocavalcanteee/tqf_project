@@ -78,16 +78,15 @@ class ReviewRepository(private val context: Context) {
     }
 
     /**
-     * Grava a avaliação vinculada ao prestador avaliado (reviewed_id) e à solicitação (service_request_id).
+     * Grava a avaliação vinculada ao avaliado (reviewed_id: prestador ou cliente) e à solicitação (service_request_id).
+     * Duplicidade é barrada pelo UNIQUE (service_request_id, reviewer_id) do Supabase: o cache local não
+     * distingue quem avaliou, então não serve para essa checagem.
      * Retorna falha se o Supabase recusar (ex.: serviço ainda não concluído) — nada é salvo localmente nesse caso.
      */
     fun addReview(serviceRequestId: String, reviewedId: String, rating: Int, comment: String): Result<Unit> = runBlocking {
         try {
             val authUser = SupabaseClient.auth.currentUserOrNull()
             val reviewerId = authUser?.id ?: throw IllegalStateException("Usuário não autenticado.")
-
-            val existing = reviewDao.existsForService(serviceRequestId)
-            if (existing) throw IllegalStateException("Você já avaliou este serviço.")
 
             val dto = AvaliacaoDto(
                 serviceRequestId = serviceRequestId,

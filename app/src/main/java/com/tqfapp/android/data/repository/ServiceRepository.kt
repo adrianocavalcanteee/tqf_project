@@ -10,11 +10,10 @@ import com.tqfapp.android.data.model.contratacoesDoPrestador
 import com.tqfapp.android.data.model.historicoDoCliente
 import com.tqfapp.android.data.model.label
 import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.userMessage
 import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
 import com.tqfapp.android.data.network.dto.SolicitacaoServicoDto
 import com.tqfapp.android.data.network.dto.UsuarioDto
-import io.github.jan.supabase.exceptions.HttpRequestException
-import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObjectBuilder
@@ -99,7 +98,7 @@ class ServiceRepository(private val context: Context) {
 
             Result.success(service)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(IllegalStateException(e.userMessage("Não foi possível enviar a solicitação. Tente novamente."), e))
         }
     }
 
@@ -112,7 +111,7 @@ class ServiceRepository(private val context: Context) {
         } catch (_: Exception) { null }
 
         if (remote != null) {
-            val services = withProviderNames(remote.map { mergeWithLocal(it) })
+            val services = withPartyNames(remote.map { mergeWithLocal(it) })
             services.forEach { try { serviceDao.insert(it) } catch (_: Exception) {} }
             return@runBlocking services
         }
@@ -180,7 +179,7 @@ class ServiceRepository(private val context: Context) {
         } catch (_: Exception) { null }
 
         if (remote != null) {
-            val services = remote.map { mergeWithLocal(it) }
+            val services = withPartyNames(remote.map { mergeWithLocal(it) })
             services.forEach { try { serviceDao.insert(it) } catch (_: Exception) {} }
             return@runBlocking services.contratacoesDoPrestador(providerId)
         }
@@ -202,7 +201,7 @@ class ServiceRepository(private val context: Context) {
         } catch (_: Exception) { null }
 
         if (remote != null) {
-            val services = remote.map { mergeWithLocal(it) }
+            val services = withPartyNames(remote.map { mergeWithLocal(it) })
             services.forEach { try { serviceDao.insert(it) } catch (_: Exception) {} }
             return@runBlocking services.filter { it.status == ServiceStatus.CONCLUIDO && it.providerId == providerId }
         }
@@ -299,16 +298,17 @@ class ServiceRepository(private val context: Context) {
         Result.success(updated)
     }
 
-    private fun friendlyError(e: Exception): String = when (e) {
-        is PostgrestRestException -> e.error.ifBlank { "O servidor recusou a operação." }
-        is HttpRequestException -> "Sem conexão com o servidor. Verifique sua internet e tente novamente."
-        else -> "Não foi possível atualizar a solicitação. Tente novamente."
-    }
+    private fun friendlyError(e: Exception): String =
+        e.userMessage("Não foi possível atualizar a solicitação. Tente novamente.")
 
-    /** Preenche o nome do prestador aceito/alvo quando ele não está no cache local. */
-    private suspend fun withProviderNames(services: List<Service>): List<Service> {
-        val missing = services.filter { it.providerName.isBlank() && it.providerId.isNotBlank() }
-            .map { it.providerId }.distinct()
+    /**
+     * Preenche os nomes que não estão no cache local: prestador (visão do contratante) e cliente
+     * (visão do prestador aceito — o RLS de usuarios libera esse cliente). Uma consulta só.
+     */
+    private suspend fun withPartyNames(services: List<Service>): List<Service> {
+        fun needsClientName(s: Service) = s.clientId.isNotBlank() && (s.clientName.isBlank() || s.clientName == "Cliente")
+        val missing = (services.filter { it.providerName.isBlank() && it.providerId.isNotBlank() }.map { it.providerId } +
+                services.filter(::needsClientName).map { it.clientId }).distinct()
         if (missing.isEmpty()) return services
 
         val names = try {
@@ -319,7 +319,10 @@ class ServiceRepository(private val context: Context) {
         } catch (_: Exception) { emptyMap() }
 
         return services.map { s ->
-            names[s.providerId]?.takeIf { s.providerName.isBlank() }?.let { s.copy(providerName = it) } ?: s
+            var updated = s
+            if (s.providerName.isBlank()) names[s.providerId]?.let { updated = updated.copy(providerName = it) }
+            if (needsClientName(s)) names[s.clientId]?.let { updated = updated.copy(clientName = it) }
+            updated
         }
     }
 

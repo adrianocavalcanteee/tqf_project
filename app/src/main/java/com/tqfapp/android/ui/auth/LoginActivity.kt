@@ -1,5 +1,6 @@
 package com.tqfapp.android.ui.auth
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -31,6 +32,7 @@ class LoginActivity : AppCompatActivity() {
 
             setupUserTypeToggle()
             setupClickListeners()
+            prefillFromRegistration()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Erro ao iniciar Login: ${e.message}", Toast.LENGTH_LONG).show()
@@ -42,6 +44,8 @@ class LoginActivity : AppCompatActivity() {
         setIntent(intent)
         if (intent != null) {
             handleIncomingIntent(intent)
+            // Volta do cadastro reaproveita esta instância (CLEAR_TOP | SINGLE_TOP).
+            prefillFromRegistration()
         }
     }
 
@@ -79,6 +83,16 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /** Vindo do cadastro: preenche o e-mail e seleciona a aba do tipo de conta criado. */
+    private fun prefillFromRegistration() {
+        val email = intent.getStringExtra(EXTRA_EMAIL) ?: return
+        binding.etEmail.setText(email)
+        binding.etPassword.text?.clear()
+        binding.toggleUserType.check(
+            if (intent.getBooleanExtra(EXTRA_IS_PROVIDER, false)) R.id.btnTypeProvider else R.id.btnTypeContractor
+        )
     }
 
     private fun setupClickListeners() {
@@ -133,5 +147,12 @@ class LoginActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_IS_PROVIDER = "extra_is_provider"
+        private const val EXTRA_EMAIL = "extra_email"
+
+        fun newIntent(context: Context, email: String, isProvider: Boolean): Intent =
+            Intent(context, LoginActivity::class.java)
+                .putExtra(EXTRA_EMAIL, email)
+                .putExtra(EXTRA_IS_PROVIDER, isProvider)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 }
