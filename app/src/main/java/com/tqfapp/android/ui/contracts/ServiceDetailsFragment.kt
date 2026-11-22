@@ -16,19 +16,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ReviewRules
-import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.repository.ReviewRepository
-import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 class ServiceDetailsFragment : Fragment() {
 
@@ -112,10 +108,28 @@ class ServiceDetailsFragment : Fragment() {
             btnReviewService?.setOnClickListener {
                 showReviewDialog(title, profName)
             }
+            // Uma avaliação por contratação: se já existe no Supabase, o botão fica desabilitado.
+            val serviceId = arguments?.getString(ARG_SERVICE_ID).orEmpty()
+            if (serviceId.isNotBlank()) {
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val reviewed = withContext(Dispatchers.IO) {
+                        ReviewRepository(appContext).hasReviewedService(serviceId)
+                    }
+                    if (reviewed) markAsReviewed()
+                }
+            }
         } else {
             // Serviços em andamento: o contato é feito pelo prestador via WhatsApp e a conclusão
             // acontece na aba "Contratações" (AvaliarSolicitacaoActivity). Sem chat interno.
             btnReviewService?.visibility = View.GONE
+        }
+    }
+
+    private fun markAsReviewed() {
+        view?.findViewById<MaterialButton>(R.id.btnReviewService)?.apply {
+            text = "✓ Serviço avaliado"
+            isEnabled = false
         }
     }
 
@@ -150,6 +164,7 @@ class ServiceDetailsFragment : Fragment() {
                     val result = withContext(Dispatchers.IO) {
                         ReviewRepository(appContext).addReview(serviceId, providerId, ratingValue, commentText)
                     }
+                    if (result.isSuccess) markAsReviewed()
                     val message = result.fold(
                         onSuccess = { "Avaliação registrada para $targetName!" },
                         onFailure = { it.message ?: "Não foi possível registrar a avaliação." }

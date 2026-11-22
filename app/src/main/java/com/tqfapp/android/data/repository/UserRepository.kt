@@ -226,7 +226,11 @@ class UserRepository(private val context: Context) {
      * Autentica o usuário pelo Supabase Auth e finaliza a criação das tabelas públicas
      * caso o perfil ainda não exista no Supabase (primeiro login após confirmação de e-mail).
      */
-    fun loginUser(email: String, passwordRaw: String): Result<User> = runBlocking {
+    /**
+     * @param expectedIsProvider aba escolhida no login. O tipo gravado em `usuarios.is_provider` é a fonte
+     * da verdade: se a conta for de outro tipo, a sessão é encerrada e o login falha com mensagem clara.
+     */
+    fun loginUser(email: String, passwordRaw: String, expectedIsProvider: Boolean): Result<User> = runBlocking {
         try {
             Log.d(TAG, "signIn iniciado para e-mail domain: ${email.substringAfter("@")}")
             SupabaseClient.auth.signInWith(Email) {
@@ -256,7 +260,8 @@ class UserRepository(private val context: Context) {
                     id = authUid,
                     name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
                     email = email,
-                    isProvider = UserSessionManager.isProviderUser(context)
+                    // Sem dados do cadastro neste aparelho: usa a aba escolhida, nunca a sessão anterior.
+                    isProvider = expectedIsProvider
                 )
 
                 createPublicProfileTablesInSupabase(authUid, userToCreate)
@@ -267,6 +272,16 @@ class UserRepository(private val context: Context) {
                     name = userToCreate.name,
                     isProvider = userToCreate.isProvider,
                     profilePictureUrl = userToCreate.profilePictureUri
+                )
+            }
+
+            if (usuarioDto.isProvider != expectedIsProvider) {
+                logout()
+                val accountType = if (usuarioDto.isProvider) "prestador" else "contratante"
+                return@runBlocking Result.failure(
+                    AccountTypeMismatchException(
+                        "Esta conta é de $accountType. Selecione \"${accountType.replaceFirstChar { it.uppercase() }}\" para entrar."
+                    )
                 )
             }
 
@@ -283,6 +298,8 @@ class UserRepository(private val context: Context) {
             try { userDao.insert(currentUser) } catch (_: Exception) {}
 
             Result.success(currentUser)
+        } catch (e: AccountTypeMismatchException) {
+            Result.failure(e)
         } catch (e: Exception) {
             Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
@@ -358,7 +375,7 @@ class UserRepository(private val context: Context) {
                 } catch (_: Exception) { null }
 
                 if (usuarioDto != null) {
-                    val email = authUser.email ?: "usuario@tqf.com"
+                    val email = authUser.email.orEmpty()
 
                     val dadosPrivados = try {
                         SupabaseClient.postgrest.from("dados_privados_usuario")
@@ -479,5 +496,10 @@ class UserRepository(private val context: Context) {
         } catch (_: Exception) {}
         sessionManager.logout()
         UserSessionManager.clearSession(context)
+        // Cache local (usuários, solicitações, avaliações) é por conta: não pode vazar para o próximo login.
+        try { AppDatabase.getDatabase(context).clearAllTables() } catch (_: Exception) {}
     }
 }
+
+/** Login pela aba errada: a conta existe, mas é de outro tipo (contratante x prestador). */
+class AccountTypeMismatchException(message: String) : IllegalArgumentException(message)

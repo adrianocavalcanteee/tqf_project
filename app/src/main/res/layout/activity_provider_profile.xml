@@ -184,6 +184,36 @@
                 app:drawableStartCompat="@drawable/ic_location"
                 tools:text="Centro, Manaus - AM"
                 tools:visibility="visible" />
+
+            <!-- Avaliações reais do prestador (avaliacoes.reviewed_id) -->
+            <TextView
+                android:id="@+id/txtReviewsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Avaliações"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtNoReviews"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Sem avaliações ainda."
+                android:textColor="@color/text_muted"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvReviews"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:nestedScrollingEnabled="false"
+                tools:itemCount="2"
+                tools:listitem="@layout/item_review" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

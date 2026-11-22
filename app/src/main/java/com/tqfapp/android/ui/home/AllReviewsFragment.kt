@@ -7,12 +7,16 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
+import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.repository.ReviewRepository
-import com.tqfapp.android.databinding.ItemReviewBinding
-import java.util.Locale
+import com.tqfapp.android.ui.common.ReviewListAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AllReviewsFragment : Fragment() {
 
@@ -39,55 +43,29 @@ class AllReviewsFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
 
-        val reviews = if (providerId.isNotBlank()) {
-            ReviewRepository(requireContext()).getReviewsByProvider(providerId)
-        } else {
-            emptyList()
+        // Leitura em IO: getReviewsByProvider consulta o Supabase.
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val reviews = withContext(Dispatchers.IO) {
+                if (providerId.isNotBlank()) ReviewRepository(appContext).getReviewsByProvider(providerId) else emptyList()
+            }
+            if (getView() == null) return@launch
+
+            val average = RatingFormat.average(reviews)
+            if (average == null) {
+                txtHeaderSubtitle.text = "Nenhuma avaliação encontrada para $providerName"
+                rvAllReviews.visibility = View.GONE
+                layoutEmptyState.visibility = View.VISIBLE
+            } else {
+                txtHeaderSubtitle.text =
+                    "${RatingFormat.value(average)} ★ • ${RatingFormat.count(reviews.size)} para $providerName"
+                rvAllReviews.visibility = View.VISIBLE
+                layoutEmptyState.visibility = View.GONE
+
+                rvAllReviews.layoutManager = LinearLayoutManager(requireContext())
+                rvAllReviews.adapter = ReviewListAdapter(reviews)
+            }
         }
-
-        if (reviews.isEmpty()) {
-            txtHeaderSubtitle.text = "Nenhuma avaliação encontrada para $providerName"
-            rvAllReviews.visibility = View.GONE
-            layoutEmptyState.visibility = View.VISIBLE
-        } else {
-            val average = reviews.map { it.rating }.average()
-            val count = reviews.size
-            txtHeaderSubtitle.text = String.format(
-                Locale.forLanguageTag("pt-BR"),
-                "%.1f ★ • %d %s para %s",
-                average,
-                count,
-                if (count == 1) "avaliação" else "avaliações",
-                providerName
-            )
-            rvAllReviews.visibility = View.VISIBLE
-            layoutEmptyState.visibility = View.GONE
-
-            rvAllReviews.layoutManager = LinearLayoutManager(requireContext())
-            rvAllReviews.adapter = AllReviewsAdapter(reviews)
-        }
-    }
-
-    private inner class AllReviewsAdapter(
-        private val items: List<com.tqfapp.android.data.model.Review>
-    ) : RecyclerView.Adapter<AllReviewsAdapter.ViewHolder>() {
-
-        inner class ViewHolder(val binding: ItemReviewBinding) : RecyclerView.ViewHolder(binding.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemReviewBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val review = items[position]
-            holder.binding.txtReviewerName.text = "Cliente"
-            holder.binding.txtReviewDate.text = review.date
-            holder.binding.txtReviewComment.text = "⭐ ${review.rating}/5 - ${review.comment}"
-            holder.binding.imgReviewerAvatar.setImageResource(R.drawable.ic_profile)
-        }
-
-        override fun getItemCount(): Int = items.size
     }
 
     companion object {

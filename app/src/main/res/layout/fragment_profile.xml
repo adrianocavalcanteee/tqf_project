@@ -112,7 +112,7 @@
                     android:id="@+id/txtProfileName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ana Lima"
+                    tools:text="Ana Lima"
                     android:textColor="@color/text_primary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -155,7 +155,8 @@
                                 android:id="@+id/txtRatingValue"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="4,8"
+                                android:text="–"
+                                tools:text="4,8"
                                 android:textColor="@color/text_primary"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -199,7 +200,8 @@
                                 android:id="@+id/txtServicesValue"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="18"
+                                android:text="0"
+                                tools:text="18"
                                 android:textColor="@color/text_primary"
                                 android:textSize="15sp"
                                 android:textStyle="bold" />
@@ -208,7 +210,7 @@
                                 android:id="@+id/txtServicesLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Serviços\nrealizados"
+                                tools:text="Serviços\nrealizados"
                                 android:textColor="@color/text_muted"
                                 android:textSize="10sp" />
                         </LinearLayout>
@@ -252,9 +254,11 @@
                     android:layout_marginStart="14dp">
 
                     <TextView
+                        android:id="@+id/txtMemberSince"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Cliente desde 2024"
+                        android:text="Cliente TQF"
+                        tools:text="Cliente desde 2024"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
@@ -357,7 +361,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Prestador de serviços especializado no atendimento a clientes com qualidade e agilidade."
+            tools:text="Prestador de serviços especializado no atendimento a clientes com qualidade e agilidade."
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
             android:lineSpacingExtra="3dp" />
@@ -617,6 +621,15 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:itemCount="2"
             tools:listitem="@layout/item_recent_service" />
+
+        <TextView
+            android:id="@+id/txtNoRecentServices"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nenhum serviço contratado ainda."
+            android:textColor="@color/text_muted"
+            android:textSize="13sp"
+            android:visibility="gone" />
 
     </LinearLayout>
 

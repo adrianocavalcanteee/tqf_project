@@ -6,10 +6,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tqfapp.android.R
 import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.repository.AccountTypeMismatchException
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityLoginBinding
 import com.tqfapp.android.ui.home.HomeActivity
-import com.tqfapp.android.utils.UserSessionManager
 import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.runBlocking
 
@@ -97,7 +97,7 @@ class LoginActivity : AppCompatActivity() {
             }
 
             // Autentica no Supabase Auth + PostgREST via UserRepository
-            val authResult = userRepository.loginUser(email, password)
+            val authResult = userRepository.loginUser(email, password, expectedIsProvider = isProviderMode)
 
             if (authResult.isSuccess) {
                 val dbUser = authResult.getOrNull()!!
@@ -115,7 +115,8 @@ class LoginActivity : AppCompatActivity() {
             } else {
                 val exception = authResult.exceptionOrNull()
                 val errorMsg = exception?.message ?: "Falha na autenticação. Verifique seu e-mail e senha."
-                binding.etEmail.error = errorMsg
+                // Conta de outro tipo não é erro de e-mail: não marca o campo.
+                if (exception !is AccountTypeMismatchException) binding.etEmail.error = errorMsg
                 Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
             }
         }

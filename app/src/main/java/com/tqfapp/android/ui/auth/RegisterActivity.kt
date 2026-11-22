@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
+import com.tqfapp.android.business.ServiceCategories
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityRegisterBinding
@@ -98,16 +99,7 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun setupCategoryDropdown() {
-        val categories = listOf(
-            "Assistência Técnica",
-            "Reformas e Reparos",
-            "Serviços Domésticos",
-            "Design e Tecnologia",
-            "Eventos",
-            "Aulas e Treinamentos",
-            "Saúde e Bem-Estar",
-            "Autos e Transporte"
-        )
+        val categories = ServiceCategories.ALL
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, categories)
         binding.actvCategory.setAdapter(adapter)
@@ -265,7 +257,6 @@ class RegisterActivity : AppCompatActivity() {
             specialty = specialty,
             profilePictureUri = selectedAvatarUri?.toString(),
             portfolioUris = selectedPortfolioUris.map { it.toString() },
-            rating = 5.0,
             latitude = latitude,
             longitude = longitude
         )

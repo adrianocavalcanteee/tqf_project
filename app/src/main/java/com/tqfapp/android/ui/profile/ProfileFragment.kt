@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -26,9 +27,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.data.model.label
-import com.tqfapp.android.data.local.database.AppDatabase
-import com.tqfapp.android.data.model.Review
+import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.business.RatingFormat
+import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.repository.ReviewRepository
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
@@ -42,6 +45,9 @@ import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ProfileFragment : Fragment() {
 
@@ -156,6 +162,11 @@ class ProfileFragment : Fragment() {
             val user = currentUser
             if (user != null && _binding != null) {
                 binding.txtProfileName.text = user.name
+                // Ano de criação da conta no Supabase Auth (sem valor fixo no layout).
+                val memberSinceYear = SupabaseClient.auth.currentUserOrNull()?.createdAt?.toString()?.take(4)
+                binding.txtMemberSince.text = memberSinceYear?.let {
+                    if (isProviderProfile) "Prestador desde $it" else "Cliente desde $it"
+                } ?: if (isProviderProfile) "Prestador TQF" else "Cliente TQF"
                 binding.txtBio.text = user.bio ?: user.specialty ?: user.category ?: "Usuário do TQF"
                 user.profilePictureUri?.let {
                     try {
@@ -228,7 +239,7 @@ class ProfileFragment : Fragment() {
             userAddress
         } else {
             LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-                ?: "Manaus - AM (Atendimento Presencial)"
+                ?: "Endereço não informado"
         }
 
         // Sincroniza o card/bloco de texto do endereço no perfil
@@ -610,51 +621,80 @@ class ProfileFragment : Fragment() {
         )
     }
 
+    /**
+     * "Serviços contratados/realizados" e a lista de recentes, lidos do Supabase (cache local só offline).
+     * Contratante: solicitações aceitas (em andamento ou concluídas). Prestador: concluídas por ele.
+     */
     private fun setupRecentServices() {
         if (_binding == null) return
-        try {
-            val user = currentUser
-            val filteredServices = when {
-                user == null -> emptyList()
-                isProviderProfile -> ServiceRepository(requireContext()).getAllServices().filter { it.providerId == user.id }
-                else -> ServiceRepository(requireContext()).getAllServices().filter { it.clientId == user.id }
-            }
-
-            val recentServices = filteredServices.take(4)
-            val mappedRecentItems = recentServices.map { s ->
-                RecentServiceItem(
-                    title = s.title,
-                    providerName = if (isProviderProfile) "Cliente: ${s.clientName}" else "com ${s.providerName}",
-                    date = s.date,
-                    status = s.status.label(),
-                    imageRes = R.drawable.ic_profile
-                )
-            }
-
-            binding.rvRecentServices.apply {
-                layoutManager = LinearLayoutManager(requireContext())
-                adapter = RecentServiceAdapter(mappedRecentItems) { item ->
-                    val s = recentServices[mappedRecentItems.indexOfFirst { it === item }]
-                    val detailsFragment = ServiceDetailsFragment.newInstance(
-                        title = s.title,
-                        professional = s.providerName.ifBlank { "Prestador" },
-                        specialty = s.category,
-                        schedule = s.date,
-                        price = if (s.price > 0) User.formatCurrency(s.price) else "Valor negociado",
-                        status = s.status.label(),
-                        desc = s.description,
-                        serviceId = s.id,
-                        providerId = s.providerId,
-                        clientId = s.clientId
-                    )
-                    parentFragmentManager.beginTransaction()
-                        .replace(R.id.fragmentContainer, detailsFragment)
-                        .addToBackStack(null)
-                        .commit()
+        val user = currentUser ?: run {
+            showRecentServices(emptyList(), 0)
+            return
+        }
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val (services, count) = withContext(Dispatchers.IO) {
+                try {
+                    val repository = ServiceRepository(appContext)
+                    if (isProviderProfile) {
+                        val completed = repository.getProviderCompletedServices(user.id)
+                        (repository.getProviderContracts(user.id) + completed) to completed.size
+                    } else {
+                        val hired = repository.getClientRequests(user.id).filter {
+                            it.status == ServiceStatus.EM_ANDAMENTO || it.status == ServiceStatus.CONCLUIDO
+                        }
+                        hired to hired.size
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList<Service>() to 0
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            showRecentServices(services.sortedByDescending { it.date }, count)
+        }
+    }
+
+    private fun showRecentServices(services: List<Service>, count: Int) {
+        if (_binding == null) return
+        binding.txtServicesValue.text = count.toString()
+        binding.txtNoRecentServices.visibility = if (services.isEmpty()) View.VISIBLE else View.GONE
+
+        val recentServices = services.take(4)
+        val mappedRecentItems = recentServices.map { s ->
+            RecentServiceItem(
+                title = s.title,
+                providerName = if (isProviderProfile) {
+                    "Cliente: ${s.clientName.ifBlank { "Cliente" }}"
+                } else {
+                    "com ${s.providerName.ifBlank { "Prestador" }}"
+                },
+                date = s.date,
+                status = s.status.label(),
+                imageRes = R.drawable.ic_profile
+            )
+        }
+
+        binding.rvRecentServices.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = RecentServiceAdapter(mappedRecentItems) { item ->
+                val s = recentServices[mappedRecentItems.indexOfFirst { it === item }]
+                val detailsFragment = ServiceDetailsFragment.newInstance(
+                    title = s.title,
+                    professional = s.providerName.ifBlank { "Prestador" },
+                    specialty = s.category,
+                    schedule = s.date,
+                    price = if (s.price > 0) User.formatCurrency(s.price) else "Valor negociado",
+                    status = s.status.label(),
+                    desc = s.description,
+                    serviceId = s.id,
+                    providerId = s.providerId,
+                    clientId = s.clientId
+                )
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, detailsFragment)
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
     }
 
@@ -772,6 +812,7 @@ class ProfileFragment : Fragment() {
             // Avaliações RECEBIDAS pelo cliente (reviewed_id = cliente). As que ele escreveu
             // pertencem ao perfil do prestador avaliado e não devem aparecer aqui.
             val dbReviews = reviewRepository.getReviewsByProvider(currentUserId)
+            binding.txtRatingValue.text = RatingFormat.average(dbReviews)?.let { RatingFormat.value(it) } ?: "–"
 
             val reviewsList = dbReviews.map {
                 ClientReviewItem(

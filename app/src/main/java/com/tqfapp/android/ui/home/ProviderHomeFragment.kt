@@ -14,12 +14,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.tqfapp.android.R
 import com.google.android.gms.maps.model.LatLng
 import com.tqfapp.android.data.model.Service
-import com.tqfapp.android.data.model.resumoParaPrestador
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.notifications.NotificationsFragment
@@ -61,7 +59,6 @@ class ProviderHomeFragment : Fragment() {
         etSearchRequests = view.findViewById(R.id.etSearchRequests)
         txtEmptyRequests = view.findViewById(R.id.txtEmptyRequests)
 
-        setupGreeting(view)
         setupRequestsList()
         setupSearch()
         setupStatusSwitch(view)
@@ -70,14 +67,12 @@ class ProviderHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        view?.let { setupGreeting(it) }
         // Recarrega ao voltar da tela de avaliação (aceite/recusa remove o card do feed).
         loadRequests()
     }
 
-    private fun setupGreeting(view: View) {
-        val currentUser = UserRepository(requireContext()).getCurrentUser()
-        val name = currentUser?.name?.trim()
+    private fun showGreeting(view: View, providerName: String?) {
+        val name = providerName?.trim()
         val greetingText = if (!name.isNullOrBlank()) {
             val firstName = name.split(" ").firstOrNull() ?: name
             "Olá, $firstName!"
@@ -101,9 +96,12 @@ class ProviderHomeFragment : Fragment() {
     private fun loadRequests() {
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
+            // getCurrentUser faz rede: fica no IO junto com as listas (nada bloqueia a thread principal).
+            var providerName: String? = null
             val (requests, contracts, completedServices) = withContext(Dispatchers.IO) {
                 try {
                     val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Triple(emptyList(), emptyList(), emptyList())
+                    providerName = provider.name
                     providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
                     val reqs = ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
                     val conts = ServiceRepository(appContext).getProviderContracts(provider.id)
@@ -114,7 +112,8 @@ class ProviderHomeFragment : Fragment() {
                     Triple(emptyList(), emptyList(), emptyList())
                 }
             }
-            if (view == null) return@launch
+            val root = view ?: return@launch
+            showGreeting(root, providerName)
             allRequests = requests
             applySearch(etSearchRequests.text?.toString().orEmpty())
 
@@ -205,48 +204,5 @@ class ProviderHomeFragment : Fragment() {
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-    }
-
-    private class ServiceRequestAdapter(
-        private val distanceOf: (Service) -> Double?,
-        private val onEvaluateClick: (Service) -> Unit
-    ) : RecyclerView.Adapter<ServiceRequestAdapter.ViewHolder>() {
-
-        private var items: List<Service> = emptyList()
-
-        fun updateData(newList: List<Service>) {
-            items = newList
-            notifyDataSetChanged()
-        }
-
-        class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            val txtClientName: TextView = view.findViewById(R.id.txtClientName)
-            val txtCategoryBadge: TextView = view.findViewById(R.id.txtCategoryBadge)
-            val txtPostedTime: TextView = view.findViewById(R.id.txtPostedTime)
-            val txtRequestTitle: TextView = view.findViewById(R.id.txtRequestTitle)
-            val txtRequestDescription: TextView = view.findViewById(R.id.txtRequestDescription)
-            val txtLocation: TextView = view.findViewById(R.id.txtLocation)
-            val btnEvaluateService: MaterialButton = view.findViewById(R.id.btnEvaluateService)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_service_request, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.txtClientName.text = item.clientName.ifBlank { "Cliente" }
-            holder.txtCategoryBadge.text = item.category
-            holder.txtPostedTime.text = item.date
-            holder.txtRequestTitle.text = item.title
-            holder.txtRequestDescription.text = item.description
-            holder.txtLocation.text = item.resumoParaPrestador(distanceOf(item))
-
-            holder.btnEvaluateService.setOnClickListener { onEvaluateClick(item) }
-            holder.view.setOnClickListener { onEvaluateClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
     }
 }

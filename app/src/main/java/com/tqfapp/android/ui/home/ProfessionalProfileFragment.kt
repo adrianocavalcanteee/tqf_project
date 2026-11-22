@@ -22,21 +22,19 @@ import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.tqfapp.android.ui.common.bindServiceChips
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
-import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.business.ServiceCategories
+import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.repository.ReviewRepository
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
-import com.tqfapp.android.utils.UserSessionManager
-import java.util.Locale
 
 class ProfessionalProfileFragment : Fragment() {
 
@@ -116,7 +114,7 @@ class ProfessionalProfileFragment : Fragment() {
         val specialty = currentUser?.specialty ?: currentUser?.category ?: arguments?.getString(ARG_SPECIALTY)
         // Sem argumento, a nota é calculada a partir das avaliações reais do prestador (setupReviews).
         val rating = arguments?.getString(ARG_RATING)
-        val bio = currentUser?.bio ?: arguments?.getString(ARG_BIO) ?: "Profissional autônomo com ampla experiência."
+        val bio = currentUser?.bio ?: arguments?.getString(ARG_BIO) ?: "Você ainda não escreveu uma descrição. Toque em editar para contar sobre seu trabalho."
         val services = currentUser?.services.orEmpty()
 
         if (!name.isNullOrEmpty()) {
@@ -330,16 +328,7 @@ class ProfessionalProfileFragment : Fragment() {
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
-        val categories = listOf(
-            "Assistência Técnica",
-            "Reformas e Reparos",
-            "Serviços Domésticos",
-            "Design e Tecnologia",
-            "Eventos",
-            "Aulas e Treinamentos",
-            "Saúde e Bem-Estar",
-            "Autos e Transporte"
-        )
+        val categories = ServiceCategories.ALL
         val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories)
         actvCategory?.setAdapter(categoryAdapter)
 
@@ -556,13 +545,8 @@ class ProfessionalProfileFragment : Fragment() {
         view.findViewById<TextView>(R.id.txtReviewsTitle)?.text = "Avaliações ($count)"
 
         if (arguments?.getString(ARG_RATING) == null) {
-            view.findViewById<TextView>(R.id.txtRating)?.text = if (providerReviews.isEmpty()) {
-                "Novo no TQF"
-            } else {
-                val average = providerReviews.map { it.rating }.average()
-                String.format(Locale.forLanguageTag("pt-BR"), "%.1f (%d %s)", average, count,
-                    if (count == 1) "avaliação" else "avaliações")
-            }
+            view.findViewById<TextView>(R.id.txtRating)?.text =
+                RatingFormat.summary(providerReviews) ?: "Sem avaliações ainda"
         }
 
         val reviewsList = providerReviews.map {

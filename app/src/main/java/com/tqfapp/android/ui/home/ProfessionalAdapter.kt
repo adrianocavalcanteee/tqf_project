@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.databinding.ItemProfessionalBinding
 import java.util.Locale
@@ -51,8 +52,8 @@ class ProfessionalAdapter(
         fun metricsLine(provider: User): String {
             val parts = mutableListOf<String>()
             if (provider.reviewCount > 0) {
-                parts += String.format(PT_BR, "%.1f", provider.rating)
-                parts += if (provider.reviewCount == 1) "1 avaliação" else "${provider.reviewCount} avaliações"
+                parts += RatingFormat.value(provider.rating)
+                parts += RatingFormat.count(provider.reviewCount)
             } else {
                 parts += "Novo no TQF"
             }

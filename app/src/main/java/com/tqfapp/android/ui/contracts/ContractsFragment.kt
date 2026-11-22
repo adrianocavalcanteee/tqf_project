@@ -11,9 +11,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.business.RatingFormat
+import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.model.label
+import com.tqfapp.android.data.repository.ReviewRepository
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentContractsBinding
@@ -76,7 +79,7 @@ class ContractsFragment : Fragment() {
         binding.progressContracts.visibility = View.VISIBLE
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val (user, services) = withContext(Dispatchers.IO) {
+            val (user, services, ratings) = withContext(Dispatchers.IO) {
                 try {
                     val user = UserRepository(appContext).getCurrentUser()
                     val repository = ServiceRepository(appContext)
@@ -85,16 +88,19 @@ class ContractsFragment : Fragment() {
                         isProvider -> repository.getProviderContracts(user.id)
                         else -> repository.getClientRequests(user.id).sortedByDescending { it.date }
                     }
-                    user to list
+                    // Contratante: nota média real de cada prestador listado (uma consulta só).
+                    val ratings = if (isProvider) emptyMap() else
+                        ReviewRepository(appContext).getRatingSummaries(list.map { it.providerId })
+                    Triple(user, list, ratings)
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    null to emptyList<Service>()
+                    Triple(null, emptyList<Service>(), emptyMap<String, List<Review>>())
                 }
             }
 
             if (_binding == null) return@launch
             binding.progressContracts.visibility = View.GONE
-            contractAdapter.updateData(services)
+            contractAdapter.updateData(services, ratings)
             showEmptyState(user, services.isEmpty())
         }
     }
@@ -151,9 +157,11 @@ class ContractsFragment : Fragment() {
     ) : RecyclerView.Adapter<ContractAdapter.ViewHolder>() {
 
         private var items: List<Service> = emptyList()
+        private var ratings: Map<String, List<Review>> = emptyMap()
 
-        fun updateData(newList: List<Service>) {
+        fun updateData(newList: List<Service>, providerRatings: Map<String, List<Review>>) {
             items = newList
+            ratings = providerRatings
             notifyDataSetChanged()
         }
 
@@ -186,7 +194,9 @@ class ContractsFragment : Fragment() {
                         if (item.status == ServiceStatus.RECUSADO) R.color.refused_text else R.color.green_badge_text
                     )
                 )
-                txtRatingValue.visibility = View.GONE
+                val providerAverage = RatingFormat.average(ratings[item.providerId].orEmpty())
+                txtRatingValue.visibility = if (providerAverage == null) View.GONE else View.VISIBLE
+                providerAverage?.let { txtRatingValue.text = "★ ${RatingFormat.value(it)}" }
                 imgVerified.visibility = View.GONE
                 btnDetails.text = when {
                     isProvider -> "Contato e conclusão"

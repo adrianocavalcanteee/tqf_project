@@ -178,7 +178,7 @@
                         android:id="@+id/txtProfessionalName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="João Ferreira"
+                        tools:text="João Ferreira"
                         android:textColor="@color/text_primary"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -218,7 +218,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Técnico de TI"
+                tools:text="Técnico de TI"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -389,7 +389,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="16dp"
-                    android:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
+                    tools:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp" />

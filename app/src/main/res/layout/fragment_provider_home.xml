@@ -53,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Olá, João!"
+            android:text="Olá!"
             tools:text="Olá, João!"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
