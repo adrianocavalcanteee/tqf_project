@@ -61,6 +61,7 @@ class ProviderHomeFragment : Fragment() {
         etSearchRequests = view.findViewById(R.id.etSearchRequests)
         txtEmptyRequests = view.findViewById(R.id.txtEmptyRequests)
 
+        setupGreeting(view)
         setupRequestsList()
         setupSearch()
         setupStatusSwitch(view)
@@ -69,8 +70,21 @@ class ProviderHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        view?.let { setupGreeting(it) }
         // Recarrega ao voltar da tela de avaliação (aceite/recusa remove o card do feed).
         loadRequests()
+    }
+
+    private fun setupGreeting(view: View) {
+        val currentUser = UserRepository(requireContext()).getCurrentUser()
+        val name = currentUser?.name?.trim()
+        val greetingText = if (!name.isNullOrBlank()) {
+            val firstName = name.split(" ").firstOrNull() ?: name
+            "Olá, $firstName!"
+        } else {
+            "Olá!"
+        }
+        view.findViewById<TextView>(R.id.txtProviderGreeting)?.text = greetingText
     }
 
     private fun setupRequestsList() {
