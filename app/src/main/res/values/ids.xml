@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ImageView.loadImage: fonte pedida por último (evita imagem trocada em listas recicladas) -->
+    <item name="tag_image_source" type="id" />
+</resources>

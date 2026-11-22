@@ -30,17 +30,61 @@
         <!-- Chave de API do Google Maps  -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="SUA_CHAVE_API_AQUI" />
+            android:value="AIzaSyB_McFoH4B2jNyGJLi_yg3OaD61fSWdYtY" />
 
-        <!-- Declaração da Tela Inicial (HomeActivity) -->
+        <!-- Tela Inicial de Login (LAUNCHER e Deep Link Supabase) -->
         <activity
-            android:name=".ui.home.HomeActivity"
+            android:name=".ui.auth.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Deep Link Callback do Supabase Auth -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.tqfapp.android"
+                    android:host="login-callback" />
+            </intent-filter>
         </activity>
+
+        <!-- Nova senha (aberta pelo link de recuperação via LoginActivity) -->
+        <activity
+            android:name=".ui.auth.ResetPasswordActivity"
+            android:exported="false" />
+
+        <!-- Tela de Cadastro -->
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false" />
+
+        <!-- Tela Principal Home -->
+        <activity
+            android:name=".ui.home.HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- Fluxo de Solicitação de Serviço -->
+        <activity
+            android:name=".ui.request.ProviderProfileActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.request.DescricaoServicoActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.request.AvaliarSolicitacaoActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.request.SugestaoPrestadoresActivity"
+            android:exported="false" />
 
     </application>
 
