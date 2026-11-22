@@ -188,6 +188,28 @@ class ServiceRepository(private val context: Context) {
         try { serviceDao.getAll().contratacoesDoPrestador(providerId) } catch (_: Exception) { emptyList() }
     }
 
+    /** Serviços concluídos pelo prestador: status CONCLUIDO aceitos por ele. */
+    fun getProviderCompletedServices(providerId: String): List<Service> = runBlocking {
+        val remote = try {
+            SupabaseClient.postgrest.from("solicitacoes_servico")
+                .select {
+                    filter {
+                        eq("accepted_provider_id", providerId)
+                        eq("status", ServiceStatus.CONCLUIDO.name)
+                    }
+                }
+                .decodeList<SolicitacaoServicoDto>()
+        } catch (_: Exception) { null }
+
+        if (remote != null) {
+            val services = remote.map { mergeWithLocal(it) }
+            services.forEach { try { serviceDao.insert(it) } catch (_: Exception) {} }
+            return@runBlocking services.filter { it.status == ServiceStatus.CONCLUIDO && it.providerId == providerId }
+        }
+
+        try { serviceDao.getAll().filter { it.status == ServiceStatus.CONCLUIDO && it.providerId == providerId } } catch (_: Exception) { emptyList() }
+    }
+
     /**
      * Aceite: PENDENTE -> EM_ANDAMENTO via RPC `aceitar_solicitacao` (o RLS não permite UPDATE direto).
      * O Room só é atualizado após a confirmação do Supabase. Em caso de sucesso, a solicitação volta

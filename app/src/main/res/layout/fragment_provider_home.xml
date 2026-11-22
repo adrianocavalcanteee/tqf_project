@@ -205,7 +205,7 @@
                         android:textSize="10sp" />
                 </LinearLayout>
 
-                <!-- Metric 3: Earnings -->
+                <!-- Metric 3: Completed Services -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -216,25 +216,25 @@
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
-                        android:src="@drawable/ic_star"
+                        android:src="@drawable/ic_check_circle"
                         tools:ignore="ContentDescription" />
 
                     <TextView
-                        android:id="@+id/txtEarningsCount"
+                        android:id="@+id/txtCompletedServicesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="R$ 0,00"
-                        tools:text="R$ 2.450"
-                        android:textColor="@color/green_badge_text"
-                        android:textSize="15sp"
+                        android:text="0"
+                        tools:text="5"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:gravity="center"
-                        android:text="Ganhos este\nmês"
+                        android:text="Serviços\nconcluídos"
                         android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
                 </LinearLayout>

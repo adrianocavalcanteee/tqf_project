@@ -28,7 +28,6 @@ import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
 /**
  * Feed do Prestador: chamados PENDENTE direcionados a ele (ou pedidos abertos da sua categoria),
@@ -102,16 +101,17 @@ class ProviderHomeFragment : Fragment() {
     private fun loadRequests() {
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val (requests, contracts) = withContext(Dispatchers.IO) {
+            val (requests, contracts, completedServices) = withContext(Dispatchers.IO) {
                 try {
-                    val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Pair(emptyList(), emptyList())
+                    val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Triple(emptyList(), emptyList(), emptyList())
                     providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
                     val reqs = ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
                     val conts = ServiceRepository(appContext).getProviderContracts(provider.id)
-                    Pair(reqs, conts)
+                    val comps = ServiceRepository(appContext).getProviderCompletedServices(provider.id)
+                    Triple(reqs, conts, comps)
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    Pair(emptyList(), emptyList())
+                    Triple(emptyList(), emptyList(), emptyList())
                 }
             }
             if (view == null) return@launch
@@ -120,11 +120,11 @@ class ProviderHomeFragment : Fragment() {
 
             val quotesCount = requests.size
             val activeServicesCount = contracts.size
-            val totalEarnings = contracts.sumOf { it.price }
+            val completedCount = completedServices.size
 
             view?.findViewById<TextView>(R.id.txtQuotesCount)?.text = quotesCount.toString()
             view?.findViewById<TextView>(R.id.txtActiveServicesCount)?.text = activeServicesCount.toString()
-            view?.findViewById<TextView>(R.id.txtEarningsCount)?.text = String.format(Locale.forLanguageTag("pt-BR"), "R$ %.2f", totalEarnings)
+            view?.findViewById<TextView>(R.id.txtCompletedServicesCount)?.text = completedCount.toString()
         }
     }
 
