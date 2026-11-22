@@ -75,7 +75,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentStart="true"
-                            android:text="Em andamento"
+                            tools:text="Em andamento"
                             android:textColor="@color/brand_blue"
                             android:textSize="12sp"
                             android:textStyle="bold"
@@ -89,7 +89,7 @@
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
-                            android:text="R$ 150,00"
+                            tools:text="R$ 150,00"
                             android:textColor="@color/text_primary"
                             android:textSize="18sp"
                             android:textStyle="bold" />
@@ -100,7 +100,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="Instalação de tomadas e iluminação"
+                        tools:text="Instalação de tomadas e iluminação"
                         android:textColor="@color/text_primary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -110,7 +110,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Serviço completo de passagem de fiação, instalação de tomadas 20A e luminárias LED em cômodos residenciais."
+                        tools:text="Serviço completo de passagem de fiação, instalação de tomadas 20A e luminárias LED em cômodos residenciais."
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp"
                         android:lineSpacingExtra="3dp" />
@@ -147,7 +147,7 @@
                                 android:id="@+id/txtDetailProfessionalName"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Carlos Mendes"
+                                tools:text="Carlos Mendes"
                                 android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -157,7 +157,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="Eletricista Residencial"
+                                tools:text="Eletricista Residencial"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -183,7 +183,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
-                            android:text="15 de mar. de 2025 • 09:00"
+                            tools:text="15 de mar. de 2025 • 09:00"
                             android:textColor="@color/text_primary"
                             android:textSize="14sp"
                             android:textStyle="bold" />

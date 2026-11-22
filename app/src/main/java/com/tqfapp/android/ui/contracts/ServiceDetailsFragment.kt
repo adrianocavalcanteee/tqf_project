@@ -6,25 +6,22 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.RatingBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
-import com.tqfapp.android.business.ReviewRules
-import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.repository.ReviewRepository
-import com.tqfapp.android.data.repository.UserRepository
+import com.tqfapp.android.ui.common.showReviewDialog
 import com.tqfapp.android.utils.UserSessionManager
-import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ServiceDetailsFragment : Fragment() {
 
@@ -106,7 +103,23 @@ class ServiceDetailsFragment : Fragment() {
             btnReviewService?.visibility = View.VISIBLE
             btnReviewService?.text = "⭐ Avaliar Atendimento"
             btnReviewService?.setOnClickListener {
-                showReviewDialog(title, profName)
+                showReviewDialog(
+                    serviceId = arguments?.getString(ARG_SERVICE_ID).orEmpty(),
+                    reviewedId = arguments?.getString(ARG_PROVIDER_ID).orEmpty(),
+                    serviceTitle = title,
+                    reviewedName = profName.ifBlank { "o prestador" }
+                ) { markAsReviewed() }
+            }
+            // Uma avaliação por contratação: se já existe no Supabase, o botão fica desabilitado.
+            val serviceId = arguments?.getString(ARG_SERVICE_ID).orEmpty()
+            if (serviceId.isNotBlank()) {
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val reviewed = withContext(Dispatchers.IO) {
+                        ReviewRepository(appContext).hasReviewedService(serviceId)
+                    }
+                    if (reviewed) markAsReviewed()
+                }
             }
         } else {
             // Serviços em andamento: o contato é feito pelo prestador via WhatsApp e a conclusão
@@ -115,37 +128,11 @@ class ServiceDetailsFragment : Fragment() {
         }
     }
 
-    private fun showReviewDialog(title: String, targetName: String) {
-        // Avaliação exige a solicitação real e o prestador real; não há IDs de fallback.
-        val serviceId = arguments?.getString(ARG_SERVICE_ID).orEmpty()
-        val providerId = arguments?.getString(ARG_PROVIDER_ID).orEmpty()
-        if (serviceId.isBlank() || providerId.isBlank()) {
-            Toast.makeText(requireContext(), "Não foi possível identificar este serviço para avaliação.", Toast.LENGTH_SHORT).show()
-            return
+    private fun markAsReviewed() {
+        view?.findViewById<MaterialButton>(R.id.btnReviewService)?.apply {
+            text = "✓ Serviço avaliado"
+            isEnabled = false
         }
-
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_review, null)
-        val ratingBar = dialogView.findViewById<RatingBar>(R.id.ratingBar)
-        val etComment = dialogView.findViewById<TextInputEditText>(R.id.etReviewComment)
-        val txtSubtitle = dialogView.findViewById<TextView>(R.id.txtReviewDialogSubtitle)
-
-        txtSubtitle?.text = "Como foi a sua experiência com $targetName no serviço '$title'?"
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setView(dialogView)
-            .setPositiveButton("Enviar Avaliação") { _, _ ->
-                val ratingValue = ratingBar?.rating?.toInt() ?: 0
-                if (!ReviewRules.isValidRating(ratingValue)) {
-                    Toast.makeText(requireContext(), "Escolha de 1 a 5 estrelas.", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                val commentText = etComment?.text?.toString()?.trim().orEmpty()
-
-                ReviewRepository(requireContext()).addReview(serviceId, providerId, ratingValue, commentText)
-                Toast.makeText(requireContext(), "Avaliação registrada para $targetName!", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
     }
 
     private inner class PortfolioPreviewAdapter(

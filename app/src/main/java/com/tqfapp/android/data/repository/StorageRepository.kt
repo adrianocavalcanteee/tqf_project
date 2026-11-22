@@ -1,11 +1,13 @@
 package com.tqfapp.android.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import com.tqfapp.android.data.network.SupabaseClient
 import io.github.jan.supabase.storage.*
 import kotlinx.coroutines.runBlocking
-import java.io.InputStream
+import java.io.ByteArrayOutputStream
 
 /**
  * Repositório responsável pelo upload e gestão de arquivos de mídia (foto de perfil e portfólio)
@@ -15,6 +17,49 @@ class StorageRepository(private val context: Context) {
 
     companion object {
         private const val BUCKET_NAME = "tqf-media"
+        /** Lado máximo da foto enviada: fotos da câmera (10+ MB) viram ~200–400 KB. */
+        private const val MAX_UPLOAD_SIZE = 1280
+        private const val JPEG_QUALITY = 85
+
+        fun isRemote(uri: String) = uri.startsWith("http")
+    }
+
+    /**
+     * Garante que a foto de perfil e o portfólio sejam URLs públicas do Storage (visíveis em qualquer
+     * aparelho). URIs locais (content://) são enviadas; as que falharem são descartadas para nunca
+     * gravar no banco um endereço que só existe neste celular.
+     */
+    fun uploadLocalMedia(profilePicture: String?, portfolio: List<String>): Pair<String?, List<String>> {
+        val avatar = when {
+            profilePicture.isNullOrBlank() -> null
+            isRemote(profilePicture) -> profilePicture
+            else -> uploadProfilePicture(Uri.parse(profilePicture)).getOrNull()
+        }
+        val local = portfolio.filterNot(::isRemote)
+        val uploaded = if (local.isEmpty()) emptyList() else
+            uploadPortfolioImages(local.map(Uri::parse)).getOrDefault(emptyList())
+        return avatar to (portfolio.filter(::isRemote) + uploaded)
+    }
+
+    /** Lê a imagem escolhida, reduz para no máximo [MAX_UPLOAD_SIZE] px e recomprime em JPEG. */
+    private fun readCompressedJpeg(uri: Uri): ByteArray? = try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= MAX_UPLOAD_SIZE || bounds.outHeight / (sample * 2) >= MAX_UPLOAD_SIZE) {
+            sample *= 2
+        }
+        val bitmap = context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        }
+        bitmap?.let {
+            ByteArrayOutputStream().use { out ->
+                it.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+                out.toByteArray()
+            }
+        }
+    } catch (_: Exception) {
+        null
     }
 
     /**
@@ -29,10 +74,8 @@ class StorageRepository(private val context: Context) {
             val authUid = authUser.id
             val path = "profile/$authUid/profile_${System.currentTimeMillis()}.jpg"
 
-            val inputStream: InputStream = context.contentResolver.openInputStream(imageUri)
+            val bytes = readCompressedJpeg(imageUri)
                 ?: return@runBlocking Result.failure(IllegalArgumentException("Não foi possível ler a imagem selecionada."))
-
-            val bytes = inputStream.use { it.readBytes() }
 
             val bucket = SupabaseClient.storage.from(BUCKET_NAME)
             bucket.upload(path, bytes)
@@ -60,9 +103,8 @@ class StorageRepository(private val context: Context) {
             imageUris.forEachIndexed { index, uri ->
                 try {
                     val path = "portfolio/$authUid/portfolio_${System.currentTimeMillis()}_$index.jpg"
-                    val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-                    if (inputStream != null) {
-                        val bytes = inputStream.use { it.readBytes() }
+                    val bytes = readCompressedJpeg(uri)
+                    if (bytes != null) {
                         bucket.upload(path, bytes)
                         uploadedUrls.add(bucket.publicUrl(path))
                     }

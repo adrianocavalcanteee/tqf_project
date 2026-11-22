@@ -63,7 +63,7 @@
             android:background="@drawable/bg_badge_green"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"
-            android:text="⚡ Atende hoje"
+            android:text="⚡ Disponível"
             android:textColor="@color/green_badge_text"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -116,40 +116,19 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/txtMetrics" />
 
-        <!-- 3. Preço transparente (à esquerda) -->
+        <!-- 3. Preço transparente -->
         <TextView
             android:id="@+id/txtPrice"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
+            android:layout_marginTop="10dp"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnViewProfile"
-            app:layout_constraintTop_toTopOf="@id/btnViewProfile"
-            app:layout_constraintBottom_toBottomOf="@id/btnViewProfile"
-            tools:text="R$ 80,00 / hora" />
-
-        <!-- 3. CTA (à direita), alvo de toque mínimo 48x48dp -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnViewProfile"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:paddingHorizontal="20dp"
-            android:text="Ver perfil"
-            android:textAllCaps="false"
-            android:textColor="@color/white"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            app:backgroundTint="@color/brand_blue"
-            app:cornerRadius="12dp"
-            app:elevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/divider" />
+            app:layout_constraintTop_toBottomOf="@id/divider"
+            tools:text="R$ 80,00 / hora" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

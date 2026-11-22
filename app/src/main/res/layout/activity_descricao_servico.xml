@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Formulário de descrição do serviço (Contratante ➔ Prestador). Ao enviar, status = PENDENTE. -->
+<!-- Formulário de descrição do serviço. Direto (Contratante ➔ Prestador) ou pedido aberto (categoria).
+     Ao enviar, status = PENDENTE. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -26,6 +27,7 @@
             android:src="@drawable/ic_arrow_back" />
 
         <TextView
+            android:id="@+id/txtScreenTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Descrição do serviço"
@@ -54,6 +56,29 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp"
                 tools:text="Para: Carlos Mendes • Reformas e Reparos" />
+
+            <!-- Somente no pedido aberto: a categoria define quais prestadores recebem a demanda -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCategory"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Categoria do serviço"
+                android:visibility="gone"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
+                    android:id="@+id/actvCategory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    tools:ignore="LabelFor" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilServiceTitle"
@@ -88,7 +113,7 @@
                 app:boxCornerRadiusTopStart="12dp"
                 app:counterEnabled="true"
                 app:counterMaxLength="500"
-                app:helperText="Inclua local, prazo desejado e detalhes que ajudem o prestador a decidir.">
+                app:helperText="Inclua detalhes que ajudem o prestador a decidir.">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etServiceDescription"
@@ -98,6 +123,44 @@
                     android:inputType="textMultiLine|textCapSentences"
                     android:maxLength="500"
                     android:minLines="4" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Urgência"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupUrgency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:selectionRequired="false"
+                app:singleSelection="true" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilLocation"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Local do serviço (bairro, cidade)"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:helperText="Ajuda o prestador a saber a distância até você.">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etLocation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPostalAddress|textCapWords"
+                    android:maxLength="200" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout

@@ -14,20 +14,22 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.tqfapp.android.R
+import com.google.android.gms.maps.model.LatLng
 import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.ui.request.AvaliarSolicitacaoActivity
+import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Feed do Prestador: chamados PENDENTE direcionados a ele (ou gerais da sua categoria).
+ * Feed do Prestador: chamados PENDENTE direcionados a ele (ou pedidos abertos da sua categoria),
+ * do mais urgente para o menos urgente.
  * Fluxo: Recebe Solicitação ➔ Avalia a Descrição (AvaliarSolicitacaoActivity) ➔ Aceita ou Recusa.
  */
 class ProviderHomeFragment : Fragment() {
@@ -39,6 +41,8 @@ class ProviderHomeFragment : Fragment() {
     private lateinit var rvRequests: RecyclerView
     private lateinit var etSearchRequests: EditText
     private var txtEmptyRequests: TextView? = null
+    /** Localização do escritório do prestador, para mostrar a distância até o pedido. */
+    private var providerLocation: LatLng? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -67,8 +71,19 @@ class ProviderHomeFragment : Fragment() {
         loadRequests()
     }
 
+    private fun showGreeting(view: View, providerName: String?) {
+        val name = providerName?.trim()
+        val greetingText = if (!name.isNullOrBlank()) {
+            val firstName = name.split(" ").firstOrNull() ?: name
+            "Olá, $firstName!"
+        } else {
+            "Olá!"
+        }
+        view.findViewById<TextView>(R.id.txtProviderGreeting)?.text = greetingText
+    }
+
     private fun setupRequestsList() {
-        requestAdapter = ServiceRequestAdapter { request ->
+        requestAdapter = ServiceRequestAdapter({ request -> distanceTo(request) }) { request ->
             startActivity(AvaliarSolicitacaoActivity.newIntent(requireContext(), request))
         }
 
@@ -81,19 +96,45 @@ class ProviderHomeFragment : Fragment() {
     private fun loadRequests() {
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val requests = withContext(Dispatchers.IO) {
+            // getCurrentUser faz rede: fica no IO junto com as listas (nada bloqueia a thread principal).
+            var providerName: String? = null
+            var providerAvailable = true
+            val (requests, contracts, completedServices) = withContext(Dispatchers.IO) {
                 try {
-                    val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext emptyList()
-                    ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
+                    val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Triple(emptyList(), emptyList(), emptyList())
+                    providerName = provider.name
+                    providerAvailable = provider.isAvailable
+                    providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
+                    val reqs = ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
+                    val conts = ServiceRepository(appContext).getProviderContracts(provider.id)
+                    val comps = ServiceRepository(appContext).getProviderCompletedServices(provider.id)
+                    Triple(reqs, conts, comps)
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    emptyList()
+                    Triple(emptyList(), emptyList(), emptyList())
                 }
             }
-            if (view == null) return@launch
+            val root = view ?: return@launch
+            showGreeting(root, providerName)
+            showAvailability(root, providerAvailable)
             allRequests = requests
             applySearch(etSearchRequests.text?.toString().orEmpty())
+
+            val quotesCount = requests.size
+            val activeServicesCount = contracts.size
+            val completedCount = completedServices.size
+
+            view?.findViewById<TextView>(R.id.txtQuotesCount)?.text = quotesCount.toString()
+            view?.findViewById<TextView>(R.id.txtActiveServicesCount)?.text = activeServicesCount.toString()
+            view?.findViewById<TextView>(R.id.txtCompletedServicesCount)?.text = completedCount.toString()
         }
+    }
+
+    private fun distanceTo(request: Service): Double? {
+        val from = providerLocation ?: return null
+        val lat = request.latitude ?: return null
+        val lng = request.longitude ?: return null
+        return LocationUtils.distanceKm(from, LatLng(lat, lng))
     }
 
     private fun applySearch(rawQuery: String) {
@@ -105,6 +146,7 @@ class ProviderHomeFragment : Fragment() {
                 it.title.contains(query, ignoreCase = true) ||
                         it.clientName.contains(query, ignoreCase = true) ||
                         it.category.contains(query, ignoreCase = true) ||
+                        it.locationText.orEmpty().contains(query, ignoreCase = true) ||
                         it.description.contains(query, ignoreCase = true)
             }
         }
@@ -122,19 +164,39 @@ class ProviderHomeFragment : Fragment() {
         })
     }
 
-    private fun setupStatusSwitch(view: View) {
-        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus)
-        val txtStatusTitle = view.findViewById<TextView>(R.id.txtStatusTitle)
+    private var bindingSwitch = false
 
-        switchStatus?.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                txtStatusTitle?.text = "Status: Disponível 🟢"
-                showToast("Seu perfil agora está visível para novos chamados")
-            } else {
-                txtStatusTitle?.text = "Status: Indisponível 🔴"
-                showToast("Seu perfil está oculto para novos chamados")
+    /** Switch "Disponível para chamados": grava em perfis_prestador.is_available e desfaz se falhar. */
+    private fun setupStatusSwitch(view: View) {
+        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus) ?: return
+        switchStatus.setOnCheckedChangeListener { button, isChecked ->
+            if (bindingSwitch) return@setOnCheckedChangeListener
+            showAvailability(view, isChecked)
+            button.isEnabled = false
+            val appContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) { UserRepository(appContext).setAvailability(isChecked) }
+                button.isEnabled = true
+                result.onSuccess {
+                    showToast(
+                        if (isChecked) "Seu perfil agora está visível para novos chamados"
+                        else "Seu perfil está oculto para novos chamados"
+                    )
+                }.onFailure {
+                    showAvailability(view, !isChecked)
+                    showToast(it.message ?: "Não foi possível alterar sua disponibilidade.")
+                }
             }
         }
+    }
+
+    private fun showAvailability(view: View, isAvailable: Boolean) {
+        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus)
+        bindingSwitch = true
+        switchStatus?.isChecked = isAvailable
+        bindingSwitch = false
+        view.findViewById<TextView>(R.id.txtStatusTitle)?.text =
+            if (isAvailable) "Status: Disponível 🟢" else "Status: Indisponível 🔴"
     }
 
     private fun setupNotification(view: View) {
@@ -146,54 +208,24 @@ class ProviderHomeFragment : Fragment() {
         }
 
         view.findViewById<TextView>(R.id.btnSeeAllRequests)?.setOnClickListener {
-            etSearchRequests.setText("")
-            loadRequests()
+            val appContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val provider = withContext(Dispatchers.IO) {
+                    UserRepository(appContext).getCurrentUser()
+                }
+                val providerId = provider?.id ?: ""
+                val providerCategory = provider?.category
+
+                val fragment = AllRequestsFragment.newInstance(providerId, providerCategory)
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, fragment)
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
     }
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-    }
-
-    private class ServiceRequestAdapter(
-        private val onEvaluateClick: (Service) -> Unit
-    ) : RecyclerView.Adapter<ServiceRequestAdapter.ViewHolder>() {
-
-        private var items: List<Service> = emptyList()
-
-        fun updateData(newList: List<Service>) {
-            items = newList
-            notifyDataSetChanged()
-        }
-
-        class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            val txtClientName: TextView = view.findViewById(R.id.txtClientName)
-            val txtCategoryBadge: TextView = view.findViewById(R.id.txtCategoryBadge)
-            val txtPostedTime: TextView = view.findViewById(R.id.txtPostedTime)
-            val txtRequestTitle: TextView = view.findViewById(R.id.txtRequestTitle)
-            val txtRequestDescription: TextView = view.findViewById(R.id.txtRequestDescription)
-            val txtLocation: TextView = view.findViewById(R.id.txtLocation)
-            val btnEvaluateService: MaterialButton = view.findViewById(R.id.btnEvaluateService)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_service_request, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.txtClientName.text = item.clientName.ifBlank { "Cliente" }
-            holder.txtCategoryBadge.text = item.category
-            holder.txtPostedTime.text = item.date
-            holder.txtRequestTitle.text = item.title
-            holder.txtRequestDescription.text = item.description
-            holder.txtLocation.text = if (item.providerId.isNotBlank()) "Solicitação direta" else "Chamado da região"
-
-            holder.btnEvaluateService.setOnClickListener { onEvaluateClick(item) }
-            holder.view.setOnClickListener { onEvaluateClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
     }
 }

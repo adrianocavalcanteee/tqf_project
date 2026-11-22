@@ -6,6 +6,8 @@ import com.tqfapp.android.data.local.database.AppDatabase
 import com.tqfapp.android.data.local.preferences.SessionManager
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.network.SupabaseClient
+import com.tqfapp.android.data.network.safeLogDescription
+import com.tqfapp.android.data.network.userMessage
 import com.tqfapp.android.data.network.dto.AvaliacaoDto
 import com.tqfapp.android.data.network.dto.DadosPrivadosUsuarioDto
 import com.tqfapp.android.data.network.dto.PerfilPrestadorDto
@@ -27,6 +29,24 @@ class UserRepository(private val context: Context) {
 
     companion object {
         private const val TAG = "AuthFlow"
+        private const val CURRENT_USER_CACHE_TTL_MS = 60_000L
+        private const val KEY_RECOVERY_REQUESTED_AT = "recovery_requested_at"
+        /** O link de recuperação do Supabase vale 1 hora por padrão. */
+        private const val RECOVERY_LINK_VALIDITY_MS = 60 * 60 * 1000L
+
+        /**
+         * Usuário logado em memória: cada getCurrentUser() custa 3 consultas ao Supabase e várias telas
+         * o chamam repetidamente. Invalidado em login, logout e qualquer alteração de perfil.
+         */
+        @Volatile
+        private var cachedCurrentUser: Pair<Long, User>? = null
+
+        fun invalidateCurrentUserCache() {
+            cachedCurrentUser = null
+        }
+
+        /** Foto atual do usuário logado (para restaurar a tela se uma troca de foto falhar). */
+        fun cachedProfilePicture(): String? = cachedCurrentUser?.second?.profilePictureUri
     }
 
     private fun savePendingRegistrationData(user: User) {
@@ -156,6 +176,7 @@ class UserRepository(private val context: Context) {
                         portfolioUris = perfilDto?.portfolioUrls ?: emptyList(),
                         rating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average(),
                         reviewCount = reviews.size,
+                        isAvailable = perfilDto?.isAvailable ?: true,
                         latitude = lat,
                         longitude = lng
                     )
@@ -181,7 +202,11 @@ class UserRepository(private val context: Context) {
             Log.d(TAG, "signUp iniciado para e-mail domain: ${user.email.substringAfter("@")}")
             savePendingRegistrationData(user)
 
-            SupabaseClient.auth.signUpWith(Email, redirectUrl = "com.tqfapp.android://login-callback") {
+            // Sessão de outra conta neste aparelho: o signUp com confirmação de e-mail não a substitui,
+            // e currentUserOrNull() devolveria o usuário anterior (dados gravados no id errado).
+            logout()
+
+            SupabaseClient.auth.signUpWith(Email, redirectUrl = SupabaseClient.AUTH_CALLBACK_URL) {
                 email = user.email
                 password = passwordRaw
             }
@@ -191,18 +216,14 @@ class UserRepository(private val context: Context) {
             val authUser = SupabaseClient.auth.currentUserOrNull()
             val authSession = SupabaseClient.auth.currentSessionOrNull()
 
-            if (authUser == null) {
-                return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
-                )
+            if (authUser == null || !authUser.email.equals(user.email, ignoreCase = true)) {
+                return@runBlocking Result.failure(EmailConfirmationPendingException())
             }
 
             val authUid = authUser.id
 
             if (authSession == null) {
-                return@runBlocking Result.failure(
-                    IllegalStateException("Cadastro realizado. Verifique seu e-mail para confirmar sua conta.")
-                )
+                return@runBlocking Result.failure(EmailConfirmationPendingException())
             }
 
             createPublicProfileTablesInSupabase(authUid, user)
@@ -215,8 +236,10 @@ class UserRepository(private val context: Context) {
             try { userDao.insert(roomUser) } catch (_: Exception) {}
 
             Result.success(roomUser)
+        } catch (e: EmailConfirmationPendingException) {
+            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "signUp erro: ${e.javaClass.simpleName} - ${e.message}")
+            Log.e(TAG, "signUp erro: ${e.safeLogDescription()}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
             Result.failure(IllegalArgumentException(errorMsg, e))
         }
@@ -226,7 +249,12 @@ class UserRepository(private val context: Context) {
      * Autentica o usuário pelo Supabase Auth e finaliza a criação das tabelas públicas
      * caso o perfil ainda não exista no Supabase (primeiro login após confirmação de e-mail).
      */
-    fun loginUser(email: String, passwordRaw: String): Result<User> = runBlocking {
+    /**
+     * @param expectedIsProvider aba escolhida no login. O tipo gravado em `usuarios.is_provider` é a fonte
+     * da verdade: se a conta for de outro tipo, a sessão é encerrada e o login falha com mensagem clara.
+     */
+    fun loginUser(email: String, passwordRaw: String, expectedIsProvider: Boolean): Result<User> = runBlocking {
+        invalidateCurrentUserCache()
         try {
             Log.d(TAG, "signIn iniciado para e-mail domain: ${email.substringAfter("@")}")
             SupabaseClient.auth.signInWith(Email) {
@@ -256,7 +284,8 @@ class UserRepository(private val context: Context) {
                     id = authUid,
                     name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
                     email = email,
-                    isProvider = UserSessionManager.isProviderUser(context)
+                    // Sem dados do cadastro neste aparelho: usa a aba escolhida, nunca a sessão anterior.
+                    isProvider = expectedIsProvider
                 )
 
                 createPublicProfileTablesInSupabase(authUid, userToCreate)
@@ -267,6 +296,16 @@ class UserRepository(private val context: Context) {
                     name = userToCreate.name,
                     isProvider = userToCreate.isProvider,
                     profilePictureUrl = userToCreate.profilePictureUri
+                )
+            }
+
+            if (usuarioDto.isProvider != expectedIsProvider) {
+                logout()
+                val accountType = if (usuarioDto.isProvider) "prestador" else "contratante"
+                return@runBlocking Result.failure(
+                    AccountTypeMismatchException(
+                        "Esta conta é de $accountType. Selecione \"${accountType.replaceFirstChar { it.uppercase() }}\" para entrar."
+                    )
                 )
             }
 
@@ -283,21 +322,28 @@ class UserRepository(private val context: Context) {
             try { userDao.insert(currentUser) } catch (_: Exception) {}
 
             Result.success(currentUser)
+        } catch (e: AccountTypeMismatchException) {
+            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "signIn erro: ${e.javaClass.simpleName} - ${e.message}")
+            Log.e(TAG, "signIn erro: ${e.safeLogDescription()}")
             val errorMsg = mapAuthExceptionToFriendlyMessage(e)
             Result.failure(IllegalArgumentException(errorMsg, e))
         }
     }
 
     private suspend fun createPublicProfileTablesInSupabase(authUid: String, user: User) {
+        val storage = StorageRepository(context)
+        // Foto do cadastro é uma URI local: sobe para o Storage antes de gravar (pasta profile/ não exige prestador).
+        val (avatarUrl, _) = storage.uploadLocalMedia(user.profilePictureUri, emptyList())
         val usuarioDto = UsuarioDto(
             id = authUid,
             name = user.name,
             isProvider = user.isProvider,
-            profilePictureUrl = user.profilePictureUri
+            profilePictureUrl = avatarUrl
         )
         SupabaseClient.postgrest.from("usuarios").insert(usuarioDto)
+        // Portfólio só pode subir depois que usuarios.is_provider existe (regra da pasta portfolio/).
+        val portfolioUrls = if (user.isProvider) storage.uploadLocalMedia(null, user.portfolioUris).second else emptyList()
 
         val dadosPrivadosDto = DadosPrivadosUsuarioDto(
             id = authUid,
@@ -315,8 +361,9 @@ class UserRepository(private val context: Context) {
                 officeAddress = user.address,
                 latitude = user.latitude,
                 longitude = user.longitude,
-                portfolioUrls = user.portfolioUris,
-                serviceTags = user.services
+                portfolioUrls = portfolioUrls,
+                serviceTags = user.services,
+                isAvailable = user.isAvailable
             )
             SupabaseClient.postgrest.from("perfis_prestador").insert(perfilPrestadorDto)
         }
@@ -337,8 +384,8 @@ class UserRepository(private val context: Context) {
                 "E-mail ou senha incorretos."
             msg.contains("email not confirmed") ->
                 "Seu e-mail ainda não foi confirmado. Por favor, verifique sua caixa de entrada."
-            else ->
-                e.message ?: "Não foi possível concluir a operação. Tente novamente."
+            // Nunca repassa e.message bruto: contém URL, cabeçalhos e o token da requisição.
+            else -> e.userMessage("Não foi possível concluir a operação. Tente novamente.")
         }
     }
 
@@ -347,6 +394,10 @@ class UserRepository(private val context: Context) {
             val authUser = SupabaseClient.auth.currentUserOrNull()
             if (authUser != null) {
                 val authUid = authUser.id
+                cachedCurrentUser?.let { (loadedAt, user) ->
+                    val fresh = System.currentTimeMillis() - loadedAt < CURRENT_USER_CACHE_TTL_MS
+                    if (fresh && user.id == authUid) return@runBlocking user
+                }
                 val usuarioDto = try {
                     SupabaseClient.postgrest.from("usuarios")
                         .select {
@@ -358,7 +409,7 @@ class UserRepository(private val context: Context) {
                 } catch (_: Exception) { null }
 
                 if (usuarioDto != null) {
-                    val email = authUser.email ?: "usuario@tqf.com"
+                    val email = authUser.email.orEmpty()
 
                     val dadosPrivados = try {
                         SupabaseClient.postgrest.from("dados_privados_usuario")
@@ -375,6 +426,7 @@ class UserRepository(private val context: Context) {
                     var longitude: Double? = null
                     var portfolioUris: List<String> = emptyList()
                     var services: List<String> = emptyList()
+                    var isAvailable = true
 
                     if (usuarioDto.isProvider) {
                         val perfil = try {
@@ -392,11 +444,12 @@ class UserRepository(private val context: Context) {
                             longitude = perfil.longitude
                             portfolioUris = perfil.portfolioUrls
                             services = perfil.serviceTags
+                            isAvailable = perfil.isAvailable
                         }
                     }
 
                     UserSessionManager.saveUserSession(context, usuarioDto.isProvider, usuarioDto.name, email)
-                    return@runBlocking User(
+                    val loaded = User(
                         id = authUid,
                         name = usuarioDto.name,
                         email = email,
@@ -409,9 +462,12 @@ class UserRepository(private val context: Context) {
                         telephone = phone,
                         profilePictureUri = usuarioDto.profilePictureUrl,
                         portfolioUris = portfolioUris,
+                        isAvailable = isAvailable,
                         latitude = latitude,
                         longitude = longitude
                     )
+                    cachedCurrentUser = System.currentTimeMillis() to loaded
+                    return@runBlocking loaded
                 }
             }
 
@@ -428,6 +484,7 @@ class UserRepository(private val context: Context) {
     }
 
     fun updateUser(user: User): Boolean = runBlocking {
+        invalidateCurrentUserCache()
         try {
             userDao.insert(user)
             val usuarioDto = UsuarioDto(
@@ -459,7 +516,8 @@ class UserRepository(private val context: Context) {
                     latitude = user.latitude,
                     longitude = user.longitude,
                     portfolioUrls = user.portfolioUris,
-                    serviceTags = user.services
+                    serviceTags = user.services,
+                    isAvailable = user.isAvailable
                 )
                 try {
                     SupabaseClient.postgrest.from("perfis_prestador").upsert(perfilPrestadorDto)
@@ -473,11 +531,91 @@ class UserRepository(private val context: Context) {
         }
     }
 
+    /**
+     * "Esqueceu a senha?": o Supabase envia um link que volta ao app (login-callback). Marca o pedido
+     * neste aparelho para a LoginActivity abrir a tela de nova senha quando o link chegar.
+     */
+    fun requestPasswordReset(email: String): Result<Unit> = runBlocking {
+        try {
+            SupabaseClient.auth.resetPasswordForEmail(email, redirectUrl = SupabaseClient.AUTH_CALLBACK_URL)
+            recoveryPrefs().edit().putLong(KEY_RECOVERY_REQUESTED_AT, System.currentTimeMillis()).apply()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "resetPassword erro: ${e.safeLogDescription()}")
+            Result.failure(IllegalArgumentException(mapAuthExceptionToFriendlyMessage(e), e))
+        }
+    }
+
+    /** true (uma vez) se houve um pedido de recuperação recente neste aparelho. */
+    fun consumePasswordRecoveryRequest(): Boolean {
+        val prefs = recoveryPrefs()
+        val requestedAt = prefs.getLong(KEY_RECOVERY_REQUESTED_AT, 0L)
+        prefs.edit().remove(KEY_RECOVERY_REQUESTED_AT).apply()
+        return requestedAt > 0 && System.currentTimeMillis() - requestedAt < RECOVERY_LINK_VALIDITY_MS
+    }
+
+    /** Tela "Nova senha": usa a sessão de recuperação aberta pelo link e encerra a sessão em seguida. */
+    fun updatePassword(newPassword: String): Result<Unit> = runBlocking {
+        try {
+            SupabaseClient.auth.currentUserOrNull()
+                ?: throw IllegalStateException("Link de recuperação expirado. Solicite um novo pelo login.")
+            SupabaseClient.auth.updateUser { password = newPassword }
+            logout()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "updatePassword erro: ${e.safeLogDescription()}")
+            Result.failure(IllegalArgumentException(e.userMessage("Não foi possível alterar a senha. Solicite um novo link."), e))
+        }
+    }
+
+    private fun recoveryPrefs() = context.getSharedPreferences("tqf_password_recovery", Context.MODE_PRIVATE)
+
+    /**
+     * Troca a foto de perfil: envia ao Supabase Storage (bucket tqf-media) e grava a URL pública em
+     * usuarios.profile_picture_url. Retorna a URL para a tela exibir.
+     */
+    fun updateProfilePicture(imageUri: android.net.Uri): Result<String> {
+        val url = StorageRepository(context).uploadProfilePicture(imageUri).getOrElse {
+            return Result.failure(IllegalStateException(it.userMessage("Não foi possível enviar a foto. Tente novamente."), it))
+        }
+        val user = getCurrentUser()
+            ?: return Result.failure(IllegalStateException("Sessão expirada. Entre novamente."))
+        return if (updateUser(user.copy(profilePictureUri = url))) Result.success(url)
+        else Result.failure(IllegalStateException("A foto foi enviada, mas não foi possível salvá-la no perfil."))
+    }
+
+    /** Switch "Disponível para chamados": grava em perfis_prestador.is_available (RLS: só o próprio prestador). */
+    fun setAvailability(isAvailable: Boolean): Result<Unit> = runBlocking {
+        try {
+            val userId = SupabaseClient.auth.currentUserOrNull()?.id
+                ?: throw IllegalStateException("Usuário não autenticado.")
+            SupabaseClient.postgrest.from("perfis_prestador")
+                .update(mapOf("is_available" to isAvailable)) { filter { eq("user_id", userId) } }
+            invalidateCurrentUserCache()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException(e.userMessage("Não foi possível alterar sua disponibilidade."), e))
+        }
+    }
+
     fun logout() = runBlocking {
+        invalidateCurrentUserCache()
         try {
             SupabaseClient.auth.signOut()
         } catch (_: Exception) {}
         sessionManager.logout()
         UserSessionManager.clearSession(context)
+        // Cache local (usuários, solicitações, avaliações) é por conta: não pode vazar para o próximo login.
+        try { AppDatabase.getDatabase(context).clearAllTables() } catch (_: Exception) {}
     }
 }
+
+/** Login pela aba errada: a conta existe, mas é de outro tipo (contratante x prestador). */
+class AccountTypeMismatchException(message: String) : IllegalArgumentException(message)
+
+/**
+ * Cadastro criado no Supabase Auth, mas a conta só pode logar após confirmar o e-mail.
+ * Não é erro: a tela de cadastro deve levar o usuário ao login.
+ */
+class EmailConfirmationPendingException :
+    IllegalStateException("Cadastro realizado! Confirme seu e-mail pelo link enviado e depois faça login.")

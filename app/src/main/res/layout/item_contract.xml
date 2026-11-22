@@ -53,7 +53,7 @@
                         android:id="@+id/txtProfessionalName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Paulo Oliveira"
+                        tools:text="Paulo Oliveira"
                         android:textColor="@color/text_primary"
                         android:textSize="15sp"
                         android:textStyle="bold" />
@@ -72,7 +72,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Climatização"
+                    tools:text="Climatização"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -90,7 +90,7 @@
                     android:id="@+id/txtStatusBadge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Concluído"
+                    tools:text="Concluído"
                     android:textColor="@color/green_badge_text"
                     android:textSize="11sp"
                     android:textStyle="bold"
@@ -103,7 +103,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="★ 5.0"
+                    tools:text="★ 5.0"
                     android:textColor="@color/brand_blue"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -137,7 +137,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Instalação de ar-condicionado 12000 BTUs"
+                tools:text="Instalação de ar-condicionado 12000 BTUs"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -165,20 +165,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
-                        android:text="12 de mar. de 2025 • 14:00"
+                        tools:text="12 de mar. de 2025 • 14:00"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/txtContractPrice"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:text="R$ 250,00"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
             </RelativeLayout>
 
         </LinearLayout>

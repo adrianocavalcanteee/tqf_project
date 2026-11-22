@@ -43,7 +43,7 @@
                     android:id="@+id/txtReviewerName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Mariana Costa"
+                    tools:text="Mariana Costa"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -69,7 +69,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
-                android:text="10 de mar. de 2025"
+                tools:text="10 de mar. de 2025"
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
         </RelativeLayout>
@@ -79,7 +79,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Excelente profissional! Resolveu meu problema com muita agilidade. Recomendo!"
+            tools:text="Excelente profissional! Resolveu meu problema com muita agilidade. Recomendo!"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:lineSpacingExtra="2dp" />

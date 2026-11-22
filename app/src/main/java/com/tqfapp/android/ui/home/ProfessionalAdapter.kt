@@ -6,9 +6,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.databinding.ItemProfessionalBinding
 import java.util.Locale
+import com.tqfapp.android.ui.common.loadImage
 
 /**
  * Lista de prestadores (Home e Sugestões). Começa vazia e é alimentada via [updateData].
@@ -26,6 +28,7 @@ class ProfessionalAdapter(
 
         fun bind(provider: User) = with(binding) {
             txtName.text = provider.name
+            imgAvatar.loadImage(provider.profilePictureUri)
             txtCategory.text = listOfNotNull(provider.category, provider.specialty)
                 .filter { it.isNotBlank() }
                 .distinct()
@@ -36,7 +39,6 @@ class ProfessionalAdapter(
             txtPrice.text = provider.priceLabel()
 
             root.setOnClickListener { onProfileClick(provider) }
-            btnViewProfile.setOnClickListener { onProfileClick(provider) }
         }
     }
 
@@ -52,8 +54,8 @@ class ProfessionalAdapter(
         fun metricsLine(provider: User): String {
             val parts = mutableListOf<String>()
             if (provider.reviewCount > 0) {
-                parts += String.format(PT_BR, "%.1f", provider.rating)
-                parts += if (provider.reviewCount == 1) "1 avaliação" else "${provider.reviewCount} avaliações"
+                parts += RatingFormat.value(provider.rating)
+                parts += RatingFormat.count(provider.reviewCount)
             } else {
                 parts += "Novo no TQF"
             }

@@ -114,7 +114,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:layout_marginTop="55dp">
+                android:layout_marginTop="55dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/imgAvatar"
@@ -136,6 +138,9 @@
                     android:layout_height="28dp"
                     android:layout_alignEnd="@id/imgAvatar"
                     android:layout_alignBottom="@id/imgAvatar"
+                    android:layout_marginEnd="-4dp"
+                    android:layout_marginBottom="-4dp"
+                    android:elevation="4dp"
                     android:background="@drawable/bg_circle_blue"
                     android:clickable="true"
                     android:focusable="true">
@@ -173,7 +178,7 @@
                         android:id="@+id/txtProfessionalName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="João Ferreira"
+                        tools:text="João Ferreira"
                         android:textColor="@color/text_primary"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -213,7 +218,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Técnico de TI"
+                tools:text="Técnico de TI"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -236,13 +241,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
-                    android:text="5,0 (289 avaliações)"
+                    android:text="Novo no TQF"
+                    tools:text="5,0 (0 avaliações)"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- Stats Summary Cards (3 items) -->
+            <!-- Stats Summary Cards (2 items) -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -260,38 +266,6 @@
                     android:paddingVertical="14dp"
                     android:paddingHorizontal="4dp">
 
-                    <!-- Stat 1: Distance -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:src="@drawable/ic_location"
-                            tools:ignore="ContentDescription" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="2,1 km"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:text="da sua localização"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="10sp" />
-                    </LinearLayout>
-
                     <!-- Stat 2: Services -->
                     <LinearLayout
                         android:layout_width="0dp"
@@ -307,11 +281,13 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/txtCompletedCount"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="89"
-                            android:textColor="@color/text_primary"
+                            android:text="0"
+                            tools:text="89"
+                            android:textColor="@color/brand_blue"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
@@ -319,7 +295,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:gravity="center"
-                            android:text="serviços realizados"
+                            android:text="Serviços realizados"
                             android:textColor="@color/text_secondary"
                             android:textSize="10sp" />
                     </LinearLayout>
@@ -342,16 +318,16 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Profissional"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
+                            android:text="Verificado"
+                            android:textColor="@color/brand_blue"
+                            android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:gravity="center"
-                            android:text="verificado"
+                            android:text="Conta profissional"
                             android:textColor="@color/text_secondary"
                             android:textSize="10sp" />
                     </LinearLayout>
@@ -413,7 +389,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="16dp"
-                    android:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
+                    tools:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp" />
@@ -585,6 +561,15 @@
                 tools:itemCount="4"
                 tools:listitem="@layout/item_portfolio" />
 
+            <TextView
+                android:id="@+id/txtNoPortfolio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nenhuma foto no portfólio. Toque em editar perfil para adicionar."
+                android:textColor="@color/text_muted"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <!-- "Avaliações" Section -->
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -596,7 +581,8 @@
                     android:id="@+id/txtReviewsTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Avaliações (289)"
+                    android:text="Avaliações (0)"
+                    tools:text="Avaliações (0)"
                     android:textColor="@color/text_primary"
                     android:textSize="17sp"
                     android:textStyle="bold" />

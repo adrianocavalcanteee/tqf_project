@@ -49,10 +49,12 @@
 
         <!-- Provider Greeting -->
         <TextView
+            android:id="@+id/txtProviderGreeting"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Olá, João!"
+            android:text="Olá!"
+            tools:text="Olá, João!"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
             android:textStyle="bold" />
@@ -65,8 +67,9 @@
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
-        <!-- Status Toggle Card (Disponível para Chamados) -->
+        <!-- Status Toggle Card (Disponível para Chamados): perfis_prestador.is_available -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStatusToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -150,10 +153,12 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtQuotesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="8"
+                        android:text="0"
+                        tools:text="8"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -182,10 +187,12 @@
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtActiveServicesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="3"
+                        android:text="0"
+                        tools:text="3"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -199,7 +206,7 @@
                         android:textSize="10sp" />
                 </LinearLayout>
 
-                <!-- Metric 3: Earnings -->
+                <!-- Metric 3: Completed Services -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -210,23 +217,25 @@
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
-                        android:src="@drawable/ic_star"
+                        android:src="@drawable/ic_check_circle"
                         tools:ignore="ContentDescription" />
 
                     <TextView
+                        android:id="@+id/txtCompletedServicesCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="R$ 2.450"
-                        android:textColor="@color/green_badge_text"
-                        android:textSize="15sp"
+                        android:text="0"
+                        tools:text="5"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:gravity="center"
-                        android:text="Ganhos este\nmês"
+                        android:text="Serviços\nconcluídos"
                         android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
                 </LinearLayout>

@@ -23,7 +23,12 @@ data class Service(
     val providerName: String = "",
     val price: Double = 0.0,
     val status: ServiceStatus = ServiceStatus.PENDENTE,
-    val date: String = ""
+    val date: String = "",
+    /** Nome de [com.tqfapp.android.business.Urgency]; null = não informado. */
+    val urgency: String? = null,
+    val locationText: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L

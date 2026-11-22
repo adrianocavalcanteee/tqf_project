@@ -2,6 +2,8 @@ package com.tqfapp.android.data.model
 
 import android.net.Uri
 import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.business.Urgency
+import java.util.Locale
 
 /**
  * Nomes de domínio do fluxo de solicitação. A persistência continua na entidade Room [Service]
@@ -34,3 +36,18 @@ fun StatusSolicitacao.label(): String = when (this) {
     StatusSolicitacao.RECUSADO -> "Recusado"
     StatusSolicitacao.CANCELADO -> "Cancelado"
 }
+
+/**
+ * Resumo exibido ao prestador: tipo do pedido (enquanto pendente), urgência, local e distância.
+ * Ex.: "Pedido aberto • Hoje • Centro, Recife • 2,1 km".
+ */
+fun Solicitacao.resumoParaPrestador(distanceKm: Double?): String = listOfNotNull(
+    when {
+        status != StatusSolicitacao.PENDENTE -> null
+        providerId.isNotBlank() -> "Solicitação direta"
+        else -> "Pedido aberto"
+    },
+    Urgency.fromName(urgency)?.label,
+    locationText?.takeIf { it.isNotBlank() },
+    distanceKm?.let { String.format(Locale.forLanguageTag("pt-BR"), "%.1f km", it) }
+).joinToString(" • ")

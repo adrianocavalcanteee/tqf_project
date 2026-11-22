@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -26,9 +27,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
 import com.tqfapp.android.data.model.label
-import com.tqfapp.android.data.local.database.AppDatabase
+import com.tqfapp.android.business.ServiceStatus
+import com.tqfapp.android.business.RatingFormat
+import com.tqfapp.android.data.model.Service
 import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.repository.ReviewRepository
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
@@ -42,6 +46,10 @@ import com.tqfapp.android.ui.notifications.NotificationsFragment
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.loadImage
 
 class ProfileFragment : Fragment() {
 
@@ -65,25 +73,7 @@ class ProfileFragment : Fragment() {
     private val pickMediaLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            if (_binding != null) {
-                binding.imgProfile.setImageURI(uri)
-            }
-            val storageRepository = com.tqfapp.android.data.repository.StorageRepository(requireContext())
-            val uploadResult = storageRepository.uploadProfilePicture(uri)
-            if (uploadResult.isSuccess) {
-                val publicUrl = uploadResult.getOrNull()
-                val user = currentUser
-                if (user != null && publicUrl != null) {
-                    val updated = user.copy(profilePictureUri = publicUrl)
-                    userRepository.updateUser(updated)
-                    currentUser = updated
-                }
-                Toast.makeText(requireContext(), "Foto enviada para o Supabase Storage com sucesso!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
-            }
-        }
+        if (uri != null) uploadAvatar(uri)
     }
 
     private var clientAvatarImageViewRef: ImageView? = null
@@ -91,18 +81,30 @@ class ProfileFragment : Fragment() {
     private val clientPhotoPickerLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            clientAvatarImageViewRef?.setImageURI(uri)
-            if (_binding != null) {
-                binding.imgProfile.setImageURI(uri)
+        if (uri != null) uploadAvatar(uri)
+    }
+
+    /**
+     * Foto de perfil (tela e diálogo de edição): antes era gravada como URI local (content://),
+     * que nenhum outro aparelho abre. Agora sobe ao Storage em IO; se falhar, volta a foto anterior.
+     */
+    private fun uploadAvatar(uri: Uri) {
+        val previous = currentUser?.profilePictureUri
+        clientAvatarImageViewRef?.setImageURI(uri)
+        if (_binding != null) binding.imgProfile.setImageURI(uri)
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { UserRepository(appContext).updateProfilePicture(uri) }
+            result.onSuccess { url ->
+                currentUser = currentUser?.copy(profilePictureUri = url)
+                clientAvatarImageViewRef?.loadImage(url)
+                if (_binding != null) binding.imgProfile.loadImage(url)
+                showToast("Foto de perfil atualizada!")
+            }.onFailure {
+                clientAvatarImageViewRef?.loadImage(previous)
+                if (_binding != null) binding.imgProfile.loadImage(previous)
+                showToast(it.message ?: "Não foi possível atualizar a foto.")
             }
-            val user = currentUser
-            if (user != null) {
-                val updated = user.copy(profilePictureUri = uri.toString())
-                userRepository.updateUser(updated)
-                currentUser = updated
-            }
-            Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -156,14 +158,13 @@ class ProfileFragment : Fragment() {
             val user = currentUser
             if (user != null && _binding != null) {
                 binding.txtProfileName.text = user.name
+                // Ano de criação da conta no Supabase Auth (sem valor fixo no layout).
+                val memberSinceYear = SupabaseClient.auth.currentUserOrNull()?.createdAt?.toString()?.take(4)
+                binding.txtMemberSince.text = memberSinceYear?.let {
+                    if (isProviderProfile) "Prestador desde $it" else "Cliente desde $it"
+                } ?: if (isProviderProfile) "Prestador TQF" else "Cliente TQF"
                 binding.txtBio.text = user.bio ?: user.specialty ?: user.category ?: "Usuário do TQF"
-                user.profilePictureUri?.let {
-                    try {
-                        if (_binding != null) {
-                            binding.imgProfile.setImageURI(Uri.parse(it))
-                        }
-                    } catch (_: Exception) {}
-                }
+                if (_binding != null) binding.imgProfile.loadImage(user.profilePictureUri)
                 user.address?.let {
                     if (it.isNotBlank()) {
                         binding.txtClientAddressDisplay.text = it
@@ -228,7 +229,7 @@ class ProfileFragment : Fragment() {
             userAddress
         } else {
             LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-                ?: "Manaus - AM (Atendimento Presencial)"
+                ?: "Endereço não informado"
         }
 
         // Sincroniza o card/bloco de texto do endereço no perfil
@@ -268,10 +269,6 @@ class ProfileFragment : Fragment() {
                 }
                 .setNegativeButton("Fechar", null)
                 .show()
-        }
-
-        binding.menuFavorites.setOnClickListener {
-            showToast("Meus favoritos")
         }
 
         binding.menuNotifications.setOnClickListener {
@@ -562,24 +559,28 @@ class ProfileFragment : Fragment() {
             .setPositiveButton("Salvar") { _, _ ->
                 val newAddress = etClientAddress?.text?.toString()?.trim().orEmpty()
 
-                if (newAddress.isNotEmpty() && (clientLat == null || clientLng == null)) {
-                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), newAddress)
-                    if (coords != null) {
-                        clientLat = coords.latitude
-                        clientLng = coords.longitude
+                val user = currentUser ?: return@setPositiveButton
+                val knownLat = clientLat
+                val knownLng = clientLng
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val updated = withContext(Dispatchers.IO) {
+                        val coords = if (newAddress.isNotEmpty() && (knownLat == null || knownLng == null)) {
+                            LocationUtils.getCoordinatesFromAddress(appContext, newAddress)
+                        } else null
+                        val changed = user.copy(
+                            address = newAddress,
+                            latitude = coords?.latitude ?: knownLat ?: user.latitude,
+                            longitude = coords?.longitude ?: knownLng ?: user.longitude
+                        )
+                        if (UserRepository(appContext).updateUser(changed)) changed else null
                     }
-                }
-
-                val user = currentUser
-                if (user != null) {
-                    val updated = user.copy(
-                        address = newAddress,
-                        latitude = clientLat ?: user.latitude,
-                        longitude = clientLng ?: user.longitude
-                    )
-                    userRepository.updateUser(updated)
+                    if (updated == null) {
+                        showToast("Não foi possível salvar o endereço. Tente novamente.")
+                        return@launch
+                    }
                     currentUser = updated
-                    binding.txtClientAddressDisplay.text = newAddress
+                    if (_binding != null) binding.txtClientAddressDisplay.text = newAddress
                     showToast("Endereço de entrega atualizado com sucesso!")
                 }
             }
@@ -610,51 +611,80 @@ class ProfileFragment : Fragment() {
         )
     }
 
+    /**
+     * "Serviços contratados/realizados" e a lista de recentes, lidos do Supabase (cache local só offline).
+     * Contratante: solicitações aceitas (em andamento ou concluídas). Prestador: concluídas por ele.
+     */
     private fun setupRecentServices() {
         if (_binding == null) return
-        try {
-            val user = currentUser
-            val filteredServices = when {
-                user == null -> emptyList()
-                isProviderProfile -> ServiceRepository(requireContext()).getAllServices().filter { it.providerId == user.id }
-                else -> ServiceRepository(requireContext()).getAllServices().filter { it.clientId == user.id }
-            }
-
-            val recentServices = filteredServices.take(4)
-            val mappedRecentItems = recentServices.map { s ->
-                RecentServiceItem(
-                    title = s.title,
-                    providerName = if (isProviderProfile) "Cliente: ${s.clientName}" else "com ${s.providerName}",
-                    date = s.date,
-                    status = s.status.label(),
-                    imageRes = R.drawable.ic_profile
-                )
-            }
-
-            binding.rvRecentServices.apply {
-                layoutManager = LinearLayoutManager(requireContext())
-                adapter = RecentServiceAdapter(mappedRecentItems) { item ->
-                    val s = recentServices[mappedRecentItems.indexOfFirst { it === item }]
-                    val detailsFragment = ServiceDetailsFragment.newInstance(
-                        title = s.title,
-                        professional = s.providerName.ifBlank { "Prestador" },
-                        specialty = s.category,
-                        schedule = s.date,
-                        price = if (s.price > 0) User.formatCurrency(s.price) else "Valor negociado",
-                        status = s.status.label(),
-                        desc = s.description,
-                        serviceId = s.id,
-                        providerId = s.providerId,
-                        clientId = s.clientId
-                    )
-                    parentFragmentManager.beginTransaction()
-                        .replace(R.id.fragmentContainer, detailsFragment)
-                        .addToBackStack(null)
-                        .commit()
+        val user = currentUser ?: run {
+            showRecentServices(emptyList(), 0)
+            return
+        }
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val (services, count) = withContext(Dispatchers.IO) {
+                try {
+                    val repository = ServiceRepository(appContext)
+                    if (isProviderProfile) {
+                        val completed = repository.getProviderCompletedServices(user.id)
+                        (repository.getProviderContracts(user.id) + completed) to completed.size
+                    } else {
+                        val hired = repository.getClientRequests(user.id).filter {
+                            it.status == ServiceStatus.EM_ANDAMENTO || it.status == ServiceStatus.CONCLUIDO
+                        }
+                        hired to hired.size
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList<Service>() to 0
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            showRecentServices(services.sortedByDescending { it.date }, count)
+        }
+    }
+
+    private fun showRecentServices(services: List<Service>, count: Int) {
+        if (_binding == null) return
+        binding.txtServicesValue.text = count.toString()
+        binding.txtNoRecentServices.visibility = if (services.isEmpty()) View.VISIBLE else View.GONE
+
+        val recentServices = services.take(4)
+        val mappedRecentItems = recentServices.map { s ->
+            RecentServiceItem(
+                title = s.title,
+                providerName = if (isProviderProfile) {
+                    "Cliente: ${s.clientName.ifBlank { "Cliente" }}"
+                } else {
+                    "com ${s.providerName.ifBlank { "Prestador" }}"
+                },
+                date = s.date,
+                status = s.status.label(),
+                imageRes = R.drawable.ic_profile
+            )
+        }
+
+        binding.rvRecentServices.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = RecentServiceAdapter(mappedRecentItems) { item ->
+                val s = recentServices[mappedRecentItems.indexOfFirst { it === item }]
+                val detailsFragment = ServiceDetailsFragment.newInstance(
+                    title = s.title,
+                    professional = s.providerName.ifBlank { "Prestador" },
+                    specialty = s.category,
+                    schedule = s.date,
+                    price = if (s.price > 0) User.formatCurrency(s.price) else "Valor negociado",
+                    status = s.status.label(),
+                    desc = s.description,
+                    serviceId = s.id,
+                    providerId = s.providerId,
+                    clientId = s.clientId
+                )
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, detailsFragment)
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
     }
 
@@ -766,14 +796,25 @@ class ProfileFragment : Fragment() {
 
     private fun setupClientReviews() {
         if (_binding == null) return
+        val currentUserId = currentUser?.id ?: return
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Avaliações RECEBIDAS pelo cliente (reviewed_id = cliente). As que ele escreveu
+            // pertencem ao perfil do prestador avaliado e não devem aparecer aqui.
+            val dbReviews = withContext(Dispatchers.IO) {
+                ReviewRepository(appContext).getReviewsByProvider(currentUserId)
+            }
+            if (_binding != null) showClientReviews(dbReviews)
+        }
+    }
+
+    private fun showClientReviews(dbReviews: List<Review>) {
         try {
-            val reviewRepository = ReviewRepository(requireContext())
-            val currentUserId = currentUser?.id ?: return
-            val dbReviews = reviewRepository.getReviewsByClient(currentUserId)
+            binding.txtRatingValue.text = RatingFormat.average(dbReviews)?.let { RatingFormat.value(it) } ?: "–"
 
             val reviewsList = dbReviews.map {
                 ClientReviewItem(
-                    reviewerName = "Prestador Avaliado",
+                    reviewerName = "Prestador",
                     date = it.date,
                     comment = "⭐ ${it.rating}/5 - ${it.comment}",
                     avatarRes = R.drawable.ic_profile

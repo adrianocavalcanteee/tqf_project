@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -22,19 +23,27 @@ import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.tqfapp.android.ui.common.bindServiceChips
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.tqfapp.android.R
-import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.model.Review
+import com.tqfapp.android.business.ServiceCategories
+import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.repository.ReviewRepository
+import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
-import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.repository.StorageRepository
+import com.tqfapp.android.ui.common.PortfolioPhotoAdapter
+import com.tqfapp.android.ui.common.loadImage
 
 class ProfessionalProfileFragment : Fragment() {
 
@@ -49,31 +58,24 @@ class ProfessionalProfileFragment : Fragment() {
     private val pickAvatarLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            view?.findViewById<ImageView>(R.id.imgAvatar)?.setImageURI(uri)
-            val storageRepository = com.tqfapp.android.data.repository.StorageRepository(requireContext())
-            val uploadResult = storageRepository.uploadProfilePicture(uri)
-            if (uploadResult.isSuccess) {
-                val publicUrl = uploadResult.getOrNull()
-                val userRepository = UserRepository(requireContext())
-                val user = userRepository.getCurrentUser()
-                if (user != null && publicUrl != null) {
-                    userRepository.updateUser(user.copy(profilePictureUri = publicUrl))
-                }
-                Toast.makeText(requireContext(), "Foto enviada para o Supabase Storage com sucesso!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Foto de perfil atualizada!", Toast.LENGTH_SHORT).show()
-            }
-        }
+        if (uri != null) uploadAvatar(uri)
     }
 
-    // Photo Picker launcher para Foto de Capa
-    private val pickCoverLauncher = registerForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            view?.findViewById<ImageView>(R.id.imgCover)?.setImageURI(uri)
-            Toast.makeText(requireContext(), "Foto de capa atualizada!", Toast.LENGTH_SHORT).show()
+    /** Foto de perfil: mostra na hora, envia em IO e, se falhar, volta a foto anterior com o erro real. */
+    private fun uploadAvatar(uri: Uri) {
+        val imgAvatar = view?.findViewById<ImageView>(R.id.imgAvatar) ?: return
+        val previous = UserRepository.cachedProfilePicture()
+        imgAvatar.setImageURI(uri)
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { UserRepository(appContext).updateProfilePicture(uri) }
+            result.onSuccess { url ->
+                imgAvatar.loadImage(url)
+                showToast("Foto de perfil atualizada!")
+            }.onFailure {
+                imgAvatar.loadImage(previous)
+                showToast(it.message ?: "Não foi possível atualizar a foto.")
+            }
         }
     }
 
@@ -112,13 +114,15 @@ class ProfessionalProfileFragment : Fragment() {
         // Carrega dados dinâmicos passados via Bundle ou do Usuário logado
         val name = currentUser?.name ?: arguments?.getString(ARG_NAME)
         val specialty = currentUser?.specialty ?: currentUser?.category ?: arguments?.getString(ARG_SPECIALTY)
-        val rating = arguments?.getString(ARG_RATING) ?: "4,9 (86 avaliações)"
-        val bio = currentUser?.bio ?: arguments?.getString(ARG_BIO) ?: "Profissional autônomo com ampla experiência."
+        // Sem argumento, a nota é calculada a partir das avaliações reais do prestador (setupReviews).
+        val rating = arguments?.getString(ARG_RATING)
+        val bio = currentUser?.bio ?: arguments?.getString(ARG_BIO) ?: "Você ainda não escreveu uma descrição. Toque em editar para contar sobre seu trabalho."
         val services = currentUser?.services.orEmpty()
 
         if (!name.isNullOrEmpty()) {
             view.findViewById<TextView>(R.id.txtProfessionalName)?.text = name
         }
+        view.findViewById<ImageView>(R.id.imgAvatar)?.loadImage(currentUser?.profilePictureUri)
         if (!specialty.isNullOrEmpty()) {
             view.findViewById<TextView>(R.id.txtSpecialty)?.text = specialty
         }
@@ -139,6 +143,7 @@ class ProfessionalProfileFragment : Fragment() {
         setupClickListeners(view, isOwner)
         setupPortfolio(view)
         setupReviews(view)
+        setupCompletedServicesCount(view)
 
         // REGRA: Como este fragmento exibe o perfil de um Prestador, o mapa e o marcador SEMPRE aparecem
         val txtOfficeMapTitle = view.findViewById<View>(R.id.txtOfficeMapTitle)
@@ -233,12 +238,18 @@ class ProfessionalProfileFragment : Fragment() {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
-        view.findViewById<View>(R.id.btnFavorite)?.setOnClickListener {
-            showToast("Adicionado aos favoritos")
-        }
+        // Favoritos ainda não existe no app/banco: o botão fica oculto em vez de simular a ação.
+        view.findViewById<View>(R.id.btnFavorite)?.visibility = View.GONE
 
+        // Compartilha um texto com nome, categoria e especialidade pelo seletor do Android.
         view.findViewById<View>(R.id.btnShare)?.setOnClickListener {
-            showToast("Compartilhar perfil")
+            val name = view.findViewById<TextView>(R.id.txtProfessionalName)?.text?.toString().orEmpty()
+            val specialty = view.findViewById<TextView>(R.id.txtSpecialty)?.text?.toString().orEmpty()
+            val text = listOf(name, specialty).filter { it.isNotBlank() }.joinToString(" • ")
+            val share = Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_TEXT, "Conheça $text no TQFapp - Tem Quem Faça!")
+            startActivity(Intent.createChooser(share, "Compartilhar perfil"))
         }
 
         view.findViewById<View>(R.id.menuLogoutProvider)?.setOnClickListener {
@@ -255,27 +266,32 @@ class ProfessionalProfileFragment : Fragment() {
             }
         }
 
-        view.findViewById<View>(R.id.btnChangeCover)?.setOnClickListener {
-            pickCoverLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-        }
-
-        view.findViewById<View>(R.id.imgCover)?.setOnClickListener {
-            if (isOwner) {
-                pickCoverLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            }
-        }
+        // Foto de capa não tem campo no Supabase (seria perdida ao reabrir): troca não é oferecida.
+        view.findViewById<View>(R.id.btnChangeCover)?.visibility = View.GONE
 
         view.findViewById<View>(R.id.btnEditProfile)?.setOnClickListener {
             showEditProfileDialog(view)
         }
 
-        view.findViewById<View>(R.id.btnSeeAllPortfolio)?.setOnClickListener {
-            showToast("Ver todo o portfólio")
+        // Não há tela de portfólio completo: as fotos já aparecem todas na lista horizontal.
+        view.findViewById<View>(R.id.btnSeeAllPortfolio)?.visibility = View.GONE
+
+        val openAllReviews = {
+            val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+            val userRepository = UserRepository(requireContext())
+            val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+            val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID) ?: ""
+            val providerName = currentUser?.name ?: arguments?.getString(ARG_NAME) ?: "Prestador"
+
+            val fragment = AllReviewsFragment.newInstance(targetProviderId, providerName)
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .addToBackStack(null)
+                .commit()
         }
 
-        view.findViewById<View>(R.id.btnSeeAllReviews)?.setOnClickListener {
-            showToast("Ver todas as avaliações")
-        }
+        view.findViewById<View>(R.id.btnSeeAllReviews)?.setOnClickListener { openAllReviews() }
+        view.findViewById<View>(R.id.txtReviewsTitle)?.setOnClickListener { openAllReviews() }
     }
 
     /**
@@ -313,16 +329,7 @@ class ProfessionalProfileFragment : Fragment() {
         etLatitude?.setText(officeLatitude.toString())
         etLongitude?.setText(officeLongitude.toString())
 
-        val categories = listOf(
-            "Assistência Técnica",
-            "Reformas e Reparos",
-            "Serviços Domésticos",
-            "Design e Tecnologia",
-            "Eventos",
-            "Aulas e Treinamentos",
-            "Saúde e Bem-Estar",
-            "Autos e Transporte"
-        )
+        val categories = ServiceCategories.ALL
         val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, categories)
         actvCategory?.setAdapter(categoryAdapter)
 
@@ -444,46 +451,52 @@ class ProfessionalProfileFragment : Fragment() {
                 val newPhone = etProviderPhone?.text?.toString()?.trim().orEmpty()
                 val addressText = etLocation?.text?.toString()?.trim().orEmpty()
 
-                var newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
-                var newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
-
-                if (addressText.isNotEmpty() && (newLat == null || newLng == null)) {
-                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
-                    if (coords != null) {
-                        newLat = coords.latitude
-                        newLng = coords.longitude
-                    }
-                }
+                val typedLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                val typedLng = etLongitude?.text?.toString()?.toDoubleOrNull()
+                val services = dialogServicesList.toList()
+                val portfolio = editPortfolioUris.map { it.toString() }
+                val appContext = requireContext().applicationContext
 
                 if (newName.isNotEmpty()) txtName?.text = newName
                 if (newSpecialty.isNotEmpty()) txtSpecialty?.text = newSpecialty
                 if (newBio.isNotEmpty()) txtBio?.text = newBio
 
-                if (newLat != null && newLng != null) {
-                    officeLatitude = newLat
-                    officeLongitude = newLng
-                    updateOfficeMapMarker(rootView)
+                // Geocoding, upload das fotos novas do portfólio e gravação: tudo em IO.
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        val repository = UserRepository(appContext)
+                        // Só edita o próprio perfil logado; nunca cai para outro usuário do cache.
+                        val user = currentUser ?: repository.getCurrentUser() ?: return@withContext null
+                        val coords = if (addressText.isNotEmpty() && (typedLat == null || typedLng == null)) {
+                            LocationUtils.getCoordinatesFromAddress(appContext, addressText)
+                        } else null
+                        val (_, uploadedPortfolio) = StorageRepository(appContext).uploadLocalMedia(null, portfolio)
+                        val updated = user.copy(
+                            name = newName.ifEmpty { user.name },
+                            category = newCategory.ifEmpty { user.category },
+                            specialty = newSpecialty.ifEmpty { user.specialty },
+                            bio = newBio.ifEmpty { user.bio },
+                            telephone = newPhone.ifEmpty { user.telephone },
+                            address = addressText.ifEmpty { user.address },
+                            services = services,
+                            latitude = coords?.latitude ?: typedLat ?: user.latitude,
+                            longitude = coords?.longitude ?: typedLng ?: user.longitude,
+                            portfolioUris = uploadedPortfolio
+                        )
+                        if (repository.updateUser(updated)) repository.getCurrentUser() ?: updated else null
+                    }
+                    if (getView() == null) return@launch
+                    if (saved == null) {
+                        showToast("Não foi possível salvar o perfil. Tente novamente.")
+                        return@launch
+                    }
+                    reloadUserData(rootView, saved)
+                    if (portfolio.size != saved.portfolioUris.size) {
+                        showToast("Perfil atualizado, mas algumas fotos do portfólio não foram enviadas.")
+                    } else {
+                        showToast("Perfil de prestador atualizado!")
+                    }
                 }
-
-                // Só edita o próprio perfil logado; nunca cai para outro usuário do cache.
-                val user = currentUser ?: userRepository.getCurrentUser()
-                if (user != null) {
-                    val updated = user.copy(
-                        name = if (newName.isNotEmpty()) newName else user.name,
-                        category = if (newCategory.isNotEmpty()) newCategory else user.category,
-                        specialty = if (newSpecialty.isNotEmpty()) newSpecialty else user.specialty,
-                        bio = if (newBio.isNotEmpty()) newBio else user.bio,
-                        telephone = if (newPhone.isNotEmpty()) newPhone else user.telephone,
-                        services = dialogServicesList.toList(),
-                        latitude = if (newLat != null) newLat else user.latitude,
-                        longitude = if (newLng != null) newLng else user.longitude,
-                        portfolioUris = editPortfolioUris.map { it.toString() }
-                    )
-                    userRepository.updateUser(updated)
-                    reloadUserData(rootView)
-                }
-
-                showToast("Perfil de prestador atualizado!")
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -507,28 +520,48 @@ class ProfessionalProfileFragment : Fragment() {
             .show()
     }
 
-    private fun setupPortfolio(view: View) {
-        val portfolioImages = listOf(
-            R.drawable.ic_tech_repair,
-            R.drawable.ic_laptop,
-            R.drawable.ic_clipboard,
-            R.drawable.ic_briefcase
-        )
+    /** Fotos reais do portfólio (perfis_prestador.portfolio_urls); usuário já está em cache. */
+    private fun setupPortfolio(view: View, photos: List<String>? = null) {
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val portfolio = photos
+            ?: if (isOwner) UserRepository(requireContext()).getCurrentUser()?.portfolioUris.orEmpty() else emptyList()
 
         view.findViewById<RecyclerView>(R.id.rvPortfolio)?.apply {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            adapter = PortfolioAdapter(portfolioImages) {
-                showToast("Visualizando imagem do portfólio")
-            }
+            adapter = PortfolioPhotoAdapter(portfolio)
+            visibility = if (portfolio.isEmpty()) View.GONE else View.VISIBLE
         }
+        view.findViewById<View>(R.id.txtNoPortfolio)?.visibility = if (portfolio.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun setupReviews(view: View) {
-        val providerId = UserRepository(requireContext()).getCurrentUser()?.id
-        val providerReviews = if (providerId != null) {
-            ReviewRepository(requireContext()).getReviewsByProvider(providerId)
-        } else {
-            emptyList()
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val userRepository = UserRepository(requireContext())
+        val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+        val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID)
+
+        // Avaliações vêm do Supabase: consulta em IO, tela preenchida quando chegar.
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val providerReviews = withContext(Dispatchers.IO) {
+                if (!targetProviderId.isNullOrEmpty()) {
+                    ReviewRepository(appContext).getReviewsByProvider(targetProviderId)
+                } else {
+                    emptyList()
+                }
+            }
+            if (getView() == null) return@launch
+            showReviews(view, providerReviews)
+        }
+    }
+
+    private fun showReviews(view: View, providerReviews: List<Review>) {
+        val count = providerReviews.size
+        view.findViewById<TextView>(R.id.txtReviewsTitle)?.text = "Avaliações ($count)"
+
+        if (arguments?.getString(ARG_RATING) == null) {
+            view.findViewById<TextView>(R.id.txtRating)?.text =
+                RatingFormat.summary(providerReviews) ?: "Sem avaliações ainda"
         }
 
         val reviewsList = providerReviews.map {
@@ -542,11 +575,30 @@ class ProfessionalProfileFragment : Fragment() {
 
         view.findViewById<RecyclerView>(R.id.rvReviews)?.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = ReviewAdapter(reviewsList) {
-                showToast("Avaliação de ${it.reviewerName}")
-            }
+            adapter = ReviewAdapter(reviewsList) { }
         }
     }
+
+    private fun setupCompletedServicesCount(view: View) {
+        val isOwner = arguments?.getBoolean(ARG_IS_OWNER, false) ?: false
+        val userRepository = UserRepository(requireContext())
+        val currentUser = if (isOwner) userRepository.getCurrentUser() else null
+        val targetProviderId = currentUser?.id ?: arguments?.getString(ARG_PROVIDER_ID)
+
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val completedCount = withContext(Dispatchers.IO) {
+                if (!targetProviderId.isNullOrEmpty()) {
+                    ServiceRepository(appContext).getProviderCompletedServices(targetProviderId).size
+                } else {
+                    0
+                }
+            }
+            view.findViewById<TextView>(R.id.txtCompletedCount)?.text = completedCount.toString()
+        }
+    }
+
+
 
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
@@ -586,6 +638,7 @@ class ProfessionalProfileFragment : Fragment() {
 
     companion object {
         private const val ARG_IS_OWNER = "arg_is_owner"
+        private const val ARG_PROVIDER_ID = "arg_provider_id"
         private const val ARG_NAME = "arg_name"
         private const val ARG_SPECIALTY = "arg_specialty"
         private const val ARG_RATING = "arg_rating"
@@ -600,6 +653,7 @@ class ProfessionalProfileFragment : Fragment() {
 
         fun newInstance(
             isOwner: Boolean = false,
+            providerId: String? = null,
             name: String? = null,
             specialty: String? = null,
             rating: String? = null,
@@ -611,6 +665,7 @@ class ProfessionalProfileFragment : Fragment() {
             val fragment = ProfessionalProfileFragment()
             val args = Bundle().apply {
                 putBoolean(ARG_IS_OWNER, isOwner)
+                providerId?.let { putString(ARG_PROVIDER_ID, it) }
                 name?.let { putString(ARG_NAME, it) }
                 specialty?.let { putString(ARG_SPECIALTY, it) }
                 rating?.let { putString(ARG_RATING, it) }
@@ -630,29 +685,6 @@ class ProfessionalProfileFragment : Fragment() {
         val comment: String,
         val avatarRes: Int
     )
-
-    private inner class PortfolioAdapter(
-        private val items: List<Int>,
-        private val onItemClick: (Int) -> Unit
-    ) : RecyclerView.Adapter<PortfolioAdapter.ViewHolder>() {
-
-        inner class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-            val imgPortfolio: ImageView = view.findViewById(R.id.imgPortfolio)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_portfolio, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.imgPortfolio.setImageResource(item)
-            holder.view.setOnClickListener { onItemClick(item) }
-        }
-
-        override fun getItemCount(): Int = items.size
-    }
 
     private inner class ReviewAdapter(
         private val items: List<ReviewItem>,
@@ -687,16 +719,15 @@ class ProfessionalProfileFragment : Fragment() {
         view.findViewById<ChipGroup>(R.id.chipGroupServices)?.bindServiceChips(services)
     }
 
-    private fun reloadUserData(view: View) {
-        val userRepository = UserRepository(requireContext())
-        val user = userRepository.getCurrentUser()
-        if (user != null) {
-            user.name.takeIf { it.isNotEmpty() }?.let { view.findViewById<TextView>(R.id.txtProfessionalName)?.text = it }
-            user.specialty?.takeIf { it.isNotEmpty() }?.let { view.findViewById<TextView>(R.id.txtSpecialty)?.text = it }
-            officeLatitude = user.latitude ?: DEFAULT_LATITUDE
-            officeLongitude = user.longitude ?: DEFAULT_LONGITUDE
-            setupDynamicChips(view, user.services)
-        }
+    /** Reaplica na tela o perfil recém-salvo (sem nova consulta na thread principal). */
+    private fun reloadUserData(view: View, user: User) {
+        user.name.takeIf { it.isNotEmpty() }?.let { view.findViewById<TextView>(R.id.txtProfessionalName)?.text = it }
+        user.specialty?.takeIf { it.isNotEmpty() }?.let { view.findViewById<TextView>(R.id.txtSpecialty)?.text = it }
+        officeLatitude = user.latitude ?: DEFAULT_LATITUDE
+        officeLongitude = user.longitude ?: DEFAULT_LONGITUDE
+        updateOfficeMapMarker(view)
+        setupDynamicChips(view, user.services)
+        setupPortfolio(view, user.portfolioUris)
     }
 
     private inner class DialogServiceAdapter(
@@ -739,7 +770,7 @@ class ProfessionalProfileFragment : Fragment() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val uri = items[position]
-            holder.imgPortfolio.setImageURI(uri)
+            holder.imgPortfolio.loadImage(uri.toString())
             holder.view.setOnClickListener { onItemClick(uri) }
         }
 

@@ -42,7 +42,7 @@
                 android:id="@+id/txtServiceTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Instalação de ar-condicionado"
+                tools:text="Instalação de ar-condicionado"
                 android:textColor="@color/text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -54,7 +54,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="com Paulo Oliveira"
+                tools:text="com Paulo Oliveira"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 
@@ -63,7 +63,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="12 de mar. de 2025"
+                tools:text="12 de mar. de 2025"
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -89,7 +89,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
-                android:text="Concluído"
+                tools:text="Concluído"
                 android:textColor="@color/green_badge_text"
                 android:textSize="11sp"
                 android:textStyle="bold" />
