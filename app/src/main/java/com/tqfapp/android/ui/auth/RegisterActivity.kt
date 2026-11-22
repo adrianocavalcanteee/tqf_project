@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Patterns
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
@@ -15,6 +16,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapsInitializer
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceCategories
 import com.tqfapp.android.data.repository.EmailConfirmationPendingException
@@ -23,6 +29,7 @@ import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityRegisterBinding
 import com.tqfapp.android.ui.home.HomeActivity
 import com.tqfapp.android.utils.LocationUtils
+import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
 import java.util.UUID
 
@@ -71,6 +78,7 @@ class RegisterActivity : AppCompatActivity() {
         userRepository = UserRepository(this)
 
         setupUserTypeToggle()
+        setupMapPreview()
         setupCategoryDropdown()
         setupPhotoPickers()
         setupPortfolioRecyclerView()
@@ -85,12 +93,15 @@ class RegisterActivity : AppCompatActivity() {
                     R.id.btnRegisterContractor -> {
                         isProviderMode = false
                         binding.layoutProviderFields.visibility = View.GONE
+                        binding.cardRegisterMap.visibility = View.GONE
                         binding.btnRegisterContractor.setTextColor(getColor(R.color.brand_blue))
                         binding.btnRegisterProvider.setTextColor(getColor(R.color.text_secondary))
                     }
                     R.id.btnRegisterProvider -> {
                         isProviderMode = true
                         binding.layoutProviderFields.visibility = View.VISIBLE
+                        // O mapa só aparece depois de buscar o endereço, então manteremos oculto ao alternar
+                        binding.cardRegisterMap.visibility = View.GONE
                         binding.btnRegisterProvider.setTextColor(getColor(R.color.brand_blue))
                         binding.btnRegisterContractor.setTextColor(getColor(R.color.text_secondary))
                     }
@@ -137,6 +148,51 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
+    private var registerGoogleMap: GoogleMap? = null
+
+    private fun setupMapPreview() {
+        try {
+            MapsInitializer.initialize(this)
+            binding.registerMapView.onCreate(null)
+            binding.registerMapView.onResume()
+            binding.registerMapView.getMapAsync { map ->
+                registerGoogleMap = map
+                MapUtils.applyCustomMapStyle(this, map)
+                map.uiSettings.isZoomControlsEnabled = true
+            }
+
+            // Impede conflito de rolagem ao arrastar o mapa dentro do ScrollView
+            binding.registerMapTouchOverlay.setOnTouchListener { _, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                        binding.root.requestDisallowInterceptTouchEvent(true)
+                        false
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        binding.root.requestDisallowInterceptTouchEvent(false)
+                        false
+                    }
+                    else -> false
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun updateMapMarker(coords: LatLng, title: String) {
+        registerGoogleMap?.let { map ->
+            map.clear()
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(coords, 15f))
+            map.addMarker(
+                MarkerOptions()
+                    .position(coords)
+                    .title("📍 Seu Escritório")
+                    .snippet(title)
+            )?.showInfoWindow()
+        }
+    }
+
     private fun setupClickListeners() {
         binding.btnBack.setOnClickListener {
             finish()
@@ -160,8 +216,15 @@ class RegisterActivity : AppCompatActivity() {
                 binding.etLongitude.setText(coords.longitude.toString())
                 binding.txtLocationStatus.visibility = View.VISIBLE
                 binding.txtLocationStatus.text = "✓ Endereço localizado com sucesso!"
+                
+                binding.cardRegisterMap.visibility = View.VISIBLE
+                updateMapMarker(coords, addressText)
+
                 Toast.makeText(this, "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
             } else {
+                binding.cardRegisterMap.visibility = View.GONE
+                binding.txtLocationStatus.visibility = View.VISIBLE
+                binding.txtLocationStatus.text = "⚠️ Endereço não encontrado."
                 Toast.makeText(this, "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }

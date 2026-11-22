@@ -387,7 +387,33 @@
                         android:layout_marginTop="6dp"
                         android:text="✓ Endereço padrão definido (São Paulo, SP)"
                         android:textColor="@color/green_badge_text"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
+                    <!-- Map Preview Container for Registration -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardRegisterMap"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="1dp"
+                        app:strokeColor="@color/card_stroke"
+                        app:strokeWidth="1dp">
+
+                        <com.google.android.gms.maps.MapView
+                            android:id="@+id/registerMapView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <!-- Overlay for handling scroll conflicts if needed -->
+                        <View
+                            android:id="@+id/registerMapTouchOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent" />
+                    </com.google.android.material.card.MaterialCardView>
 
                     <!-- Hidden / Optional Advanced Coordinates -->
                     <LinearLayout
