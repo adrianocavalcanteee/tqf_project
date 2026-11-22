@@ -63,7 +63,7 @@
             android:background="@drawable/bg_badge_green"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"
-            android:text="⚡ Atende hoje"
+            android:text="⚡ Disponível"
             android:textColor="@color/green_badge_text"
             android:textSize="11sp"
             android:textStyle="bold"

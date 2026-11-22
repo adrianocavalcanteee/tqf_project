@@ -18,6 +18,8 @@ import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.PortfolioPhotoAdapter
+import com.tqfapp.android.ui.common.loadImage
 
 /**
  * Perfil público do Prestador (visão do Contratante).
@@ -67,6 +69,10 @@ class ProviderProfileActivity : AppCompatActivity() {
 
     private fun bindProvider(provider: User) = with(binding) {
         txtName.text = provider.name
+        imgAvatar.loadImage(provider.profilePictureUri)
+        txtPortfolioTitle.visibility = if (provider.portfolioUris.isEmpty()) View.GONE else View.VISIBLE
+        rvPortfolio.visibility = txtPortfolioTitle.visibility
+        rvPortfolio.adapter = PortfolioPhotoAdapter(provider.portfolioUris)
         txtCategory.text = listOfNotNull(provider.category, provider.specialty)
             .filter { it.isNotBlank() }
             .distinct()
@@ -88,6 +94,9 @@ class ProviderProfileActivity : AppCompatActivity() {
         // Somente o Contratante pode solicitar serviços (matriz de permissões).
         val isClient = !UserSessionManager.isProviderUser(this@ProviderProfileActivity)
         btnRequestService.visibility = if (isClient) View.VISIBLE else View.GONE
+        // Indisponível (perfis_prestador.is_available = false): não recebe novas solicitações.
+        btnRequestService.isEnabled = provider.isAvailable
+        if (!provider.isAvailable) btnRequestService.text = "Indisponível no momento"
         btnRequestService.setOnClickListener {
             startActivity(DescricaoServicoActivity.newIntent(this@ProviderProfileActivity, provider))
         }

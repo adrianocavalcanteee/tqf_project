@@ -257,6 +257,7 @@ class ServiceRepository(private val context: Context) {
                 SupabaseClient.postgrest.from("dados_privados_usuario")
                     .insert(DadosPrivadosUsuarioDto(id = userId, phone = phone))
             }
+            UserRepository.invalidateCurrentUserCache()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

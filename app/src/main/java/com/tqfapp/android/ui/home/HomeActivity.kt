@@ -3,6 +3,7 @@ package com.tqfapp.android.ui.home
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.tqfapp.android.R
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityHomeBinding
@@ -10,6 +11,9 @@ import com.tqfapp.android.ui.auth.LoginActivity
 import com.tqfapp.android.ui.contracts.ContractsFragment
 import com.tqfapp.android.ui.profile.ProfileFragment
 import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeActivity : AppCompatActivity() {
 
@@ -22,9 +26,11 @@ class HomeActivity : AppCompatActivity() {
             binding = ActivityHomeBinding.inflate(layoutInflater)
             setContentView(binding.root)
 
-            val currentUser = UserRepository(this).getCurrentUser()
-            isProviderUser = currentUser?.isProvider 
-                ?: intent.getBooleanExtra(LoginActivity.EXTRA_IS_PROVIDER, UserSessionManager.isProviderUser(this))
+            // Tipo da conta já resolvido no login (usuarios.is_provider), sem nova ida à rede aqui.
+            isProviderUser = intent.getBooleanExtra(
+                LoginActivity.EXTRA_IS_PROVIDER,
+                UserSessionManager.isProviderUser(this)
+            )
 
             if (savedInstanceState == null) {
                 if (isProviderUser) {
@@ -54,10 +60,17 @@ class HomeActivity : AppCompatActivity() {
         }
 
         binding.btnNavProfile.setOnClickListener {
-            if (isProviderUser) {
-                replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
-            } else {
-                replaceFragment(ProfileFragment())
+            // As telas de perfil leem o usuário logado várias vezes: carrega uma vez em IO (fica em
+            // cache no UserRepository) antes de abrir, para não travar a thread principal.
+            binding.btnNavProfile.isEnabled = false
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { UserRepository(applicationContext).getCurrentUser() }
+                binding.btnNavProfile.isEnabled = true
+                if (isProviderUser) {
+                    replaceFragment(ProfessionalProfileFragment.newInstance(isOwner = true))
+                } else {
+                    replaceFragment(ProfileFragment())
+                }
             }
         }
     }

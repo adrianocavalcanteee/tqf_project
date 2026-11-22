@@ -561,6 +561,15 @@
                 tools:itemCount="4"
                 tools:listitem="@layout/item_portfolio" />
 
+            <TextView
+                android:id="@+id/txtNoPortfolio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nenhuma foto no portfólio. Toque em editar perfil para adicionar."
+                android:textColor="@color/text_muted"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <!-- "Avaliações" Section -->
             <RelativeLayout
                 android:layout_width="match_parent"

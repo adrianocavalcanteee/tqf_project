@@ -360,7 +360,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textPostalAddress"
-                            android:text="São Paulo, SP" />
+                            tools:text="Av. Paulista, 1000, São Paulo" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- Button: Buscar e Converter Endereço em Coordenadas -->
@@ -385,7 +385,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:text="✓ Endereço padrão definido (São Paulo, SP)"
+                        tools:text="✓ Endereço localizado com sucesso!"
                         android:textColor="@color/green_badge_text"
                         android:textSize="12sp"
                         android:visibility="gone" />
@@ -427,13 +427,13 @@
                             android:id="@+id/etLatitude"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="-23.550520" />
+                            tools:text="-23.550520" />
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etLongitude"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="-46.633308" />
+                            tools:text="-46.633308" />
                     </LinearLayout>
 
                     <!-- Portfolio Section (Imagens do Portfólio) -->

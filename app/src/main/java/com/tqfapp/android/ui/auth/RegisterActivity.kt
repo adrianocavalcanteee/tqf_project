@@ -14,6 +14,8 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -23,14 +25,17 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.tqfapp.android.R
 import com.tqfapp.android.business.ServiceCategories
-import com.tqfapp.android.data.repository.EmailConfirmationPendingException
 import com.tqfapp.android.data.model.User
+import com.tqfapp.android.data.repository.EmailConfirmationPendingException
 import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.ActivityRegisterBinding
 import com.tqfapp.android.ui.home.HomeActivity
 import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.MapUtils
 import com.tqfapp.android.utils.UserSessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class RegisterActivity : AppCompatActivity() {
@@ -149,12 +154,33 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private var registerGoogleMap: GoogleMap? = null
+    private var isRegisterMapCreated = false
+
+    override fun onResume() {
+        super.onResume()
+        if (isRegisterMapCreated) binding.registerMapView.onResume()
+    }
+
+    override fun onPause() {
+        if (isRegisterMapCreated) binding.registerMapView.onPause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (isRegisterMapCreated) binding.registerMapView.onDestroy()
+        super.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (isRegisterMapCreated) binding.registerMapView.onLowMemory()
+    }
 
     private fun setupMapPreview() {
         try {
             MapsInitializer.initialize(this)
             binding.registerMapView.onCreate(null)
-            binding.registerMapView.onResume()
+            isRegisterMapCreated = true
             binding.registerMapView.getMapAsync { map ->
                 registerGoogleMap = map
                 MapUtils.applyCustomMapStyle(this, map)
@@ -210,27 +236,42 @@ class RegisterActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val coords = LocationUtils.getCoordinatesFromAddress(this, addressText)
-            if (coords != null) {
-                binding.etLatitude.setText(coords.latitude.toString())
-                binding.etLongitude.setText(coords.longitude.toString())
-                binding.txtLocationStatus.visibility = View.VISIBLE
-                binding.txtLocationStatus.text = "✓ Endereço localizado com sucesso!"
-                
-                binding.cardRegisterMap.visibility = View.VISIBLE
-                updateMapMarker(coords, addressText)
-
-                Toast.makeText(this, "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
-            } else {
-                binding.cardRegisterMap.visibility = View.GONE
-                binding.txtLocationStatus.visibility = View.VISIBLE
-                binding.txtLocationStatus.text = "⚠️ Endereço não encontrado."
-                Toast.makeText(this, "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            binding.btnSearchAddress.isEnabled = false
+            lifecycleScope.launch {
+                val coords = withContext(Dispatchers.IO) {
+                    LocationUtils.getCoordinatesFromAddress(applicationContext, addressText)
+                }
+                binding.btnSearchAddress.isEnabled = true
+                showLocatedAddress(addressText, coords)
             }
+        }
+
+        binding.etLocation.doAfterTextChanged {
+            binding.etLatitude.text?.clear()
+            binding.etLongitude.text?.clear()
         }
 
         binding.btnRegister.setOnClickListener {
             performRegistration()
+        }
+    }
+
+    private fun showLocatedAddress(addressText: String, coords: LatLng?) {
+        if (coords != null) {
+            binding.etLatitude.setText(coords.latitude.toString())
+            binding.etLongitude.setText(coords.longitude.toString())
+            binding.txtLocationStatus.visibility = View.VISIBLE
+            binding.txtLocationStatus.text = "✓ Endereço localizado com sucesso!"
+
+            binding.cardRegisterMap.visibility = View.VISIBLE
+            updateMapMarker(coords, addressText)
+
+            Toast.makeText(this, "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
+        } else {
+            binding.cardRegisterMap.visibility = View.GONE
+            binding.txtLocationStatus.visibility = View.VISIBLE
+            binding.txtLocationStatus.text = "⚠️ Endereço não encontrado."
+            Toast.makeText(this, "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -276,25 +317,20 @@ class RegisterActivity : AppCompatActivity() {
         var specialty: String? = null
         var latitude: Double? = null
         var longitude: Double? = null
+        var officeAddress: String? = null
 
         if (isProviderMode) {
             category = binding.actvCategory.text?.toString()?.trim().orEmpty()
             specialty = binding.etSpecialty.text?.toString()?.trim().orEmpty()
 
-            val addressText = binding.etLocation.text?.toString()?.trim().orEmpty()
-            if (addressText.isNotEmpty()) {
-                val coords = LocationUtils.getCoordinatesFromAddress(this, addressText)
-                if (coords != null) {
-                    latitude = coords.latitude
-                    longitude = coords.longitude
-                }
-            }
-
-            if (latitude == null) {
-                latitude = binding.etLatitude.text?.toString()?.toDoubleOrNull() ?: -23.550520
-            }
-            if (longitude == null) {
-                longitude = binding.etLongitude.text?.toString()?.toDoubleOrNull() ?: -46.633308
+            officeAddress = binding.etLocation.text?.toString()?.trim().orEmpty()
+            // Coordenadas reais do endereço: as do botão "Localizar" ou um novo geocoding. Sem endereço
+            // localizado o prestador apareceria no mapa num lugar falso, então o cadastro é bloqueado.
+            latitude = binding.etLatitude.text?.toString()?.toDoubleOrNull()
+            longitude = binding.etLongitude.text?.toString()?.toDoubleOrNull()
+            if (officeAddress.isEmpty()) {
+                binding.tilLocation.error = "Informe o endereço onde você atende"
+                isValid = false
             }
 
             if (category.isEmpty()) {
@@ -321,13 +357,38 @@ class RegisterActivity : AppCompatActivity() {
             specialty = specialty,
             profilePictureUri = selectedAvatarUri?.toString(),
             portfolioUris = selectedPortfolioUris.map { it.toString() },
+            address = officeAddress,
             latitude = latitude,
             longitude = longitude
         )
 
-        // Envia para a camada de repositório (pronto para ser integrado com o BD/API)
-        val result = userRepository.registerUser(newUser, password)
+        // Geocoding (se o endereço não foi localizado pelo botão) e signUp fazem rede: rodam em IO.
+        setRegisterLoading(true)
+        lifecycleScope.launch {
+            var userToRegister = newUser
+            if (isProviderMode && (newUser.latitude == null || newUser.longitude == null)) {
+                val coords = withContext(Dispatchers.IO) {
+                    LocationUtils.getCoordinatesFromAddress(applicationContext, newUser.address.orEmpty())
+                }
+                if (coords == null) {
+                    setRegisterLoading(false)
+                    binding.tilLocation.error = "Endereço não encontrado. Inclua rua, número e cidade."
+                    return@launch
+                }
+                userToRegister = newUser.copy(latitude = coords.latitude, longitude = coords.longitude)
+            }
+            val result = withContext(Dispatchers.IO) { userRepository.registerUser(userToRegister, password) }
+            setRegisterLoading(false)
+            handleRegisterResult(result, email)
+        }
+    }
 
+    private fun setRegisterLoading(loading: Boolean) {
+        binding.btnRegister.isEnabled = !loading
+        binding.btnRegister.text = if (loading) "Cadastrando..." else "Finalizar Cadastro"
+    }
+
+    private fun handleRegisterResult(result: Result<User>, email: String) {
         result.onSuccess { user ->
             UserSessionManager.saveUserSession(this, user.isProvider, user.name, user.email)
 
@@ -361,6 +422,7 @@ class RegisterActivity : AppCompatActivity() {
         binding.tilConfirmPassword.error = null
         binding.tilCategory.error = null
         binding.tilSpecialty.error = null
+        binding.tilLocation.error = null
     }
 
     // Adapter interno para exibição das fotos de portfólio selecionadas

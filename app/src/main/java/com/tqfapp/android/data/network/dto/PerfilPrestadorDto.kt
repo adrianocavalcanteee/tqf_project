@@ -14,5 +14,7 @@ data class PerfilPrestadorDto(
     @SerialName("latitude") val latitude: Double? = null,
     @SerialName("longitude") val longitude: Double? = null,
     @SerialName("portfolio_urls") val portfolioUrls: List<String> = emptyList(),
-    @SerialName("service_tags") val serviceTags: List<String> = emptyList()
+    @SerialName("service_tags") val serviceTags: List<String> = emptyList(),
+    /** Aceitando novos chamados (switch da Home do prestador). */
+    @SerialName("is_available") val isAvailable: Boolean = true
 )

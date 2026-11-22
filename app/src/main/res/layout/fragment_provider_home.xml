@@ -67,8 +67,9 @@
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
-        <!-- Status Toggle Card (Disponível para Chamados) -->
+        <!-- Status Toggle Card (Disponível para Chamados): perfis_prestador.is_available -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStatusToggle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"

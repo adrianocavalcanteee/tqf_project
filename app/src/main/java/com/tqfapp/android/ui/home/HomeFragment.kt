@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -22,7 +23,9 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tqfapp.android.R
 import com.tqfapp.android.data.model.Service
@@ -41,6 +44,7 @@ import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.cos
 
 /**
  * Home do Contratante: mapa com PINs + lista de prestadores, ambos alimentados pelo backend.
@@ -64,10 +68,21 @@ class HomeFragment : Fragment() {
     private var selectedCategoryFilter: String? = null
     private var selectedSubcategoryFilter: String? = null
 
+    /** Raio de busca em km (null = todos). Só vale com localização real do contratante. */
+    private var selectedRadiusKm: Double? = null
+    /** false quando o contratante não tem endereço/coordenadas: a distância seria até um ponto padrão. */
+    private var hasRealClientLocation = false
+
     companion object {
         // Coordenadas padrão centralizadas em Manaus, Amazonas
         private val MANAUS_LAT_LNG = LatLng(-3.1190, -60.0217)
         private const val DEFAULT_ZOOM = 12f
+
+        /** Opções do filtro de raio (km); null = "Todos". */
+        private val RADIUS_OPTIONS_KM = listOf(2.0, 5.0, 10.0, 25.0, null)
+        private const val DEFAULT_RADIUS_KM = 10.0
+        private const val PREFS_HOME = "tqf_home_prefs"
+        private const val KEY_RADIUS_KM = "radius_km"
     }
 
     // Launcher para solicitação de permissões de localização (GPS)
@@ -106,7 +121,73 @@ class HomeFragment : Fragment() {
         setupMapTouchHandling()
         setupNotificationAndActions()
         setupOpenRequestButton()
+        setupRadiusChips()
         loadProviders()
+    }
+
+    /**
+     * Chips de raio de busca (2/5/10/25 km/Todos). A escolha fica salva neste aparelho; sem localização
+     * real do contratante só "Todos" fica habilitado (ver [updateRadiusAvailability]).
+     */
+    private fun setupRadiusChips() {
+        val prefs = requireContext().getSharedPreferences(PREFS_HOME, Context.MODE_PRIVATE)
+        val saved = prefs.getFloat(KEY_RADIUS_KM, DEFAULT_RADIUS_KM.toFloat())
+        selectedRadiusKm = if (saved <= 0f) null else saved.toDouble()
+
+        binding.chipGroupRadius.removeAllViews()
+        RADIUS_OPTIONS_KM.forEach { radius ->
+            val chip = Chip(requireContext()).apply {
+                id = View.generateViewId()
+                text = radius?.let { "${it.toInt()} km" } ?: "Todos"
+                tag = radius ?: 0.0
+                isCheckable = true
+                isChecked = radius == selectedRadiusKm
+            }
+            binding.chipGroupRadius.addView(chip)
+        }
+        binding.chipGroupRadius.setOnCheckedStateChangeListener { group, checkedIds ->
+            val chip = checkedIds.firstOrNull()?.let { group.findViewById<Chip>(it) } ?: return@setOnCheckedStateChangeListener
+            val radius = (chip.tag as Double).takeIf { it > 0 }
+            selectedRadiusKm = radius
+            prefs.edit().putFloat(KEY_RADIUS_KM, (radius ?: 0.0).toFloat()).apply()
+            applyFilters()
+            zoomToRadius()
+        }
+    }
+
+    /** Sem endereço do contratante não há como medir distância: força "Todos" e explica no aviso. */
+    private fun updateRadiusAvailability() {
+        if (_binding == null) return
+        binding.txtRadiusHint.visibility = if (hasRealClientLocation) View.GONE else View.VISIBLE
+        for (i in 0 until binding.chipGroupRadius.childCount) {
+            val chip = binding.chipGroupRadius.getChildAt(i) as Chip
+            val isAll = (chip.tag as Double) <= 0
+            chip.isEnabled = hasRealClientLocation || isAll
+            if (!hasRealClientLocation && isAll) chip.isChecked = true
+        }
+    }
+
+    /** Enquadra o círculo do raio escolhido (ou volta ao zoom padrão em "Todos"). */
+    private fun zoomToRadius() {
+        val map = googleMap ?: return
+        val center = clientLatLng ?: return
+        val radiusKm = selectedRadiusKm.takeIf { hasRealClientLocation }
+        if (radiusKm == null) {
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(center, DEFAULT_ZOOM))
+            return
+        }
+        val latDelta = radiusKm / 111.0
+        val lngDelta = radiusKm / (111.0 * cos(Math.toRadians(center.latitude)))
+        val bounds = LatLngBounds(
+            LatLng(center.latitude - latDelta, center.longitude - lngDelta),
+            LatLng(center.latitude + latDelta, center.longitude + lngDelta)
+        )
+        try {
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48))
+        } catch (_: IllegalStateException) {
+            // Mapa ainda sem tamanho medido: aplica quando ele terminar de carregar.
+            map.setOnMapLoadedCallback { map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48)) }
+        }
     }
 
     /** "+": pedido aberto para todos os prestadores da categoria (pré-seleciona o filtro atual). */
@@ -161,7 +242,9 @@ class HomeFragment : Fragment() {
             if (_binding == null) return@launch
             binding.progressProfessionals.visibility = View.GONE
             providers = loaded
+            updateRadiusAvailability()
             applyFilters()
+            zoomToRadius()
         }
     }
 
@@ -349,8 +432,9 @@ class HomeFragment : Fragment() {
             // Centraliza o mapa inicialmente em Manaus - AM
             centerMapOnManaus()
 
-            // Plota os marcadores já carregados (se houver)
+            // Plota os marcadores já carregados (se houver) e enquadra o raio escolhido
             applyFilters()
+            zoomToRadius()
         }
     }
 
@@ -404,6 +488,7 @@ class HomeFragment : Fragment() {
         }
 
         val finalCoords = coords ?: MANAUS_LAT_LNG
+        hasRealClientLocation = coords != null
         clientLatLng = finalCoords
         return finalCoords
     }
@@ -434,10 +519,11 @@ class HomeFragment : Fragment() {
 
         map.addMarker(markerOptions)
 
+        val radiusKm = activeRadiusKm() ?: return
         map.addCircle(
             CircleOptions()
                 .center(clientPos)
-                .radius(600.0)
+                .radius(radiusKm * 1000)
                 .strokeWidth(2f)
                 .strokeColor(Color.parseColor("#007AFF"))
                 .fillColor(Color.parseColor("#22007AFF"))
@@ -486,6 +572,11 @@ class HomeFragment : Fragment() {
         binding.btnSeeAll.setOnClickListener {
             selectedCategoryFilter = null
             selectedSubcategoryFilter = null
+            // "Todos" no raio também: o listener dos chips reaplica os filtros e o zoom.
+            (0 until binding.chipGroupRadius.childCount)
+                .map { binding.chipGroupRadius.getChildAt(it) as Chip }
+                .firstOrNull { (it.tag as Double) <= 0 }
+                ?.isChecked = true
             centerMapOnManaus()
             applyFilters()
         }
@@ -497,6 +588,13 @@ class HomeFragment : Fragment() {
     private fun applyFilters() {
         if (_binding == null) return
         val filteredList = providers
+            // Prestador que desligou "Disponível para chamados" não aparece para novos contratantes.
+            .filter { it.isAvailable }
+            // Raio: só quem tem localização e está dentro da distância escolhida.
+            .filter { provider ->
+                val radius = activeRadiusKm() ?: return@filter true
+                provider.distanceKm?.let { it <= radius } ?: false
+            }
             .filter { provider ->
                 val matchesCategory = selectedCategoryFilter == null ||
                         provider.category.equals(selectedCategoryFilter, ignoreCase = true)
@@ -511,6 +609,8 @@ class HomeFragment : Fragment() {
         updateMapMarkers(filteredList)
     }
 
+    private fun activeRadiusKm(): Double? = selectedRadiusKm.takeIf { hasRealClientLocation }
+
     private fun updateListState(count: Int) {
         val isLoading = binding.progressProfessionals.visibility == View.VISIBLE
         binding.txtEmptyProfessionals.visibility = if (count == 0 && !isLoading) View.VISIBLE else View.GONE
@@ -522,6 +622,14 @@ class HomeFragment : Fragment() {
         val filterLabel = selectedSubcategoryFilter ?: selectedCategoryFilter
         if (filterLabel != null && !isLoading) {
             binding.txtProfessionalsCount.append(" • $filterLabel")
+        }
+        activeRadiusKm()?.takeIf { !isLoading }?.let {
+            binding.txtProfessionalsCount.append(" • até ${it.toInt()} km")
+        }
+        binding.txtEmptyProfessionals.text = if (activeRadiusKm() != null) {
+            "Nenhum profissional nesse raio. Aumente a distância acima."
+        } else {
+            "Nenhum prestador encontrado com estes filtros."
         }
     }
 

@@ -459,6 +459,7 @@
                 <!-- Item 3: Meus favoritos -->
                 <RelativeLayout
                     android:id="@+id/menuFavorites"
+                    android:visibility="gone"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:paddingHorizontal="16dp"
@@ -494,6 +495,8 @@
                 </RelativeLayout>
 
                 <View
+                    android:id="@+id/dividerFavorites"
+                    android:visibility="gone"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginStart="52dp"

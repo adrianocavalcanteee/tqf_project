@@ -20,18 +20,8 @@
             android:id="@+id/imgPortfolio"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="28dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_tech_repair"
-            app:tint="@color/brand_blue"
-            tools:ignore="ContentDescription" />
-
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="top|end"
-            android:layout_margin="8dp"
-            android:src="@drawable/ic_verified"
+            android:scaleType="centerCrop"
+            tools:src="@drawable/ic_tech_repair"
             tools:ignore="ContentDescription" />
 
     </FrameLayout>

@@ -22,11 +22,20 @@ object SupabaseClient {
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabaseKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
         ) {
-            install(Auth)
+            install(Auth) {
+                // Deep link do AndroidManifest (confirmação de e-mail e recuperação de senha):
+                // sem isso o handleDeeplinks ignora o link e a sessão de recuperação não é importada.
+                scheme = AUTH_CALLBACK_SCHEME
+                host = AUTH_CALLBACK_HOST
+            }
             install(Postgrest)
             install(Storage)
         }
     }
+
+    const val AUTH_CALLBACK_SCHEME = "com.tqfapp.android"
+    const val AUTH_CALLBACK_HOST = "login-callback"
+    const val AUTH_CALLBACK_URL = "$AUTH_CALLBACK_SCHEME://$AUTH_CALLBACK_HOST"
 
     val auth: Auth get() = client.auth
     val postgrest: Postgrest get() = client.postgrest

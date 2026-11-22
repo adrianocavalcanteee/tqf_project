@@ -52,6 +52,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Nova senha (aberta pelo link de recuperação via LoginActivity) -->
+        <activity
+            android:name=".ui.auth.ResetPasswordActivity"
+            android:exported="false" />
+
         <!-- Tela de Cadastro -->
         <activity
             android:name=".ui.auth.RegisterActivity"

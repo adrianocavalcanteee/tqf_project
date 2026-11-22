@@ -114,7 +114,7 @@
                         android:background="@drawable/bg_badge_green"
                         android:paddingHorizontal="10dp"
                         android:paddingVertical="4dp"
-                        android:text="⚡ Atende hoje"
+                        android:text="⚡ Disponível"
                         android:textColor="@color/green_badge_text"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -184,6 +184,28 @@
                 app:drawableStartCompat="@drawable/ic_location"
                 tools:text="Centro, Manaus - AM"
                 tools:visibility="visible" />
+
+            <!-- Portfólio (fotos do Supabase Storage) -->
+            <TextView
+                android:id="@+id/txtPortfolioTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Portfólio"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvPortfolio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_portfolio" />
 
             <!-- Avaliações reais do prestador (avaliacoes.reviewed_id) -->
             <TextView

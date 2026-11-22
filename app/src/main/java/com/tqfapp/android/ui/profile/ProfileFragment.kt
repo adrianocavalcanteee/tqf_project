@@ -30,6 +30,7 @@ import com.tqfapp.android.data.model.label
 import com.tqfapp.android.business.ServiceStatus
 import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.model.Service
+import com.tqfapp.android.data.model.Review
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.data.network.SupabaseClient
 import com.tqfapp.android.data.repository.ReviewRepository
@@ -48,6 +49,7 @@ import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.loadImage
 
 class ProfileFragment : Fragment() {
 
@@ -71,25 +73,7 @@ class ProfileFragment : Fragment() {
     private val pickMediaLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            if (_binding != null) {
-                binding.imgProfile.setImageURI(uri)
-            }
-            val storageRepository = com.tqfapp.android.data.repository.StorageRepository(requireContext())
-            val uploadResult = storageRepository.uploadProfilePicture(uri)
-            if (uploadResult.isSuccess) {
-                val publicUrl = uploadResult.getOrNull()
-                val user = currentUser
-                if (user != null && publicUrl != null) {
-                    val updated = user.copy(profilePictureUri = publicUrl)
-                    userRepository.updateUser(updated)
-                    currentUser = updated
-                }
-                Toast.makeText(requireContext(), "Foto enviada para o Supabase Storage com sucesso!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
-            }
-        }
+        if (uri != null) uploadAvatar(uri)
     }
 
     private var clientAvatarImageViewRef: ImageView? = null
@@ -97,18 +81,30 @@ class ProfileFragment : Fragment() {
     private val clientPhotoPickerLauncher = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            clientAvatarImageViewRef?.setImageURI(uri)
-            if (_binding != null) {
-                binding.imgProfile.setImageURI(uri)
+        if (uri != null) uploadAvatar(uri)
+    }
+
+    /**
+     * Foto de perfil (tela e diálogo de edição): antes era gravada como URI local (content://),
+     * que nenhum outro aparelho abre. Agora sobe ao Storage em IO; se falhar, volta a foto anterior.
+     */
+    private fun uploadAvatar(uri: Uri) {
+        val previous = currentUser?.profilePictureUri
+        clientAvatarImageViewRef?.setImageURI(uri)
+        if (_binding != null) binding.imgProfile.setImageURI(uri)
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { UserRepository(appContext).updateProfilePicture(uri) }
+            result.onSuccess { url ->
+                currentUser = currentUser?.copy(profilePictureUri = url)
+                clientAvatarImageViewRef?.loadImage(url)
+                if (_binding != null) binding.imgProfile.loadImage(url)
+                showToast("Foto de perfil atualizada!")
+            }.onFailure {
+                clientAvatarImageViewRef?.loadImage(previous)
+                if (_binding != null) binding.imgProfile.loadImage(previous)
+                showToast(it.message ?: "Não foi possível atualizar a foto.")
             }
-            val user = currentUser
-            if (user != null) {
-                val updated = user.copy(profilePictureUri = uri.toString())
-                userRepository.updateUser(updated)
-                currentUser = updated
-            }
-            Toast.makeText(requireContext(), "Foto de perfil atualizada com sucesso!", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -168,13 +164,7 @@ class ProfileFragment : Fragment() {
                     if (isProviderProfile) "Prestador desde $it" else "Cliente desde $it"
                 } ?: if (isProviderProfile) "Prestador TQF" else "Cliente TQF"
                 binding.txtBio.text = user.bio ?: user.specialty ?: user.category ?: "Usuário do TQF"
-                user.profilePictureUri?.let {
-                    try {
-                        if (_binding != null) {
-                            binding.imgProfile.setImageURI(Uri.parse(it))
-                        }
-                    } catch (_: Exception) {}
-                }
+                if (_binding != null) binding.imgProfile.loadImage(user.profilePictureUri)
                 user.address?.let {
                     if (it.isNotBlank()) {
                         binding.txtClientAddressDisplay.text = it
@@ -279,10 +269,6 @@ class ProfileFragment : Fragment() {
                 }
                 .setNegativeButton("Fechar", null)
                 .show()
-        }
-
-        binding.menuFavorites.setOnClickListener {
-            showToast("Meus favoritos")
         }
 
         binding.menuNotifications.setOnClickListener {
@@ -573,24 +559,28 @@ class ProfileFragment : Fragment() {
             .setPositiveButton("Salvar") { _, _ ->
                 val newAddress = etClientAddress?.text?.toString()?.trim().orEmpty()
 
-                if (newAddress.isNotEmpty() && (clientLat == null || clientLng == null)) {
-                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), newAddress)
-                    if (coords != null) {
-                        clientLat = coords.latitude
-                        clientLng = coords.longitude
+                val user = currentUser ?: return@setPositiveButton
+                val knownLat = clientLat
+                val knownLng = clientLng
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val updated = withContext(Dispatchers.IO) {
+                        val coords = if (newAddress.isNotEmpty() && (knownLat == null || knownLng == null)) {
+                            LocationUtils.getCoordinatesFromAddress(appContext, newAddress)
+                        } else null
+                        val changed = user.copy(
+                            address = newAddress,
+                            latitude = coords?.latitude ?: knownLat ?: user.latitude,
+                            longitude = coords?.longitude ?: knownLng ?: user.longitude
+                        )
+                        if (UserRepository(appContext).updateUser(changed)) changed else null
                     }
-                }
-
-                val user = currentUser
-                if (user != null) {
-                    val updated = user.copy(
-                        address = newAddress,
-                        latitude = clientLat ?: user.latitude,
-                        longitude = clientLng ?: user.longitude
-                    )
-                    userRepository.updateUser(updated)
+                    if (updated == null) {
+                        showToast("Não foi possível salvar o endereço. Tente novamente.")
+                        return@launch
+                    }
                     currentUser = updated
-                    binding.txtClientAddressDisplay.text = newAddress
+                    if (_binding != null) binding.txtClientAddressDisplay.text = newAddress
                     showToast("Endereço de entrega atualizado com sucesso!")
                 }
             }
@@ -806,12 +796,20 @@ class ProfileFragment : Fragment() {
 
     private fun setupClientReviews() {
         if (_binding == null) return
-        try {
-            val reviewRepository = ReviewRepository(requireContext())
-            val currentUserId = currentUser?.id ?: return
+        val currentUserId = currentUser?.id ?: return
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
             // Avaliações RECEBIDAS pelo cliente (reviewed_id = cliente). As que ele escreveu
             // pertencem ao perfil do prestador avaliado e não devem aparecer aqui.
-            val dbReviews = reviewRepository.getReviewsByProvider(currentUserId)
+            val dbReviews = withContext(Dispatchers.IO) {
+                ReviewRepository(appContext).getReviewsByProvider(currentUserId)
+            }
+            if (_binding != null) showClientReviews(dbReviews)
+        }
+    }
+
+    private fun showClientReviews(dbReviews: List<Review>) {
+        try {
             binding.txtRatingValue.text = RatingFormat.average(dbReviews)?.let { RatingFormat.value(it) } ?: "–"
 
             val reviewsList = dbReviews.map {

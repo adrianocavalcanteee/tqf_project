@@ -98,10 +98,12 @@ class ProviderHomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             // getCurrentUser faz rede: fica no IO junto com as listas (nada bloqueia a thread principal).
             var providerName: String? = null
+            var providerAvailable = true
             val (requests, contracts, completedServices) = withContext(Dispatchers.IO) {
                 try {
                     val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Triple(emptyList(), emptyList(), emptyList())
                     providerName = provider.name
+                    providerAvailable = provider.isAvailable
                     providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
                     val reqs = ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
                     val conts = ServiceRepository(appContext).getProviderContracts(provider.id)
@@ -114,6 +116,7 @@ class ProviderHomeFragment : Fragment() {
             }
             val root = view ?: return@launch
             showGreeting(root, providerName)
+            showAvailability(root, providerAvailable)
             allRequests = requests
             applySearch(etSearchRequests.text?.toString().orEmpty())
 
@@ -161,19 +164,39 @@ class ProviderHomeFragment : Fragment() {
         })
     }
 
-    private fun setupStatusSwitch(view: View) {
-        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus)
-        val txtStatusTitle = view.findViewById<TextView>(R.id.txtStatusTitle)
+    private var bindingSwitch = false
 
-        switchStatus?.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                txtStatusTitle?.text = "Status: Disponível 🟢"
-                showToast("Seu perfil agora está visível para novos chamados")
-            } else {
-                txtStatusTitle?.text = "Status: Indisponível 🔴"
-                showToast("Seu perfil está oculto para novos chamados")
+    /** Switch "Disponível para chamados": grava em perfis_prestador.is_available e desfaz se falhar. */
+    private fun setupStatusSwitch(view: View) {
+        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus) ?: return
+        switchStatus.setOnCheckedChangeListener { button, isChecked ->
+            if (bindingSwitch) return@setOnCheckedChangeListener
+            showAvailability(view, isChecked)
+            button.isEnabled = false
+            val appContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) { UserRepository(appContext).setAvailability(isChecked) }
+                button.isEnabled = true
+                result.onSuccess {
+                    showToast(
+                        if (isChecked) "Seu perfil agora está visível para novos chamados"
+                        else "Seu perfil está oculto para novos chamados"
+                    )
+                }.onFailure {
+                    showAvailability(view, !isChecked)
+                    showToast(it.message ?: "Não foi possível alterar sua disponibilidade.")
+                }
             }
         }
+    }
+
+    private fun showAvailability(view: View, isAvailable: Boolean) {
+        val switchStatus = view.findViewById<SwitchMaterial>(R.id.switchStatus)
+        bindingSwitch = true
+        switchStatus?.isChecked = isAvailable
+        bindingSwitch = false
+        view.findViewById<TextView>(R.id.txtStatusTitle)?.text =
+            if (isAvailable) "Status: Disponível 🟢" else "Status: Indisponível 🔴"
     }
 
     private fun setupNotification(view: View) {
