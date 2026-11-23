@@ -10,7 +10,7 @@ import com.tqfapp.android.business.RatingFormat
 import com.tqfapp.android.data.model.User
 import com.tqfapp.android.databinding.ItemProfessionalBinding
 import java.util.Locale
-import com.tqfapp.android.ui.common.loadImage
+import com.tqfapp.android.ui.common.loadProviderPhoto
 
 /**
  * Lista de prestadores (Home e Sugestões). Começa vazia e é alimentada via [updateData].
@@ -28,7 +28,7 @@ class ProfessionalAdapter(
 
         fun bind(provider: User) = with(binding) {
             txtName.text = provider.name
-            imgAvatar.loadImage(provider.profilePictureUri)
+            imgAvatar.loadProviderPhoto(provider.profilePictureUri, provider.category)
             txtCategory.text = listOfNotNull(provider.category, provider.specialty)
                 .filter { it.isNotBlank() }
                 .distinct()

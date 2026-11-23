@@ -16,6 +16,10 @@ import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
+import com.tqfapp.android.data.repository.ServiceRepository
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.widget.Toast
 
 /**
  * Motor de recomendação (lado do Contratante): após uma recusa, lista outros prestadores
@@ -32,11 +36,17 @@ class SugestaoPrestadoresActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySugestaoPrestadoresBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarsPadding()
 
         val category = intent.getStringExtra(EXTRA_CATEGORY).orEmpty()
         val excludedProviderId = intent.getStringExtra(EXTRA_EXCLUDED_PROVIDER_ID)
         val requestTitle = intent.getStringExtra(EXTRA_REQUEST_TITLE)
-        intent.getStringExtra(EXTRA_REQUEST_ID)?.let { UserSessionManager.markRefusedRequestSeen(this, it) }
+        val requestId = intent.getStringExtra(EXTRA_REQUEST_ID)
+        requestId?.let { UserSessionManager.markRefusedRequestSeen(this, it) }
+        if (requestId != null) {
+            binding.btnCancelService.visibility = View.VISIBLE
+            binding.btnCancelService.setOnClickListener { confirmCancel(requestId, requestTitle) }
+        }
 
         binding.txtSubtitle.text = if (requestTitle.isNullOrBlank()) {
             "Outros profissionais de $category:"
@@ -48,6 +58,33 @@ class SugestaoPrestadoresActivity : AppCompatActivity() {
         binding.rvSuggestions.adapter = adapter
 
         loadSuggestions(category, excludedProviderId)
+    }
+
+    /** Encerra o pedido recusado (RECUSADO -> CANCELADO) em vez de procurar outro prestador. */
+    private fun confirmCancel(requestId: String, title: String?) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Cancelar serviço?")
+            .setMessage(
+                if (title.isNullOrBlank()) "O pedido será encerrado. Você pode abrir um novo quando quiser."
+                else "\"$title\" será encerrado. Você pode abrir um novo pedido quando quiser."
+            )
+            .setPositiveButton("Cancelar serviço") { _, _ ->
+                binding.btnCancelService.isEnabled = false
+                lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        ServiceRepository(applicationContext).cancelRequestById(requestId)
+                    }
+                    result.onSuccess {
+                        Toast.makeText(applicationContext, "Serviço cancelado.", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }.onFailure {
+                        binding.btnCancelService.isEnabled = true
+                        Toast.makeText(applicationContext, it.message ?: "Não foi possível cancelar.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("Voltar", null)
+            .show()
     }
 
     private fun loadSuggestions(category: String, excludedProviderId: String?) {

@@ -16,5 +16,7 @@ data class PerfilPrestadorDto(
     @SerialName("portfolio_urls") val portfolioUrls: List<String> = emptyList(),
     @SerialName("service_tags") val serviceTags: List<String> = emptyList(),
     /** Aceitando novos chamados (switch da Home do prestador). */
-    @SerialName("is_available") val isAvailable: Boolean = true
+    @SerialName("is_available") val isAvailable: Boolean = true,
+    /** Foto de capa (URL pública do Storage). */
+    @SerialName("cover_url") val coverUrl: String? = null
 )

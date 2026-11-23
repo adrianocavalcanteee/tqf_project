@@ -1,66 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Aba compartilhada por papel:
-    - Contratante: "Histórico de Serviços" (somente CONCLUIDO)
-    - Prestador: "Contratações em Andamento" (somente EM_ANDAMENTO)
--->
+<!-- Aba Contratações (por papel): contratante vê todas as solicitações; prestador vê em andamento + concluídas. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/transparent"
     android:orientation="vertical"
-    android:background="@color/bg_app"
-    android:paddingTop="36dp"
-    android:paddingHorizontal="20dp">
+    android:paddingHorizontal="@dimen/tqf_screen_margin"
+    android:paddingTop="@dimen/tqf_space_lg">
 
     <TextView
         android:id="@+id/txtHeaderTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Histórico de Serviços"
-        android:textColor="@color/text_primary"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+        android:text="Contratações"
+        android:textAppearance="@style/TextAppearance.TQF.Display" />
 
     <TextView
         android:id="@+id/txtHeaderSubtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="16dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="13sp"
-        tools:text="Serviços concluídos" />
+        android:layout_marginTop="@dimen/tqf_space_xxs"
+        android:textAppearance="@style/TextAppearance.TQF.Body"
+        tools:text="Acompanhe a resposta dos prestadores" />
 
-    <ProgressBar
-        android:id="@+id/progressContracts"
-        android:layout_width="wrap_content"
+    <!-- Filtros por status (pílulas): só filtram a lista já carregada -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="24dp"
-        android:visibility="gone" />
+        android:layout_marginHorizontal="-20dp"
+        android:layout_marginTop="@dimen/tqf_space_sm"
+        android:layout_marginBottom="@dimen/tqf_space_sm"
+        android:clipToPadding="false"
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupStatusFilter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
+
+    <!-- Skeleton de carregamento -->
+    <LinearLayout
+        android:id="@+id/progressContracts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <include layout="@layout/item_skeleton_provider" />
+
+        <include layout="@layout/item_skeleton_provider" />
+
+        <include layout="@layout/item_skeleton_provider" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/txtEmptyContracts"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="@dimen/tqf_space_md"
+        android:background="@drawable/bg_tile"
         android:gravity="center"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
+        android:padding="@dimen/tqf_space_lg"
+        android:textAppearance="@style/TextAppearance.TQF.Body"
         android:visibility="gone"
-        tools:text="Você ainda não tem serviços concluídos." />
+        tools:text="Você ainda não fez solicitações." />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvContracts"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="80dp"
+        android:paddingBottom="@dimen/tqf_space_md"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:itemCount="3"
         tools:listitem="@layout/item_contract" />
-
 </LinearLayout>

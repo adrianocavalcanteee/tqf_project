@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barra inferior (vidro branco): item ativo (selected) em azul, inativos em cinza -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/tqf_nav_on_glass" android:state_selected="true" />
+    <item android:color="@color/tqf_nav_on_glass_muted" />
+</selector>

@@ -11,6 +11,7 @@ import com.tqfapp.android.databinding.ActivityResetPasswordBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
 
 /**
  * Nova senha. Aberta pela LoginActivity quando o link de recuperação do e-mail volta ao app
@@ -25,6 +26,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityResetPasswordBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarsPadding()
 
         binding.btnBack.setOnClickListener { backToLogin() }
         binding.btnSavePassword.setOnClickListener { savePassword() }

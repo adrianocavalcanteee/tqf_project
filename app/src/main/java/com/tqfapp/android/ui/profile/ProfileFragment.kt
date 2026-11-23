@@ -1,7 +1,6 @@
 package com.tqfapp.android.ui.profile
 
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -50,6 +50,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.tqfapp.android.ui.common.loadImage
+import com.tqfapp.android.ui.common.loadProviderPhoto
+import com.tqfapp.android.ui.common.applyStatusBadge
 
 class ProfileFragment : Fragment() {
 
@@ -225,12 +227,8 @@ class ProfileFragment : Fragment() {
 
         // Converte as coordenadas de latitude e longitude reais em um endereço legível usando Geocoder
         val userAddress = currentUser?.address
-        val addressText = if (!userAddress.isNullOrBlank()) {
-            userAddress
-        } else {
-            LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-                ?: "Endereço não informado"
-        }
+        // Endereço salvo no perfil (sem Geocoder na thread principal).
+        val addressText = userAddress?.takeIf { it.isNotBlank() } ?: "Endereço não informado"
 
         // Sincroniza o card/bloco de texto do endereço no perfil
         if (_binding != null) {
@@ -356,11 +354,15 @@ class ProfileFragment : Fragment() {
         }
 
         // Converte as coordenadas atuais em endereço legível para preencher o campo inicial
-        val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-        if (!currentAddress.isNullOrEmpty()) {
-            etLocation?.setText(currentAddress)
-            txtLocationStatus?.visibility = View.VISIBLE
-            txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+        // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+        val geoContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val currentAddress = withContext(Dispatchers.IO) { LocationUtils.getAddressFromCoordinates(geoContext, officeLatitude, officeLongitude) }
+            if (!currentAddress.isNullOrEmpty()) {
+                etLocation?.setText(currentAddress)
+                txtLocationStatus?.visibility = View.VISIBLE
+                txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+            }
         }
 
         // Lógica do Botão: Converte o texto digitado pelo prestador em coordenadas automaticamente
@@ -371,23 +373,27 @@ class ProfileFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
-            if (coords != null) {
-                etLatitude?.setText(coords.latitude.toString())
-                etLongitude?.setText(coords.longitude.toString())
-                txtLocationStatus?.visibility = View.VISIBLE
-                txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+            // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+            val geoContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val coords = withContext(Dispatchers.IO) { LocationUtils.getCoordinatesFromAddress(geoContext, addressText) }
+                if (coords != null) {
+                    etLatitude?.setText(coords.latitude.toString())
+                    etLongitude?.setText(coords.longitude.toString())
+                    txtLocationStatus?.visibility = View.VISIBLE
+                    txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
 
-                cardDialogMap?.visibility = View.VISIBLE
-                dialogGoogleMap?.let { map ->
-                    updateDialogMapMarker(map, coords, addressText)
+                    cardDialogMap?.visibility = View.VISIBLE
+                    dialogGoogleMap?.let { map ->
+                        updateDialogMapMarker(map, coords, addressText)
+                    }
+
+                    Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
+                } else {
+                    txtLocationStatus?.visibility = View.VISIBLE
+                    txtLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
+                    Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
                 }
-
-                Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
-            } else {
-                txtLocationStatus?.visibility = View.VISIBLE
-                txtLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
-                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -398,41 +404,38 @@ class ProfileFragment : Fragment() {
                 val newBio = etBio?.text?.toString()?.trim().orEmpty()
                 val addressText = etLocation?.text?.toString()?.trim().orEmpty()
 
-                var newLat = etLatitude?.text?.toString()?.toDoubleOrNull()
-                var newLng = etLongitude?.text?.toString()?.toDoubleOrNull()
-
-                // Converte automaticamente o texto do endereço se o usuário digitou mas não clicou no botão
-                if (addressText.isNotEmpty() && (newLat == null || newLng == null)) {
-                    val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
-                    if (coords != null) {
-                        newLat = coords.latitude
-                        newLng = coords.longitude
-                    }
-                }
-
+                val typedLat = etLatitude?.text?.toString()?.toDoubleOrNull()
+                val typedLng = etLongitude?.text?.toString()?.toDoubleOrNull()
                 if (newName.isNotEmpty()) binding.txtProfileName.text = newName
                 if (newBio.isNotEmpty()) binding.txtBio.text = newBio
 
-                if (newLat != null && newLng != null) {
-                    officeLatitude = newLat
-                    officeLongitude = newLng
-                    updateOfficeMapMarker()
-                }
-
-                // Atualiza o usuário no banco Room
-                val user = currentUser
-                if (user != null) {
-                    val updated = user.copy(
-                        name = if (newName.isNotEmpty()) newName else user.name,
-                        specialty = if (newBio.isNotEmpty()) newBio else user.specialty,
-                        latitude = if (newLat != null) newLat else user.latitude,
-                        longitude = if (newLng != null) newLng else user.longitude
-                    )
-                    userRepository.updateUser(updated)
+                // Geocoding (se o endereço não foi localizado pelo botão) e gravação em IO, nessa ordem.
+                val appContext = requireContext().applicationContext
+                val user = currentUser ?: return@setPositiveButton
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val updated = withContext(Dispatchers.IO) {
+                        val coords = if (addressText.isNotEmpty() && (typedLat == null || typedLng == null)) {
+                            LocationUtils.getCoordinatesFromAddress(appContext, addressText)
+                        } else null
+                        val changed = user.copy(
+                            name = newName.ifEmpty { user.name },
+                            specialty = newBio.ifEmpty { user.specialty },
+                            latitude = coords?.latitude ?: typedLat ?: user.latitude,
+                            longitude = coords?.longitude ?: typedLng ?: user.longitude
+                        )
+                        if (UserRepository(appContext).updateUser(changed)) changed else null
+                    }
+                    if (_binding == null) return@launch
+                    if (updated == null) {
+                        showToast("Não foi possível salvar o perfil. Tente novamente.")
+                        return@launch
+                    }
                     currentUser = updated
+                    officeLatitude = updated.latitude ?: officeLatitude
+                    officeLongitude = updated.longitude ?: officeLongitude
+                    updateOfficeMapMarker()
+                    showToast("Perfil de prestador atualizado!")
                 }
-
-                showToast("Perfil de prestador atualizado!")
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -491,8 +494,8 @@ class ProfileFragment : Fragment() {
                     .center(coords)
                     .radius(500.0)
                     .strokeWidth(2f)
-                    .strokeColor(Color.parseColor("#007AFF"))
-                    .fillColor(Color.parseColor("#22007AFF"))
+                    .strokeColor(ContextCompat.getColor(requireContext(), R.color.tqf_primary))
+                    .fillColor(ContextCompat.getColor(requireContext(), R.color.tqf_map_radius_fill))
             )
         }
 
@@ -507,14 +510,18 @@ class ProfileFragment : Fragment() {
 
                     val initialAddress = currentUser?.address
                     if (!initialAddress.isNullOrBlank()) {
-                        val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), initialAddress)
-                        if (coords != null) {
-                            clientLat = coords.latitude
-                            clientLng = coords.longitude
-                            cardClientDialogMap?.visibility = View.VISIBLE
-                            txtClientLocationStatus?.visibility = View.VISIBLE
-                            txtClientLocationStatus?.text = "✓ Localização capturada no mapa"
-                            updateClientDialogMapMarker(map, coords, initialAddress)
+                        // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+                        val geoContext = requireContext().applicationContext
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            val coords = withContext(Dispatchers.IO) { LocationUtils.getCoordinatesFromAddress(geoContext, initialAddress) }
+                            if (coords != null) {
+                                clientLat = coords.latitude
+                                clientLng = coords.longitude
+                                cardClientDialogMap?.visibility = View.VISIBLE
+                                txtClientLocationStatus?.visibility = View.VISIBLE
+                                txtClientLocationStatus?.text = "✓ Localização capturada no mapa"
+                                updateClientDialogMapMarker(map, coords, initialAddress)
+                            }
                         }
                     } else if (clientLat != null && clientLng != null) {
                         cardClientDialogMap?.visibility = View.VISIBLE
@@ -533,24 +540,28 @@ class ProfileFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
-            if (coords != null) {
-                clientLat = coords.latitude
-                clientLng = coords.longitude
+            // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+            val geoContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val coords = withContext(Dispatchers.IO) { LocationUtils.getCoordinatesFromAddress(geoContext, addressText) }
+                if (coords != null) {
+                    clientLat = coords.latitude
+                    clientLng = coords.longitude
 
-                txtClientLocationStatus?.visibility = View.VISIBLE
-                txtClientLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
-                cardClientDialogMap?.visibility = View.VISIBLE
+                    txtClientLocationStatus?.visibility = View.VISIBLE
+                    txtClientLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+                    cardClientDialogMap?.visibility = View.VISIBLE
 
-                clientGoogleMap?.let { map ->
-                    updateClientDialogMapMarker(map, coords, addressText)
+                    clientGoogleMap?.let { map ->
+                        updateClientDialogMapMarker(map, coords, addressText)
+                    }
+
+                    Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
+                } else {
+                    txtClientLocationStatus?.visibility = View.VISIBLE
+                    txtClientLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
+                    Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
                 }
-
-                Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
-            } else {
-                txtClientLocationStatus?.visibility = View.VISIBLE
-                txtClientLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
-                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -659,8 +670,8 @@ class ProfileFragment : Fragment() {
                     "com ${s.providerName.ifBlank { "Prestador" }}"
                 },
                 date = s.date,
-                status = s.status.label(),
-                imageRes = R.drawable.ic_profile
+                status = s.status,
+                category = s.category
             )
         }
 
@@ -762,8 +773,8 @@ class ProfileFragment : Fragment() {
         val title: String,
         val providerName: String,
         val date: String,
-        val status: String,
-        val imageRes: Int
+        val status: ServiceStatus,
+        val category: String
     )
 
     // Adapter for Recent Services
@@ -785,8 +796,8 @@ class ProfileFragment : Fragment() {
                 txtServiceTitle.text = item.title
                 txtProviderName.text = item.providerName
                 txtServiceDate.text = item.date
-                txtStatus.text = item.status
-                imgService.setImageResource(item.imageRes)
+                txtStatus.applyStatusBadge(item.status)
+                imgService.loadProviderPhoto(null, item.category)
                 root.setOnClickListener { onItemClick(item) }
             }
         }

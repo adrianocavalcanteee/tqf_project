@@ -7,7 +7,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app"
+    android:background="@drawable/bg_app_glow"
     android:orientation="vertical">
 
     <LinearLayout
@@ -19,21 +19,22 @@
         android:paddingTop="8dp">
 
         <ImageButton
+            app:tint="@color/tqf_text"
+            android:padding="12dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_tile"
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
             android:contentDescription="Voltar"
             android:src="@drawable/ic_arrow_back" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Title"
             android:id="@+id/txtScreenTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Descrição do serviço"
-            android:textColor="@color/text_primary"
-            android:textSize="17sp"
-            android:textStyle="bold" />
+            android:text="Descrição do serviço" />
     </LinearLayout>
 
     <!-- Formulário -->
@@ -50,26 +51,21 @@
             android:padding="20dp">
 
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:id="@+id/txtProviderInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
                 tools:text="Para: Carlos Mendes • Reformas e Reparos" />
 
             <!-- Somente no pedido aberto: a categoria define quais prestadores recebem a demanda -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilCategory"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.TQF.TextInput.Dropdown"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="Categoria do serviço"
                 android:visibility="gone"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp"
                 tools:visibility="visible">
 
                 <AutoCompleteTextView
@@ -82,15 +78,11 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilServiceTitle"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.TQF.TextInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Título do serviço (ex.: Troca de fiação)"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp">
+                android:hint="Título do serviço (ex.: Troca de fiação)">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etServiceTitle"
@@ -102,15 +94,11 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilServiceDescription"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.TQF.TextInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Descreva o que precisa ser feito"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp"
                 app:counterEnabled="true"
                 app:counterMaxLength="500"
                 app:helperText="Inclua detalhes que ajudem o prestador a decidir.">
@@ -144,15 +132,11 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilLocation"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.TQF.TextInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Local do serviço (bairro, cidade)"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp"
                 app:helperText="Ajuda o prestador a saber a distância até você.">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -165,15 +149,11 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilClientPhone"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                style="@style/Widget.TQF.TextInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Seu WhatsApp com DDD"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp"
                 app:helperText="O prestador entrará em contato por aqui se aceitar.">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -189,12 +169,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:minHeight="56dp"
-                android:text="Enviar solicitação"
-                android:textAllCaps="false"
-                android:textStyle="bold"
-                app:backgroundTint="@color/brand_blue"
-                app:cornerRadius="14dp" />
+                android:text="Enviar solicitação" />
 
             <ProgressBar
                 android:id="@+id/progressSend"
@@ -225,13 +200,11 @@
             app:tint="@color/green_badge_text" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Headline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Serviço enviado!"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:text="Serviço enviado!" />
 
         <TextView
             android:id="@+id/txtSuccessStatus"
@@ -247,13 +220,12 @@
             android:textStyle="bold" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Body"
             android:id="@+id/txtSuccessMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
             tools:text="Aguarde a resposta de Carlos Mendes. Se aceitar, ele falará com você pelo WhatsApp." />
 
         <com.google.android.material.button.MaterialButton
@@ -261,12 +233,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:minHeight="56dp"
-            android:text="Voltar ao início"
-            android:textAllCaps="false"
-            android:textStyle="bold"
-            app:backgroundTint="@color/brand_blue"
-            app:cornerRadius="14dp" />
+            android:text="Voltar ao início" />
     </LinearLayout>
 
 </LinearLayout>

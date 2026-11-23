@@ -1,109 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Login: fundo claro com brilhos, logo e frase centralizadas e formulário em card branco flutuante. -->
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:background="@color/bg_app">
+    android:background="@drawable/bg_app_glow"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:padding="24dp">
+        android:orientation="vertical">
 
-        <!-- Logo & Branding -->
-        <ImageView
-            android:id="@+id/imgLogo"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:adjustViewBounds="true"
-            android:src="@drawable/logo"
-            tools:ignore="ContentDescription" />
+        <!-- Marca centralizada -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="300dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/tqf_space_lg"
+            android:paddingVertical="@dimen/tqf_space_lg">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Serviços confiáveis, perto de você."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            <ImageView
+                android:id="@+id/imgLogo"
+                android:layout_width="230dp"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:contentDescription="Tem Quem Faça"
+                android:src="@drawable/logo_login" />
 
-        <!-- Login Card Container -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/tqf_space_lg"
+                android:text="Encontre quem faça,"
+                android:textAppearance="@style/TextAppearance.TQF.Subtitle"
+                android:textColor="@color/tqf_text_secondary"
+                android:textSize="@dimen/tqf_text_title" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="perto de você."
+                android:textAppearance="@style/TextAppearance.TQF.Display"
+                android:textColor="@color/tqf_primary" />
+        </LinearLayout>
+
+        <!-- Card flutuante do formulário -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.TQF.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/card_stroke"
-            app:strokeWidth="1dp"
-            app:cardBackgroundColor="@color/card_bg">
+            android:layout_marginHorizontal="@dimen/tqf_space_md"
+            android:layout_marginBottom="@dimen/tqf_space_md"
+            app:cardCornerRadius="@dimen/tqf_radius_card">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="@dimen/tqf_screen_margin">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Como você deseja entrar?"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:text="Entrar"
+                    android:textAppearance="@style/TextAppearance.TQF.Headline" />
 
-                <!-- User Type Selector (Contratante vs Prestador) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/tqf_space_xxs"
+                    android:text="Escolha como você usa o TQF"
+                    android:textAppearance="@style/TextAppearance.TQF.Body" />
+
+                <!-- Segmented control Contratante | Prestador -->
                 <com.google.android.material.button.MaterialButtonToggleGroup
                     android:id="@+id/toggleUserType"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="20dp"
-                    app:singleSelection="true"
-                    app:selectionRequired="true">
+                    android:layout_marginTop="@dimen/tqf_space_md"
+                    android:background="@drawable/bg_segment_track"
+                    android:padding="@dimen/tqf_space_xxs"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnTypeContractor"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Segment"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Contratante"
-                        android:textColor="@color/brand_blue"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold" />
+                        android:textColor="@color/brand_blue" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnTypeProvider"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Segment"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Prestador"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold" />
-
+                        android:textColor="@color/text_secondary" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
-                <!-- Email Input -->
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="E-mail"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    android:layout_marginTop="@dimen/tqf_space_md"
+                    android:hint="E-mail">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
@@ -112,18 +122,13 @@
                         android:inputType="textEmailAddress" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Password Input -->
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="@dimen/tqf_space_sm"
                     android:hint="Senha"
-                    app:endIconMode="password_toggle"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
@@ -132,68 +137,46 @@
                         android:inputType="textPassword" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Forgot Password Link -->
                 <TextView
                     android:id="@+id/txtForgotPassword"
+                    style="@style/Widget.TQF.Link"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
-                    android:layout_marginTop="10dp"
-                    android:text="Esqueceu a senha?"
-                    android:textColor="@color/brand_blue"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true" />
+                    android:text="Esqueceu a senha?" />
 
-                <!-- Login Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnLogin"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="20dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/tqf_space_xxs"
                     android:text="Entrar como Contratante"
-                    android:textColor="@color/white"
-                    android:textSize="15sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/brand_blue"
-                    app:cornerRadius="14dp"
-                    app:elevation="0dp" />
+                    app:icon="@drawable/ic_chevron_right" />
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/tqf_space_xs"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Não tem uma conta?"
+                        android:textAppearance="@style/TextAppearance.TQF.Body"
+                        android:textColor="@color/tqf_text" />
+
+                    <TextView
+                        android:id="@+id/txtRegister"
+                        style="@style/Widget.TQF.Link"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/tqf_space_xxs"
+                        android:text="Cadastre-se"
+                        android:textSize="@dimen/tqf_text_body" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Register Footer -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Não tem uma conta? "
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/txtRegister"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Cadastre-se"
-                android:textColor="@color/brand_blue"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true" />
-        </LinearLayout>
-
     </LinearLayout>
-
 </ScrollView>

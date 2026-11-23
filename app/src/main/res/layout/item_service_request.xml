@@ -1,148 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Card de solicitação recebida (Home do prestador e "Ver todas"): cliente + status, pedido,
+     local/urgência e ação para avaliar (Aceitar/Recusar ficam na tela de avaliação). -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/cardServiceRequest"
+    style="@style/Widget.TQF.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:strokeColor="@color/card_stroke"
-    app:strokeWidth="1dp"
-    app:cardBackgroundColor="@color/card_bg">
+    android:layout_marginBottom="@dimen/tqf_space_sm"
+    android:clickable="true"
+    android:focusable="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/tqf_space_md">
 
-        <!-- Header: Client Photo, Name & Posted Time -->
-        <RelativeLayout
+        <!-- Cliente, categoria e status -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/imgClientAvatar"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:scaleType="centerCrop"
+                android:layout_width="@dimen/tqf_avatar_md"
+                android:layout_height="@dimen/tqf_avatar_md"
+                android:background="@color/tqf_primary_soft"
+                android:importantForAccessibility="no"
+                android:padding="10dp"
                 android:src="@drawable/ic_profile"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.SmallComponent"
-                tools:ignore="ContentDescription" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.TQF.Circle"
+                app:tint="@color/tqf_primary" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_toEndOf="@id/imgClientAvatar"
-                android:layout_toStartOf="@id/txtPostedTime"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="8dp">
+                android:layout_marginStart="@dimen/tqf_space_sm"
+                android:layout_marginEnd="@dimen/tqf_space_xs"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/txtClientName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    tools:text="Ana Lima"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.TQF.Subtitle"
+                    android:textStyle="bold"
+                    tools:text="Ana Lima" />
 
                 <TextView
-                    android:id="@+id/txtCategoryBadge"
+                    android:id="@+id/txtPostedTime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    tools:text="Climatização"
-                    android:textColor="@color/brand_blue"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:textAppearance="@style/TextAppearance.TQF.Caption"
+                    tools:text="2026-11-22" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/txtPostedTime"
+                android:id="@+id/txtCategoryBadge"
+                style="@style/Widget.TQF.Badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                tools:text="Há 15 min"
-                android:textColor="@color/text_muted"
-                android:textSize="11sp" />
-        </RelativeLayout>
+                android:maxWidth="140dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/tqf_primary"
+                tools:text="Eventos" />
+        </LinearLayout>
 
-        <!-- Service Request Details -->
         <TextView
             android:id="@+id/txtRequestTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            tools:text="Instalação de ar-condicionado 12000 BTUs em apartamento"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="@dimen/tqf_space_sm"
+            android:textAppearance="@style/TextAppearance.TQF.Subtitle"
+            android:textStyle="bold"
+            tools:text="Instalação de ar-condicionado 12000 BTUs" />
 
         <TextView
             android:id="@+id/txtRequestDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            tools:text="Preciso de profissional qualificado para instalação de ar split na sala. Já possuo o aparelho."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:layout_marginTop="@dimen/tqf_space_xxs"
+            android:ellipsize="end"
             android:maxLines="2"
-            android:ellipsize="end" />
+            android:textAppearance="@style/TextAppearance.TQF.Body"
+            tools:text="Preciso de profissional qualificado para instalação de ar split na sala." />
 
-        <!-- Location Only (Budget removed) -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/txtLocation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/tqf_space_sm"
+            android:background="@drawable/bg_tile"
+            android:drawablePadding="6dp"
             android:gravity="center_vertical"
-            android:layout_marginTop="10dp">
+            android:paddingHorizontal="@dimen/tqf_space_sm"
+            android:paddingVertical="@dimen/tqf_space_xs"
+            android:textColor="@color/tqf_text_secondary"
+            android:textSize="@dimen/tqf_text_caption"
+            app:drawableStartCompat="@drawable/ic_location"
+            app:drawableTint="@color/tqf_primary"
+            tools:text="Pedido aberto • Hoje • Centro • 1,8 km" />
 
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_location"
-                tools:ignore="ContentDescription" />
-
-            <TextView
-                android:id="@+id/txtLocation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                tools:text="Pinheiros (1,8 km)"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:background="@color/card_stroke" />
-
-        <!-- Ação: abre a tela de avaliação (descrição completa + Aceitar/Recusar) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEvaluateService"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:minHeight="48dp"
-            android:text="Avaliar solicitação"
-            android:textColor="@color/white"
-            android:textSize="13sp"
-            android:textAllCaps="false"
-            android:textStyle="bold"
-            app:backgroundTint="@color/brand_blue"
-            app:cornerRadius="10dp"
-            app:elevation="0dp" />
-
+            android:layout_marginTop="@dimen/tqf_space_md"
+            android:text="Ver e responder"
+            app:icon="@drawable/ic_chevron_right" />
     </LinearLayout>
-
 </com.google.android.material.card.MaterialCardView>

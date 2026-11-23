@@ -26,6 +26,8 @@ data class User(
     val telephone: String? = null,
     val profilePictureUri: String? = null,
     val portfolioUris: List<String> = emptyList(),
+    /** Foto de capa do prestador (perfis_prestador.cover_url). */
+    val coverUri: String? = null,
     val rating: Double = 0.0,
     val reviewCount: Int = 0,
     val distanceKm: Double? = null,

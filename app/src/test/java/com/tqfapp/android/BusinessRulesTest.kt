@@ -29,6 +29,9 @@ class BusinessRulesTest {
         assertTrue(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.EM_ANDAMENTO))
         assertTrue(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.RECUSADO))
         assertTrue(ServiceRules.canChangeStatus(ServiceStatus.EM_ANDAMENTO, ServiceStatus.CONCLUIDO))
+        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.CANCELADO))
+        assertTrue(ServiceRules.canChangeStatus(ServiceStatus.RECUSADO, ServiceStatus.CANCELADO))
+        assertFalse(ServiceRules.canChangeStatus(ServiceStatus.RECUSADO, ServiceStatus.EM_ANDAMENTO))
 
         assertFalse(ServiceRules.canChangeStatus(ServiceStatus.PENDENTE, ServiceStatus.CONCLUIDO))
         assertFalse(ServiceRules.canChangeStatus(ServiceStatus.EM_ANDAMENTO, ServiceStatus.PENDENTE))

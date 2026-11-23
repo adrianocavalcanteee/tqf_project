@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Área fixa de ações na base da tela (topo arredondado, sombra suave via elevation) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:topLeftRadius="@dimen/tqf_radius_card" android:topRightRadius="@dimen/tqf_radius_card" />
+    <solid android:color="@color/tqf_surface" />
+</shape>

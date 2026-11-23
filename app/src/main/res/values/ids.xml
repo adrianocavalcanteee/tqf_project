@@ -2,4 +2,8 @@
 <resources>
     <!-- ImageView.loadImage: fonte pedida por último (evita imagem trocada em listas recicladas) -->
     <item name="tag_image_source" type="id" />
+    <!-- View.showSkeleton: animação de pulsação em andamento -->
+    <item name="tag_skeleton_animator" type="id" />
+    <!-- loadProviderPhoto: foto real já aplicada (não reaplicar o recuo do ícone padrão) -->
+    <item name="tag_photo_loaded" type="id" />
 </resources>

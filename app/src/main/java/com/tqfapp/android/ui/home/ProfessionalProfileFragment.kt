@@ -61,6 +61,39 @@ class ProfessionalProfileFragment : Fragment() {
         if (uri != null) uploadAvatar(uri)
     }
 
+    // Photo Picker para a foto de capa
+    private val pickCoverLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) uploadCover(uri)
+    }
+
+    /** Capa: mostra na hora, envia em IO (perfis_prestador.cover_url) e volta a anterior se falhar. */
+    private fun uploadCover(uri: Uri) {
+        val imgCover = view?.findViewById<ImageView>(R.id.imgCover) ?: return
+        val previous = UserRepository(requireContext()).getCurrentUser()?.coverUri
+        imgCover.setImageURI(uri)
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { UserRepository(appContext).updateCoverPicture(uri) }
+            result.onSuccess { url ->
+                showCover(url)
+                showToast("Foto de capa atualizada!")
+            }.onFailure {
+                showCover(previous)
+                showToast(it.message ?: "Não foi possível atualizar a capa.")
+            }
+        }
+    }
+
+    /** Exibe a capa (ou o degradê padrão) e ajusta o texto do botão. */
+    private fun showCover(coverUri: String?) {
+        val root = view ?: return
+        val imgCover = root.findViewById<ImageView>(R.id.imgCover) ?: return
+        if (coverUri.isNullOrBlank()) imgCover.setImageDrawable(null) else imgCover.loadImage(coverUri, android.R.color.transparent)
+        root.findViewById<TextView>(R.id.txtChangeCover)?.text = if (coverUri.isNullOrBlank()) "Adicionar capa" else "Trocar capa"
+    }
+
     /** Foto de perfil: mostra na hora, envia em IO e, se falhar, volta a foto anterior com o erro real. */
     private fun uploadAvatar(uri: Uri) {
         val imgAvatar = view?.findViewById<ImageView>(R.id.imgAvatar) ?: return
@@ -123,6 +156,7 @@ class ProfessionalProfileFragment : Fragment() {
             view.findViewById<TextView>(R.id.txtProfessionalName)?.text = name
         }
         view.findViewById<ImageView>(R.id.imgAvatar)?.loadImage(currentUser?.profilePictureUri)
+        showCover(currentUser?.coverUri)
         if (!specialty.isNullOrEmpty()) {
             view.findViewById<TextView>(R.id.txtSpecialty)?.text = specialty
         }
@@ -189,14 +223,20 @@ class ProfessionalProfileFragment : Fragment() {
         val passedAddress = arguments?.getString(ARG_ADDRESS)
         val savedAddress = if (isOwner) currentUser?.address ?: passedAddress else passedAddress
 
-        // Geocodificação Reversa para garantir sincronização entre o texto e a Latitude/Longitude reais do prestador
-        val geocodedAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-
         val finalAddressText = when {
             !passedAddress.isNullOrBlank() && !isOwner -> passedAddress
             !savedAddress.isNullOrBlank() -> savedAddress
-            !geocodedAddress.isNullOrBlank() -> geocodedAddress
-            else -> "Manaus - AM (Atendimento Presencial)"
+            else -> "Endereço não informado"
+        }
+        // Sem endereço salvo: tenta o endereço das coordenadas em IO (Geocoder faz rede).
+        if (savedAddress.isNullOrBlank() && passedAddress.isNullOrBlank()) {
+            val geoContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val geocoded = withContext(Dispatchers.IO) {
+                    LocationUtils.getAddressFromCoordinates(geoContext, officeLatitude, officeLongitude)
+                } ?: return@launch
+                getView()?.findViewById<TextView>(R.id.txtOfficeAddressSubtitle)?.text = "📍 $geocoded"
+            }
         }
 
         // Sincroniza o TextView do subtítulo do endereço sobre o mapa
@@ -266,8 +306,11 @@ class ProfessionalProfileFragment : Fragment() {
             }
         }
 
-        // Foto de capa não tem campo no Supabase (seria perdida ao reabrir): troca não é oferecida.
-        view.findViewById<View>(R.id.btnChangeCover)?.visibility = View.GONE
+        val pickCover = View.OnClickListener {
+            if (isOwner) pickCoverLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+        view.findViewById<View>(R.id.btnChangeCover)?.setOnClickListener(pickCover)
+        view.findViewById<View>(R.id.imgCover)?.setOnClickListener(pickCover)
 
         view.findViewById<View>(R.id.btnEditProfile)?.setOnClickListener {
             showEditProfileDialog(view)
@@ -407,11 +450,15 @@ class ProfessionalProfileFragment : Fragment() {
         }
 
         // Converte as coordenadas atuais em endereço legível
-        val currentAddress = LocationUtils.getAddressFromCoordinates(requireContext(), officeLatitude, officeLongitude)
-        if (!currentAddress.isNullOrEmpty()) {
-            etLocation?.setText(currentAddress)
-            txtLocationStatus?.visibility = View.VISIBLE
-            txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+        // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+        val geoContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val currentAddress = withContext(Dispatchers.IO) { LocationUtils.getAddressFromCoordinates(geoContext, officeLatitude, officeLongitude) }
+            if (!currentAddress.isNullOrEmpty()) {
+                etLocation?.setText(currentAddress)
+                txtLocationStatus?.visibility = View.VISIBLE
+                txtLocationStatus?.text = "✓ Localização capturada: $currentAddress"
+            }
         }
 
         btnSearchAddress?.setOnClickListener {
@@ -421,23 +468,27 @@ class ProfessionalProfileFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            val coords = LocationUtils.getCoordinatesFromAddress(requireContext(), addressText)
-            if (coords != null) {
-                etLatitude?.setText(coords.latitude.toString())
-                etLongitude?.setText(coords.longitude.toString())
-                txtLocationStatus?.visibility = View.VISIBLE
-                txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
+            // Geocoder faz rede: consulta em IO, tela atualizada ao terminar.
+            val geoContext = requireContext().applicationContext
+            viewLifecycleOwner.lifecycleScope.launch {
+                val coords = withContext(Dispatchers.IO) { LocationUtils.getCoordinatesFromAddress(geoContext, addressText) }
+                if (coords != null) {
+                    etLatitude?.setText(coords.latitude.toString())
+                    etLongitude?.setText(coords.longitude.toString())
+                    txtLocationStatus?.visibility = View.VISIBLE
+                    txtLocationStatus?.text = "✓ Endereço localizado! Posição pronta no mapa."
 
-                cardDialogMap?.visibility = View.VISIBLE
-                dialogGoogleMap?.let { map ->
-                    updateDialogMapMarker(map, coords, addressText)
+                    cardDialogMap?.visibility = View.VISIBLE
+                    dialogGoogleMap?.let { map ->
+                        updateDialogMapMarker(map, coords, addressText)
+                    }
+
+                    Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
+                } else {
+                    txtLocationStatus?.visibility = View.VISIBLE
+                    txtLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
+                    Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
                 }
-
-                Toast.makeText(requireContext(), "Endereço localizado e posicionado no mapa!", Toast.LENGTH_SHORT).show()
-            } else {
-                txtLocationStatus?.visibility = View.VISIBLE
-                txtLocationStatus?.text = "⚠️ Endereço não encontrado. Verifique os dados digitados."
-                Toast.makeText(requireContext(), "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
             }
         }
 

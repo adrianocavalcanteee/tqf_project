@@ -26,6 +26,9 @@ import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.databinding.ViewSummaryCardBinding
+import com.tqfapp.android.ui.common.bind
+import com.tqfapp.android.ui.common.loadImage
 
 /**
  * Feed do Prestador: chamados PENDENTE direcionados a ele (ou pedidos abertos da sua categoria),
@@ -72,14 +75,9 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun showGreeting(view: View, providerName: String?) {
-        val name = providerName?.trim()
-        val greetingText = if (!name.isNullOrBlank()) {
-            val firstName = name.split(" ").firstOrNull() ?: name
-            "Olá, $firstName!"
-        } else {
-            "Olá!"
-        }
-        view.findViewById<TextView>(R.id.txtProviderGreeting)?.text = greetingText
+        // "Olá!" fica no rótulo acima; aqui vai o nome em destaque.
+        view.findViewById<TextView>(R.id.txtProviderGreeting)?.text =
+            providerName?.trim()?.takeIf { it.isNotBlank() } ?: "Prestador"
     }
 
     private fun setupRequestsList() {
@@ -98,11 +96,13 @@ class ProviderHomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             // getCurrentUser faz rede: fica no IO junto com as listas (nada bloqueia a thread principal).
             var providerName: String? = null
+            var providerPhoto: String? = null
             var providerAvailable = true
             val (requests, contracts, completedServices) = withContext(Dispatchers.IO) {
                 try {
                     val provider = UserRepository(appContext).getCurrentUser() ?: return@withContext Triple(emptyList(), emptyList(), emptyList())
                     providerName = provider.name
+                    providerPhoto = provider.profilePictureUri
                     providerAvailable = provider.isAvailable
                     providerLocation = provider.latitude?.let { lat -> provider.longitude?.let { LatLng(lat, it) } }
                     val reqs = ServiceRepository(appContext).getProviderRequests(provider.id, provider.category)
@@ -116,6 +116,7 @@ class ProviderHomeFragment : Fragment() {
             }
             val root = view ?: return@launch
             showGreeting(root, providerName)
+            root.findViewById<ImageView>(R.id.imgProviderAvatar)?.loadImage(providerPhoto)
             showAvailability(root, providerAvailable)
             allRequests = requests
             applySearch(etSearchRequests.text?.toString().orEmpty())
@@ -127,6 +128,16 @@ class ProviderHomeFragment : Fragment() {
             view?.findViewById<TextView>(R.id.txtQuotesCount)?.text = quotesCount.toString()
             view?.findViewById<TextView>(R.id.txtActiveServicesCount)?.text = activeServicesCount.toString()
             view?.findViewById<TextView>(R.id.txtCompletedServicesCount)?.text = completedCount.toString()
+
+            // Card-resumo: concluídos sobre tudo que já foi aceito (em andamento + concluídos).
+            val summaryView = root.findViewById<View>(R.id.cardSummary)
+            ViewSummaryCardBinding.bind(summaryView).bind(
+                title = "Seus serviços",
+                text = "$activeServicesCount em andamento • $quotesCount pedidos novos",
+                done = completedCount,
+                total = activeServicesCount + completedCount,
+                actionLabel = "Ver contratações"
+            ) { (activity as? HomeActivity)?.showContractsTab() }
         }
     }
 
@@ -200,6 +211,10 @@ class ProviderHomeFragment : Fragment() {
     }
 
     private fun setupNotification(view: View) {
+        view.findViewById<ImageView>(R.id.imgProviderAvatar)?.setOnClickListener {
+            (activity as? HomeActivity)?.showProfileTab()
+        }
+
         view.findViewById<ImageView>(R.id.imgNotificationProvider)?.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, NotificationsFragment())

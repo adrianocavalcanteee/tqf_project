@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card-resumo das Homes: fundo azul sólido, título + resumo + ação à esquerda, anel de progresso à direita.
+     Preenchido por SummaryCard.bind (ui/common). -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.TQF.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="@color/tqf_primary">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Brilho decorativo no canto (mesma linguagem do fundo) -->
+        <View
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="-70dp"
+            android:layout_marginEnd="-60dp"
+            android:background="@drawable/bg_summary_glow" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/tqf_space_md">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/tqf_space_md"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txtSummaryTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
+                    android:textColor="@color/tqf_text_on_primary"
+                    tools:text="Suas solicitações" />
+
+                <TextView
+                    android:id="@+id/txtSummaryText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/tqf_space_xxs"
+                    android:textColor="@color/tqf_primary_soft"
+                    android:textSize="@dimen/tqf_text_body"
+                    tools:text="2 em andamento • 1 aguardando resposta" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSummaryAction"
+                    style="@style/Widget.TQF.Button.Soft"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/tqf_space_sm"
+                    android:minHeight="@dimen/tqf_touch_target"
+                    android:paddingHorizontal="@dimen/tqf_space_md"
+                    android:textSize="@dimen/tqf_text_body"
+                    app:backgroundTint="@color/tqf_surface"
+                    tools:text="Ver contratações" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:indicatorColor="@color/tqf_text_on_primary"
+                    app:indicatorSize="84dp"
+                    app:trackColor="@color/tqf_summary_track"
+                    app:trackCornerRadius="4dp"
+                    app:trackThickness="7dp"
+                    tools:progress="65" />
+
+                <TextView
+                    android:id="@+id/txtSummaryPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="@color/tqf_text_on_primary"
+                    android:textSize="@dimen/tqf_text_subtitle"
+                    android:textStyle="bold"
+                    tools:text="65%" />
+            </FrameLayout>
+        </LinearLayout>
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView>

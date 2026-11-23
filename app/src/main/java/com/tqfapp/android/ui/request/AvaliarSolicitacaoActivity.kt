@@ -17,10 +17,12 @@ import com.tqfapp.android.data.model.resumoParaPrestador
 import com.tqfapp.android.data.model.whatsAppUrl
 import com.tqfapp.android.data.repository.ServiceRepository
 import com.tqfapp.android.databinding.ActivityAvaliarSolicitacaoBinding
+import com.tqfapp.android.ui.common.applyStatusBadge
 import com.tqfapp.android.ui.common.openWhatsApp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
 
 /**
  * Tela do Prestador: avalia a descrição e decide.
@@ -37,6 +39,7 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityAvaliarSolicitacaoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarsPadding()
 
         solicitacao = intent.serializableExtra<Solicitacao>(EXTRA_SOLICITACAO) ?: run {
             finish()
@@ -52,7 +55,7 @@ class AvaliarSolicitacaoActivity : AppCompatActivity() {
 
     private fun render() = with(binding) {
         txtCategory.text = solicitacao.category
-        txtStatus.text = solicitacao.status.label()
+        txtStatus.applyStatusBadge(solicitacao.status)
         txtTitle.text = solicitacao.title
         txtClient.text = listOf(
             "Cliente: ${solicitacao.clientName.ifBlank { "Cliente" }}",

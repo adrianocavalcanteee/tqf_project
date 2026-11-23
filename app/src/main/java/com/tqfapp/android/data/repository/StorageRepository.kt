@@ -66,13 +66,16 @@ class StorageRepository(private val context: Context) {
      * Realiza o upload da foto de perfil para profile/{auth.uid()}/profile_timestamp.jpg
      * e retorna a URL pública/acessível gerada.
      */
-    fun uploadProfilePicture(imageUri: Uri): Result<String> = runBlocking {
+    /** Foto de capa do prestador: mesma pasta profile/{uid}/ (permitida pela regra do bucket). */
+    fun uploadCoverPicture(imageUri: Uri): Result<String> = uploadProfilePicture(imageUri, filePrefix = "cover")
+
+    fun uploadProfilePicture(imageUri: Uri, filePrefix: String = "profile"): Result<String> = runBlocking {
         try {
             val authUser = SupabaseClient.auth.currentUserOrNull()
                 ?: return@runBlocking Result.failure(IllegalStateException("Usuário não autenticado para upload."))
 
             val authUid = authUser.id
-            val path = "profile/$authUid/profile_${System.currentTimeMillis()}.jpg"
+            val path = "profile/$authUid/${filePrefix}_${System.currentTimeMillis()}.jpg"
 
             val bytes = readCompressedJpeg(imageUri)
                 ?: return@runBlocking Result.failure(IllegalArgumentException("Não foi possível ler a imagem selecionada."))

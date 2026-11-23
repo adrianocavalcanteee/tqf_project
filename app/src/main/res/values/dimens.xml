@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===================== Design system TQF: espaçamento (grid de 8dp) ===================== -->
+    <dimen name="tqf_space_xxs">4dp</dimen>
+    <dimen name="tqf_space_xs">8dp</dimen>
+    <dimen name="tqf_space_sm">12dp</dimen>
+    <dimen name="tqf_space_md">16dp</dimen>
+    <dimen name="tqf_space_lg">24dp</dimen>
+    <dimen name="tqf_space_xl">32dp</dimen>
+    <dimen name="tqf_screen_margin">20dp</dimen>
+    <dimen name="tqf_section_gap">28dp</dimen>
+
+    <!-- Raios -->
+    <dimen name="tqf_radius_card">22dp</dimen>
+    <dimen name="tqf_radius_image">20dp</dimen>
+    <dimen name="tqf_radius_button">16dp</dimen>
+    <dimen name="tqf_radius_field">18dp</dimen>
+    <dimen name="tqf_radius_tile">16dp</dimen>
+    <dimen name="tqf_radius_pill">100dp</dimen>
+    <dimen name="tqf_radius_badge">10dp</dimen>
+    <dimen name="tqf_radius_nav">32dp</dimen>             <!-- pílula de navegação (metade da altura) -->
+
+    <!-- Sombras (baixas e difusas; cor azulada via tqf_shadow no API 28+) -->
+    <dimen name="tqf_elevation_card">6dp</dimen>
+    <dimen name="tqf_elevation_floating">14dp</dimen>
+
+    <!-- Tamanhos -->
+    <dimen name="tqf_touch_target">48dp</dimen>
+    <dimen name="tqf_button_height">56dp</dimen>
+    <dimen name="tqf_field_height">56dp</dimen>
+    <dimen name="tqf_icon_sm">18dp</dimen>
+    <dimen name="tqf_icon_md">22dp</dimen>
+    <dimen name="tqf_avatar_md">48dp</dimen>
+    <dimen name="tqf_tile_size">72dp</dimen>
+    <dimen name="tqf_bottom_nav_height">64dp</dimen>
+
+    <!-- Tipografia -->
+    <dimen name="tqf_text_display">30sp</dimen>
+    <dimen name="tqf_text_headline">24sp</dimen>
+    <dimen name="tqf_text_title">18sp</dimen>
+    <dimen name="tqf_text_subtitle">16sp</dimen>
+    <dimen name="tqf_text_body">14sp</dimen>
+    <dimen name="tqf_text_caption">12sp</dimen>
+    <dimen name="tqf_text_micro">11sp</dimen>
+</resources>

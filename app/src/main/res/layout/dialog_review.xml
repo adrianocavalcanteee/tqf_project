@@ -9,22 +9,19 @@
     android:gravity="center_horizontal">
 
     <TextView
+        android:textAppearance="@style/TextAppearance.TQF.Title"
         android:id="@+id/txtReviewDialogTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Avaliar Serviço Concluído"
-        android:textColor="@color/text_primary"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:text="Avaliar Serviço Concluído" />
 
     <TextView
+        android:textAppearance="@style/TextAppearance.TQF.Body"
         android:id="@+id/txtReviewDialogSubtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="Como foi a sua experiência com este atendimento?"
-        android:textColor="@color/text_secondary"
-        android:textSize="13sp"
         android:gravity="center" />
 
     <!-- Star Rating Bar -->
@@ -36,20 +33,16 @@
         android:numStars="5"
         android:rating="0"
         android:stepSize="1.0"
-        android:progressTint="#FFC107"
+        android:progressTint="@color/tqf_star"
         android:progressBackgroundTint="@color/text_muted" />
 
     <!-- Comment Input -->
     <com.google.android.material.textfield.TextInputLayout
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        style="@style/Widget.TQF.TextInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="Escreva sua avaliação (opcional)"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp">
+        android:hint="Escreva sua avaliação (opcional)">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etReviewComment"

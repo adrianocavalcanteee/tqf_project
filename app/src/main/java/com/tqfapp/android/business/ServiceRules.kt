@@ -17,8 +17,10 @@ object ServiceRules {
             ServiceStatus.EM_ANDAMENTO ->
                 newStatus == ServiceStatus.CONCLUIDO || newStatus == ServiceStatus.CANCELADO
 
+            // Recusada pelo prestador: o contratante ainda pode encerrar (cancelar) o pedido.
+            ServiceStatus.RECUSADO -> newStatus == ServiceStatus.CANCELADO
+
             ServiceStatus.CONCLUIDO,
-            ServiceStatus.RECUSADO,
             ServiceStatus.CANCELADO -> false
         }
     }

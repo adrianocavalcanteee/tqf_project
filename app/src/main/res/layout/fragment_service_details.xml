@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_app">
+    android:background="@android:color/transparent">
 
     <!-- Top Bar Header -->
     <RelativeLayout
@@ -17,25 +17,26 @@
         android:paddingBottom="14dp">
 
         <ImageView
+            app:tint="@color/tqf_text"
+            android:padding="12dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_tile"
             android:id="@+id/btnBackDetails"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:contentDescription="Voltar"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_arrow_back"
-            android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
-            android:focusable="true"
-            tools:ignore="ContentDescription" />
+            android:focusable="true" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="Detalhes do Serviço"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:text="Detalhes do Serviço" />
     </RelativeLayout>
 
     <ScrollView
@@ -54,11 +55,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardCornerRadius="@dimen/tqf_radius_card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -84,35 +81,30 @@
                             android:paddingVertical="5dp" />
 
                         <TextView
+                            android:textAppearance="@style/TextAppearance.TQF.Title"
                             android:id="@+id/txtDetailPrice"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_alignParentEnd="true"
                             android:layout_centerVertical="true"
-                            tools:text="R$ 150,00"
-                            android:textColor="@color/text_primary"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                            tools:text="R$ 150,00" />
                     </RelativeLayout>
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Headline"
                         android:id="@+id/txtDetailTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        tools:text="Instalação de tomadas e iluminação"
-                        android:textColor="@color/text_primary"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        tools:text="Instalação de tomadas e iluminação" />
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Body"
                         android:id="@+id/txtDetailDescription"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         tools:text="Serviço completo de passagem de fiação, instalação de tomadas 20A e luminárias LED em cômodos residenciais."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp"
                         android:lineSpacingExtra="3dp" />
 
                     <!-- Divider -->
@@ -144,22 +136,19 @@
                             android:orientation="vertical">
 
                             <TextView
+                                android:textAppearance="@style/TextAppearance.TQF.Title"
                                 android:id="@+id/txtDetailProfessionalName"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                tools:text="Carlos Mendes"
-                                android:textColor="@color/text_primary"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
+                                tools:text="Carlos Mendes" />
 
                             <TextView
+                                android:textAppearance="@style/TextAppearance.TQF.Body"
                                 android:id="@+id/txtDetailSpecialty"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                tools:text="Eletricista Residencial"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="13sp" />
+                                tools:text="Eletricista Residencial" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -201,31 +190,25 @@
                 android:visibility="gone">
 
                 <TextView
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
-                    android:text="Evidências do Serviço (Fotos)"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:text="Evidências do Serviço (Fotos)" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddEvidence"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    style="@style/Widget.TQF.Button.Outlined"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="44dp"
                     android:layout_marginTop="8dp"
                     android:text="Adicionar Foto de Evidência"
                     android:textColor="@color/brand_blue"
-                    android:textSize="13sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
                     app:icon="@drawable/ic_camera"
                     app:iconTint="@color/brand_blue"
                     app:strokeColor="@color/brand_blue"
-                    app:strokeWidth="1dp"
-                    app:cornerRadius="12dp" />
+                    app:strokeWidth="1dp" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvServiceEvidence"
@@ -242,16 +225,9 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnReviewService"
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="⭐ Avaliar Atendimento"
-                android:textColor="@color/white"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:textStyle="bold"
-                app:backgroundTint="@color/brand_blue"
-                app:cornerRadius="14dp"
-                app:elevation="0dp"
                 android:visibility="gone" />
 
         </LinearLayout>

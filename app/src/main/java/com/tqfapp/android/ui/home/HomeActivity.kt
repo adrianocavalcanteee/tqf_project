@@ -1,6 +1,7 @@
 package com.tqfapp.android.ui.home
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -14,6 +15,7 @@ import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
 
 class HomeActivity : AppCompatActivity() {
 
@@ -25,6 +27,7 @@ class HomeActivity : AppCompatActivity() {
         try {
             binding = ActivityHomeBinding.inflate(layoutInflater)
             setContentView(binding.root)
+            binding.root.applySystemBarsPadding()
 
             // Tipo da conta já resolvido no login (usuarios.is_provider), sem nova ida à rede aqui.
             isProviderUser = intent.getBooleanExtra(
@@ -41,6 +44,7 @@ class HomeActivity : AppCompatActivity() {
             }
 
             setupBottomNavigation()
+            selectNavItem(binding.btnNavHome)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -48,6 +52,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun setupBottomNavigation() {
         binding.btnNavHome.setOnClickListener {
+            selectNavItem(binding.btnNavHome)
             if (isProviderUser) {
                 replaceFragment(ProviderHomeFragment())
             } else {
@@ -56,10 +61,12 @@ class HomeActivity : AppCompatActivity() {
         }
 
         binding.btnNavContracts.setOnClickListener {
+            selectNavItem(binding.btnNavContracts)
             replaceFragment(ContractsFragment())
         }
 
         binding.btnNavProfile.setOnClickListener {
+            selectNavItem(binding.btnNavProfile)
             // As telas de perfil leem o usuário logado várias vezes: carrega uma vez em IO (fica em
             // cache no UserRepository) antes de abrir, para não travar a thread principal.
             binding.btnNavProfile.isEnabled = false
@@ -73,6 +80,22 @@ class HomeActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /** Abre a aba Perfil (toque na foto do usuário nas Homes); mesmo caminho do item da barra. */
+    fun showProfileTab() {
+        binding.btnNavProfile.performClick()
+    }
+
+    /** Abre a aba Contratações (atalho do card-resumo das Homes), com o item da barra destacado. */
+    fun showContractsTab() {
+        selectNavItem(binding.btnNavContracts)
+        replaceFragment(ContractsFragment())
+    }
+
+    /** Destaque visual do item ativo da barra inferior (só aparência; a navegação segue igual). */
+    private fun selectNavItem(item: View) {
+        listOf(binding.btnNavHome, binding.btnNavContracts, binding.btnNavProfile).forEach { it.isSelected = it == item }
     }
 
     private fun replaceFragment(fragment: Fragment) {

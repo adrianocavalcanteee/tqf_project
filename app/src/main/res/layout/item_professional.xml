@@ -1,79 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Card de prestador (Home e Sugestões). Leitura em Z/F:
-    1) Nome + Categoria + Badge de disponibilidade
-    2) Métricas agrupadas: nota • avaliações • distância
-    3) Preço à esquerda e CTA "Ver perfil" à direita (alvo de toque >= 48dp)
-    Todos os textos são preenchidos pelo ProfessionalAdapter; os valores tools: são só para o preview.
--->
+<!-- Card compacto de prestador ("Recomendados perto de você" e Sugestões):
+     foto arredondada + nome, categoria, nota/distância e valor. Textos preenchidos pelo ProfessionalAdapter. -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/cardProfessional"
+    style="@style/Widget.TQF.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="@dimen/tqf_space_sm"
     android:clickable="true"
-    android:focusable="true"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="1dp"
-    app:strokeColor="@color/card_stroke"
-    app:strokeWidth="1dp"
-    app:cardBackgroundColor="@color/card_bg">
+    android:focusable="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="14dp">
+        android:padding="@dimen/tqf_space_sm">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imgAvatar"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_profile"
+            android:layout_width="84dp"
+            android:layout_height="84dp"
             android:importantForAccessibility="no"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.SmallComponent"
+            android:scaleType="centerCrop"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.TQF.Tile" />
 
-        <!-- 1. Nome -->
         <TextView
             android:id="@+id/txtName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="8dp"
+            android:layout_marginStart="@dimen/tqf_space_sm"
+            android:layout_marginEnd="@dimen/tqf_space_xs"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
+            android:textAppearance="@style/TextAppearance.TQF.Subtitle"
             android:textStyle="bold"
-            app:layout_constraintStart_toEndOf="@id/imgAvatar"
             app:layout_constraintEnd_toStartOf="@id/txtStatusBadge"
+            app:layout_constraintStart_toEndOf="@id/imgAvatar"
             app:layout_constraintTop_toTopOf="@id/imgAvatar"
             tools:text="Carlos Mendes" />
 
-        <!-- 1. Badge de disponibilidade -->
         <TextView
             android:id="@+id/txtStatusBadge"
+            style="@style/Widget.TQF.Badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_badge_green"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:text="⚡ Disponível"
-            android:textColor="@color/green_badge_text"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:backgroundTint="@color/tqf_status_done_bg"
+            android:text="Disponível"
+            android:textColor="@color/tqf_status_done_text"
             android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/txtName"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/txtName"
-            app:layout_constraintBottom_toBottomOf="@id/txtName"
             tools:visibility="visible" />
 
-        <!-- 1. Categoria / especialidade -->
         <TextView
             android:id="@+id/txtCategory"
             android:layout_width="0dp"
@@ -81,55 +64,40 @@
             android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            app:layout_constraintStart_toStartOf="@id/txtName"
+            android:textAppearance="@style/TextAppearance.TQF.Body"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/txtName"
             app:layout_constraintTop_toBottomOf="@id/txtName"
             tools:text="Reformas e Reparos • Eletricista" />
 
-        <!-- 2. Métricas agrupadas -->
         <TextView
             android:id="@+id/txtMetrics"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:drawablePadding="4dp"
+            android:ellipsize="end"
             android:gravity="center_vertical"
             android:maxLines="1"
-            android:ellipsize="end"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textAppearance="@style/TextAppearance.TQF.Caption"
+            android:textColor="@color/tqf_text_secondary"
             app:drawableStartCompat="@drawable/ic_star"
-            app:layout_constraintStart_toStartOf="@id/txtName"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/txtName"
             app:layout_constraintTop_toBottomOf="@id/txtCategory"
             tools:text="4,9 • 86 avaliações • 2,1 km" />
 
-        <View
-            android:id="@+id/divider"
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:background="@color/card_stroke"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/txtMetrics" />
-
-        <!-- 3. Preço transparente -->
         <TextView
             android:id="@+id/txtPrice"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/tqf_price"
+            android:textSize="@dimen/tqf_text_body"
             android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/divider"
-            tools:text="R$ 80,00 / hora" />
-
+            app:layout_constraintStart_toStartOf="@id/txtName"
+            app:layout_constraintTop_toBottomOf="@id/txtMetrics"
+            tools:text="A combinar" />
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </com.google.android.material.card.MaterialCardView>

@@ -1,32 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand Primary Colors -->
-    <color name="brand_blue">#1D61F2</color>
-    <color name="brand_blue_dark">#1548B8</color>
-    <color name="brand_blue_light">#EEF4FF</color>
+    <!-- ===================== Design system TQF: tokens de cor ===================== -->
+    <!-- Marca -->
+    <color name="tqf_primary">#1A6EF5</color>
+    <color name="tqf_primary_pressed">#1457C4</color>
+    <color name="tqf_primary_soft">#EEF4FF</color>        <!-- campos, chips, tiles -->
+    <color name="tqf_primary_soft_pressed">#DCE8FF</color>
 
-    <!-- Status / Accent Colors -->
-    <color name="green_badge_bg">#E6F7ED</color>
-    <color name="green_badge_text">#10B981</color>
-    <color name="star_yellow">#FFB800</color>
-    <color name="notification_red">#FF3B30</color>
-    <color name="refused_bg">#FFF4F2</color>
-    <color name="refused_stroke">#FFD5CF</color>
-    <color name="refused_text">#C2410C</color>
-    <color name="whatsapp_green">#1FA855</color>
+    <!-- Superfícies -->
+    <color name="tqf_background">#F4F8FF</color>
+    <color name="tqf_surface">#FFFFFF</color>
+    <color name="tqf_divider">#EAF0F9</color>
+    <color name="tqf_shadow">#1A1A6EF5</color>            <!-- sombra difusa azulada (API 28+) -->
+    <color name="tqf_glass">#CCFFFFFF</color>             <!-- etiqueta translúcida sobre foto -->
+    <color name="tqf_map_radius_fill">#221A6EF5</color>      <!-- círculo de raio/alcance no mapa -->
+    <!-- Brilhos difusos do fundo (bg_app_glow): azuis bem claros sobre branco -->
+    <color name="tqf_glow_base">#F8FBFF</color>
+    <color name="tqf_glow_blue">#661A6EF5</color>
+    <color name="tqf_glow_sky">#5538BDF8</color>
+    <color name="tqf_glow_indigo">#406366F1</color>
+    <color name="tqf_summary_track">#4DFFFFFF</color>        <!-- trilho do anel no card-resumo azul -->
+    <color name="tqf_summary_glow">#33FFFFFF</color>
+    <!-- Pílula de navegação em vidro branco translúcido (bg_nav_glass) -->
+    <color name="tqf_glass_top">#8CFFFFFF</color>
+    <color name="tqf_glass_bottom">#59FFFFFF</color>
+    <color name="tqf_glass_gloss">#99FFFFFF</color>
+    <color name="tqf_glass_sheen">#4DFFFFFF</color>
+    <color name="tqf_glass_rim">#F2FFFFFF</color>
+    <color name="tqf_glass_rim_inner">#1F0F172A</color>
+    <!-- Itens da barra sobre o vidro branco -->
+    <color name="tqf_nav_on_glass">@color/tqf_primary</color>
+    <color name="tqf_nav_on_glass_muted">@color/tqf_text_secondary</color>
+    <color name="tqf_nav_on_glass_active_bg">#261A6EF5</color>
 
-    <!-- Neutrals & Backgrounds -->
-    <color name="bg_app">#F8F9FD</color>
-    <color name="bg_search">#F1F5F9</color>
-    <color name="card_bg">#FFFFFF</color>
-    <color name="card_stroke">#E2E8F0</color>
+    <!-- Texto -->
+    <color name="tqf_text">#0F172A</color>
+    <color name="tqf_text_secondary">#64748B</color>      <!-- subtítulos (contraste AA em branco) -->
+    <color name="tqf_text_muted">#94A3B8</color>          <!-- dicas, legendas -->
+    <color name="tqf_text_on_primary">#FFFFFF</color>
 
-    <!-- Typography Colors -->
-    <color name="text_primary">#111827</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="text_muted">#9CA3AF</color>
+    <!-- Destaques -->
+    <color name="tqf_price">#22C58B</color>
+    <color name="tqf_star">#F5A623</color>
+    <color name="tqf_heart">#EF4444</color>
 
-    <!-- Legacy compatibility -->
+    <!-- Status (badges de solicitação) -->
+    <color name="tqf_status_pending_bg">#FFF6E5</color>
+    <color name="tqf_status_pending_text">#B26A00</color>
+    <color name="tqf_status_progress_bg">#EEF4FF</color>
+    <color name="tqf_status_progress_text">#1A6EF5</color>
+    <color name="tqf_status_done_bg">#E7F8F1</color>
+    <color name="tqf_status_done_text">#12936A</color>
+    <color name="tqf_status_refused_bg">#FDECEC</color>
+    <color name="tqf_status_refused_text">#D63A3A</color>
+    <color name="tqf_status_cancelled_bg">#F1F5F9</color>
+    <color name="tqf_status_cancelled_text">#64748B</color>
+
+    <color name="tqf_whatsapp">#1FA855</color>
+
+    <!-- ============ Nomes já usados nas telas: apontam para os tokens acima ============ -->
+    <color name="brand_blue">@color/tqf_primary</color>
+    <color name="brand_blue_dark">@color/tqf_primary_pressed</color>
+    <color name="brand_blue_light">@color/tqf_primary_soft</color>
+
+    <color name="green_badge_bg">@color/tqf_status_done_bg</color>
+    <color name="green_badge_text">@color/tqf_status_done_text</color>
+    <color name="star_yellow">@color/tqf_star</color>
+    <color name="notification_red">@color/tqf_heart</color>
+    <color name="refused_bg">@color/tqf_status_refused_bg</color>
+    <color name="refused_stroke">@color/tqf_status_refused_bg</color>
+    <color name="refused_text">@color/tqf_status_refused_text</color>
+    <color name="whatsapp_green">@color/tqf_whatsapp</color>
+
+    <color name="bg_app">@color/tqf_background</color>
+    <color name="bg_search">@color/tqf_primary_soft</color>
+    <color name="card_bg">@color/tqf_surface</color>
+    <color name="card_stroke">@color/tqf_divider</color>
+
+    <color name="text_primary">@color/tqf_text</color>
+    <color name="text_secondary">@color/tqf_text_secondary</color>
+    <color name="text_muted">@color/tqf_text_muted</color>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

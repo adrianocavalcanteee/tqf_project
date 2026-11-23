@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Badge (status, nota, etiqueta). A cor vem de backgroundTint (ver StatusBadge.kt). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="@dimen/tqf_radius_badge" />
+    <solid android:color="@color/tqf_primary_soft" />
+</shape>

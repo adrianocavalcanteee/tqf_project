@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,12 +21,19 @@ import com.tqfapp.android.data.repository.UserRepository
 import com.tqfapp.android.databinding.FragmentContractsBinding
 import com.tqfapp.android.databinding.ItemContractBinding
 import com.tqfapp.android.ui.common.showReviewDialog
+import com.tqfapp.android.ui.common.showSkeleton
+import com.tqfapp.android.ui.common.setPrimaryEmphasis
+import com.tqfapp.android.ui.common.loadProviderPhoto
+import com.tqfapp.android.ui.common.applyStatusBadge
 import com.tqfapp.android.ui.request.AvaliarSolicitacaoActivity
 import com.tqfapp.android.ui.request.SugestaoPrestadoresActivity
 import com.tqfapp.android.utils.UserSessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.widget.Toast
 
 /**
  * Aba por papel do usuário:
@@ -41,6 +47,8 @@ class ContractsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var isProvider = false
+    private var selectedStatusFilter: ServiceStatus? = null
+    private var loaded = LoadedContracts(null, emptyList(), emptyMap(), emptySet())
     private lateinit var contractAdapter: ContractAdapter
 
     override fun onCreateView(
@@ -60,19 +68,52 @@ class ContractsFragment : Fragment() {
             binding.txtHeaderTitle.text = "Contratações"
             binding.txtHeaderSubtitle.text = "Em andamento e concluídas"
         } else {
-            binding.txtHeaderTitle.text = "Minhas Solicitações"
+            binding.txtHeaderTitle.text = "Minhas contratações"
             binding.txtHeaderSubtitle.text = "Acompanhe a resposta dos prestadores"
         }
 
         contractAdapter = ContractAdapter(
             isProvider = isProvider,
             onDetailsClick = { service -> openDetails(service) },
-            onReviewClick = { service -> reviewOtherParty(service) }
+            onReviewClick = { service -> reviewOtherParty(service) },
+            onCancelClick = { service -> confirmCancel(service) }
         )
         binding.rvContracts.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = contractAdapter
         }
+        setupStatusFilter()
+    }
+
+    /** Pílulas de status: filtro visual sobre a lista já carregada (não refaz consultas). */
+    private fun setupStatusFilter() {
+        val options = if (isProvider) {
+            listOf(null, ServiceStatus.EM_ANDAMENTO, ServiceStatus.CONCLUIDO)
+        } else {
+            listOf(null, ServiceStatus.PENDENTE, ServiceStatus.EM_ANDAMENTO, ServiceStatus.CONCLUIDO, ServiceStatus.RECUSADO, ServiceStatus.CANCELADO)
+        }
+        binding.chipGroupStatusFilter.removeAllViews()
+        options.forEach { status ->
+            binding.chipGroupStatusFilter.addView(Chip(requireContext()).apply {
+                id = View.generateViewId()
+                text = status?.let { FILTER_LABELS.getValue(it) } ?: "Todas"
+                tag = status
+                isCheckable = true
+                isChecked = status == selectedStatusFilter
+            })
+        }
+        binding.chipGroupStatusFilter.setOnCheckedStateChangeListener { group, checkedIds ->
+            val chip = checkedIds.firstOrNull()?.let { group.findViewById<Chip>(it) } ?: return@setOnCheckedStateChangeListener
+            selectedStatusFilter = chip.tag as? ServiceStatus
+            showContracts()
+        }
+    }
+
+    private fun showContracts() {
+        if (_binding == null) return
+        val visible = selectedStatusFilter?.let { status -> loaded.services.filter { it.status == status } } ?: loaded.services
+        contractAdapter.updateData(visible, loaded.ratings, loaded.reviewedServiceIds)
+        showEmptyState(loaded.user, visible.isEmpty(), filtered = selectedStatusFilter != null && loaded.services.isNotEmpty())
     }
 
     override fun onResume() {
@@ -81,10 +122,10 @@ class ContractsFragment : Fragment() {
     }
 
     private fun loadContracts() {
-        binding.progressContracts.visibility = View.VISIBLE
+        binding.progressContracts.showSkeleton(true)
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val (user, services, ratings, reviewedServiceIds) = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 try {
                     val user = UserRepository(appContext).getCurrentUser()
                     val repository = ServiceRepository(appContext)
@@ -111,16 +152,17 @@ class ContractsFragment : Fragment() {
             }
 
             if (_binding == null) return@launch
-            binding.progressContracts.visibility = View.GONE
-            contractAdapter.updateData(services, ratings, reviewedServiceIds)
-            showEmptyState(user, services.isEmpty())
+            binding.progressContracts.showSkeleton(false)
+            loaded = result
+            showContracts()
         }
     }
 
-    private fun showEmptyState(user: User?, isEmpty: Boolean) {
+    private fun showEmptyState(user: User?, isEmpty: Boolean, filtered: Boolean = false) {
         binding.txtEmptyContracts.visibility = if (isEmpty) View.VISIBLE else View.GONE
         binding.txtEmptyContracts.text = when {
             user == null -> "Faça login para ver seus serviços."
+            filtered -> "Nada por aqui com esse filtro."
             isProvider -> "Nenhuma contratação ainda. Aceite solicitações na tela inicial."
             else -> "Você ainda não fez solicitações."
         }
@@ -137,6 +179,31 @@ class ContractsFragment : Fragment() {
             serviceTitle = service.title,
             reviewedName = if (isProvider) service.clientName.ifBlank { "o cliente" } else service.providerName.ifBlank { "o prestador" }
         ) { loadContracts() }
+    }
+
+    /** Contratante cancela uma solicitação PENDENTE ou RECUSADA (com confirmação). */
+    private fun confirmCancel(service: Service) {
+        val refused = service.status == ServiceStatus.RECUSADO
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(if (refused) "Cancelar serviço?" else "Cancelar solicitação?")
+            .setMessage(
+                if (refused) "\"${service.title}\" será encerrado. Você pode abrir um novo pedido quando quiser."
+                else "\"${service.title}\" deixará de aparecer para os prestadores."
+            )
+            .setPositiveButton(if (refused) "Cancelar serviço" else "Cancelar solicitação") { _, _ ->
+                val appContext = requireContext().applicationContext
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) { ServiceRepository(appContext).cancelRequest(service) }
+                    result.onSuccess {
+                        Toast.makeText(appContext, "Solicitação cancelada.", Toast.LENGTH_SHORT).show()
+                        loadContracts()
+                    }.onFailure {
+                        Toast.makeText(appContext, it.message ?: "Não foi possível cancelar.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("Voltar", null)
+            .show()
     }
 
     private data class LoadedContracts(
@@ -186,7 +253,8 @@ class ContractsFragment : Fragment() {
     private class ContractAdapter(
         private val isProvider: Boolean,
         private val onDetailsClick: (Service) -> Unit,
-        private val onReviewClick: (Service) -> Unit
+        private val onReviewClick: (Service) -> Unit,
+        private val onCancelClick: (Service) -> Unit
     ) : RecyclerView.Adapter<ContractAdapter.ViewHolder>() {
 
         private var items: List<Service> = emptyList()
@@ -226,19 +294,21 @@ class ContractsFragment : Fragment() {
                 txtSpecialty.text = item.category
                 txtServiceTitle.text = item.title
                 txtScheduleDate.text = item.date
-                txtStatusBadge.text = item.status.label()
-                txtStatusBadge.setTextColor(
-                    ContextCompat.getColor(
-                        root.context,
-                        if (item.status == ServiceStatus.RECUSADO) R.color.refused_text else R.color.green_badge_text
-                    )
-                )
+                txtStatusBadge.applyStatusBadge(item.status)
+                imgAvatar.loadProviderPhoto(null, item.category)
                 val providerAverage = RatingFormat.average(ratings[item.providerId].orEmpty())
                 txtRatingValue.visibility = if (providerAverage == null) View.GONE else View.VISIBLE
                 providerAverage?.let { txtRatingValue.text = "★ ${RatingFormat.value(it)}" }
                 imgVerified.visibility = View.GONE
                 val canReview = item.status == ServiceStatus.CONCLUIDO && item.id !in reviewedServiceIds
+                // Contratante pode cancelar enquanto não há resposta ou depois de uma recusa.
+                val canCancel = !isProvider &&
+                        (item.status == ServiceStatus.PENDENTE || item.status == ServiceStatus.RECUSADO)
+                btnCancelRequest.visibility = if (canCancel) View.VISIBLE else View.GONE
+                btnCancelRequest.text = if (item.status == ServiceStatus.RECUSADO) "Cancelar serviço" else "Cancelar solicitação"
+                btnCancelRequest.setOnClickListener { onCancelClick(item) }
                 btnDetails.text = when {
+                    !isProvider && item.status == ServiceStatus.PENDENTE -> "Detalhes"
                     canReview && isProvider -> "⭐ Avaliar cliente"
                     canReview -> "⭐ Avaliar prestador"
                     item.status == ServiceStatus.CONCLUIDO -> "✓ Avaliado • Detalhes"
@@ -247,7 +317,13 @@ class ContractsFragment : Fragment() {
                     else -> "Detalhes"
                 }
 
-                btnDetails.setOnClickListener { if (canReview) onReviewClick(item) else onDetailsClick(item) }
+                btnDetails.setPrimaryEmphasis(canReview)
+                btnDetails.setOnClickListener {
+                    when {
+                        canReview -> onReviewClick(item)
+                        else -> onDetailsClick(item)
+                    }
+                }
                 root.setOnClickListener { onDetailsClick(item) }
             }
         }
@@ -256,6 +332,14 @@ class ContractsFragment : Fragment() {
     }
 
     private companion object {
+        val FILTER_LABELS = mapOf(
+            ServiceStatus.PENDENTE to "Pendentes",
+            ServiceStatus.EM_ANDAMENTO to "Em andamento",
+            ServiceStatus.CONCLUIDO to "Concluídas",
+            ServiceStatus.RECUSADO to "Recusadas",
+            ServiceStatus.CANCELADO to "Canceladas"
+        )
+
         fun formatPrice(price: Double): String =
             if (price > 0) User.formatCurrency(price) else "Valor negociado"
     }

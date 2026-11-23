@@ -16,6 +16,14 @@ import com.tqfapp.android.utils.LocationUtils
 import com.tqfapp.android.utils.UserSessionManager
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.runBlocking
+import android.os.Looper
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.booleanOrNull
 
 /**
  * Repositório responsável pela camada de dados do Usuário (Autenticação e Cadastro).
@@ -30,6 +38,14 @@ class UserRepository(private val context: Context) {
     companion object {
         private const val TAG = "AuthFlow"
         private const val CURRENT_USER_CACHE_TTL_MS = 60_000L
+        private const val META_NAME = "name"
+        private const val META_IS_PROVIDER = "is_provider"
+        private const val META_PHONE = "phone"
+        private const val META_CATEGORY = "category"
+        private const val META_SPECIALTY = "specialty"
+        private const val META_ADDRESS = "address"
+        private const val META_LATITUDE = "latitude"
+        private const val META_LONGITUDE = "longitude"
         private const val KEY_RECOVERY_REQUESTED_AT = "recovery_requested_at"
         /** O link de recuperação do Supabase vale 1 hora por padrão. */
         private const val RECOVERY_LINK_VALIDITY_MS = 60 * 60 * 1000L
@@ -65,6 +81,36 @@ class UserRepository(private val context: Context) {
             putString("${key}_profile_pic", user.profilePictureUri)
             apply()
         }
+    }
+
+    private fun registrationMetadata(user: User): JsonObject = buildJsonObject {
+        put(META_NAME, user.name)
+        put(META_IS_PROVIDER, user.isProvider)
+        user.telephone?.let { put(META_PHONE, it) }
+        user.category?.let { put(META_CATEGORY, it) }
+        user.specialty?.let { put(META_SPECIALTY, it) }
+        user.address?.let { put(META_ADDRESS, it) }
+        user.latitude?.let { put(META_LATITUDE, it) }
+        user.longitude?.let { put(META_LONGITUDE, it) }
+    }
+
+    /** Reconstrói o cadastro a partir do user_metadata da conta (fotos locais não viajam: ficam só no aparelho). */
+    private fun userFromRegistrationMetadata(metadata: JsonObject?, authUid: String, email: String): User? {
+        val name = metadata?.get(META_NAME)?.jsonPrimitive?.contentOrNull ?: return null
+        fun text(key: String) = metadata[key]?.jsonPrimitive?.contentOrNull
+        fun number(key: String) = metadata[key]?.jsonPrimitive?.doubleOrNull
+        return User(
+            id = authUid,
+            name = name,
+            email = email,
+            isProvider = metadata[META_IS_PROVIDER]?.jsonPrimitive?.booleanOrNull ?: false,
+            telephone = text(META_PHONE),
+            category = text(META_CATEGORY),
+            specialty = text(META_SPECIALTY),
+            address = text(META_ADDRESS),
+            latitude = number(META_LATITUDE),
+            longitude = number(META_LONGITUDE)
+        )
     }
 
     private fun getPendingRegistrationData(email: String): User? {
@@ -174,6 +220,7 @@ class UserRepository(private val context: Context) {
                         address = officeAddr,
                         profilePictureUri = uDto.profilePictureUrl,
                         portfolioUris = perfilDto?.portfolioUrls ?: emptyList(),
+                        coverUri = perfilDto?.coverUrl,
                         rating = if (reviews.isEmpty()) 0.0 else reviews.map { it.rating }.average(),
                         reviewCount = reviews.size,
                         isAvailable = perfilDto?.isAvailable ?: true,
@@ -209,6 +256,9 @@ class UserRepository(private val context: Context) {
             SupabaseClient.auth.signUpWith(Email, redirectUrl = SupabaseClient.AUTH_CALLBACK_URL) {
                 email = user.email
                 password = passwordRaw
+                // Dados do cadastro também na conta (user_metadata): o 1º login em qualquer aparelho
+                // consegue criar o perfil completo, não só no aparelho onde o cadastro foi feito.
+                data = registrationMetadata(user)
             }
 
             Log.d(TAG, "signUp resposta recebida com sucesso")
@@ -280,6 +330,7 @@ class UserRepository(private val context: Context) {
 
             if (usuarioDto == null) {
                 val pendingData = getPendingRegistrationData(email)
+                    ?: userFromRegistrationMetadata(authUser.userMetadata, authUid, email)
                 val userToCreate = pendingData ?: User(
                     id = authUid,
                     name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
@@ -389,6 +440,22 @@ class UserRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Abertura do app: se o usuário não saiu da conta e a sessão salva do Supabase ainda é válida,
+     * devolve o usuário (com o tipo de conta) para ir direto à Home. Senão, null (tela de login).
+     */
+    fun restoreSession(): User? = runBlocking {
+        if (!sessionManager.isLoggedIn()) return@runBlocking null
+        try {
+            SupabaseClient.auth.awaitInitialization()
+            if (SupabaseClient.auth.currentUserOrNull() == null) return@runBlocking null
+            getCurrentUser()
+        } catch (e: Exception) {
+            Log.e(TAG, "restoreSession erro: ${e.safeLogDescription()}")
+            null
+        }
+    }
+
     fun getCurrentUser(): User? = runBlocking {
         try {
             val authUser = SupabaseClient.auth.currentUserOrNull()
@@ -396,7 +463,10 @@ class UserRepository(private val context: Context) {
                 val authUid = authUser.id
                 cachedCurrentUser?.let { (loadedAt, user) ->
                     val fresh = System.currentTimeMillis() - loadedAt < CURRENT_USER_CACHE_TTL_MS
-                    if (fresh && user.id == authUid) return@runBlocking user
+                    // Na thread principal nunca vai à rede se já houver um usuário em cache:
+                    // evita travar a tela; a próxima leitura em IO renova o cache.
+                    val onMainThread = Looper.myLooper() == Looper.getMainLooper()
+                    if (user.id == authUid && (fresh || onMainThread)) return@runBlocking user
                 }
                 val usuarioDto = try {
                     SupabaseClient.postgrest.from("usuarios")
@@ -425,6 +495,7 @@ class UserRepository(private val context: Context) {
                     var latitude: Double? = null
                     var longitude: Double? = null
                     var portfolioUris: List<String> = emptyList()
+                    var coverUri: String? = null
                     var services: List<String> = emptyList()
                     var isAvailable = true
 
@@ -443,6 +514,7 @@ class UserRepository(private val context: Context) {
                             latitude = perfil.latitude
                             longitude = perfil.longitude
                             portfolioUris = perfil.portfolioUrls
+                            coverUri = perfil.coverUrl
                             services = perfil.serviceTags
                             isAvailable = perfil.isAvailable
                         }
@@ -462,6 +534,7 @@ class UserRepository(private val context: Context) {
                         telephone = phone,
                         profilePictureUri = usuarioDto.profilePictureUrl,
                         portfolioUris = portfolioUris,
+                        coverUri = coverUri,
                         isAvailable = isAvailable,
                         latitude = latitude,
                         longitude = longitude
@@ -483,28 +556,28 @@ class UserRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Salva o perfil no Supabase. Em `usuarios` só nome e foto são editáveis (o tipo de conta é
+     * fixado no cadastro). Retorna false se o servidor recusar; com sucesso, o usuário salvo
+     * passa a ser o cache em memória (as telas não precisam ir à rede de novo).
+     */
     fun updateUser(user: User): Boolean = runBlocking {
         invalidateCurrentUserCache()
         try {
-            userDao.insert(user)
-            val usuarioDto = UsuarioDto(
-                id = user.id,
-                name = user.name,
-                isProvider = user.isProvider,
-                profilePictureUrl = user.profilePictureUri
-            )
-            try {
-                SupabaseClient.postgrest.from("usuarios").upsert(usuarioDto)
-            } catch (_: Exception) {}
+            SupabaseClient.postgrest.from("usuarios")
+                .update(
+                    buildJsonObject {
+                        put("name", user.name)
+                        put("profile_picture_url", user.profilePictureUri)
+                    }
+                ) { filter { eq("id", user.id) } }
 
             val dadosPrivadosDto = DadosPrivadosUsuarioDto(
                 id = user.id,
                 phone = user.telephone,
                 address = user.address
             )
-            try {
-                SupabaseClient.postgrest.from("dados_privados_usuario").upsert(dadosPrivadosDto)
-            } catch (_: Exception) {}
+            SupabaseClient.postgrest.from("dados_privados_usuario").upsert(dadosPrivadosDto)
 
             if (user.isProvider) {
                 val perfilPrestadorDto = PerfilPrestadorDto(
@@ -516,17 +589,19 @@ class UserRepository(private val context: Context) {
                     latitude = user.latitude,
                     longitude = user.longitude,
                     portfolioUrls = user.portfolioUris,
+                    coverUrl = user.coverUri,
                     serviceTags = user.services,
                     isAvailable = user.isAvailable
                 )
-                try {
-                    SupabaseClient.postgrest.from("perfis_prestador").upsert(perfilPrestadorDto)
-                } catch (_: Exception) {}
+                SupabaseClient.postgrest.from("perfis_prestador").upsert(perfilPrestadorDto)
             }
 
+            try { userDao.insert(user) } catch (_: Exception) {}
             UserSessionManager.saveUserSession(context, user.isProvider, user.name, user.email)
+            cachedCurrentUser = System.currentTimeMillis() to user
             true
         } catch (e: Exception) {
+            Log.e(TAG, "updateUser erro: ${e.safeLogDescription()}")
             false
         }
     }
@@ -582,6 +657,17 @@ class UserRepository(private val context: Context) {
             ?: return Result.failure(IllegalStateException("Sessão expirada. Entre novamente."))
         return if (updateUser(user.copy(profilePictureUri = url))) Result.success(url)
         else Result.failure(IllegalStateException("A foto foi enviada, mas não foi possível salvá-la no perfil."))
+    }
+
+    /** Foto de capa do prestador: envia ao Storage e grava a URL em perfis_prestador.cover_url. */
+    fun updateCoverPicture(imageUri: android.net.Uri): Result<String> {
+        val url = StorageRepository(context).uploadCoverPicture(imageUri).getOrElse {
+            return Result.failure(IllegalStateException(it.userMessage("Não foi possível enviar a capa. Tente novamente."), it))
+        }
+        val user = getCurrentUser()
+            ?: return Result.failure(IllegalStateException("Sessão expirada. Entre novamente."))
+        return if (updateUser(user.copy(coverUri = url))) Result.success(url)
+        else Result.failure(IllegalStateException("A capa foi enviada, mas não foi possível salvá-la no perfil."))
     }
 
     /** Switch "Disponível para chamados": grava em perfis_prestador.is_available (RLS: só o próprio prestador). */

@@ -2,10 +2,11 @@
 <!-- Motor de recomendação: prestadores da MESMA categoria após uma recusa. -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app"
+    android:background="@drawable/bg_app_glow"
     android:orientation="vertical">
 
     <LinearLayout
@@ -17,31 +18,31 @@
         android:paddingTop="8dp">
 
         <ImageButton
+            app:tint="@color/tqf_text"
+            android:padding="12dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_tile"
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
             android:contentDescription="Voltar"
             android:src="@drawable/ic_arrow_back" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Prestadores sugeridos"
-            android:textColor="@color/text_primary"
-            android:textSize="17sp"
-            android:textStyle="bold" />
+            android:text="Prestadores sugeridos" />
     </LinearLayout>
 
     <TextView
+        android:textAppearance="@style/TextAppearance.TQF.Body"
         android:id="@+id/txtSubtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="20dp"
         android:paddingTop="4dp"
         android:paddingBottom="12dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
         tools:text="O prestador não está disponível para &quot;Troca de disjuntor&quot;. Veja outros profissionais de Reformas e Reparos:" />
 
     <ProgressBar
@@ -53,6 +54,7 @@
         android:visibility="gone" />
 
     <TextView
+        android:textAppearance="@style/TextAppearance.TQF.Body"
         android:id="@+id/txtEmpty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -60,17 +62,29 @@
         android:gravity="center"
         android:paddingHorizontal="32dp"
         android:text="Nenhum outro prestador disponível nesta categoria no momento."
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvSuggestions"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingHorizontal="20dp"
         android:paddingBottom="20dp"
         tools:listitem="@layout/item_professional" />
+
+    <!-- Alternativa às sugestões: o contratante encerra o pedido recusado -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelService"
+        style="@style/Widget.TQF.Button.Outlined"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="16dp"
+        android:text="Cancelar serviço"
+        android:textColor="@color/tqf_status_refused_text"
+        android:visibility="gone"
+        tools:visibility="visible" />
 
 </LinearLayout>

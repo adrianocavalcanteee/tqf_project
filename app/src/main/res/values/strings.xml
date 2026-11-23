@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">TQFapp</string>
+    <!-- Design system: famílias de fonte (troque por Poppins/Inter quando a fonte for adicionada em res/font) -->
+    <string name="tqf_font_regular" translatable="false">sans-serif</string>
+    <string name="tqf_font_medium" translatable="false">sans-serif-medium</string>
+    <string name="tqf_font_bold" translatable="false">sans-serif</string>
 </resources>

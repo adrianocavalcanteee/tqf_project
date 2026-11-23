@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="@color/bg_app">
+    android:background="@android:color/transparent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,25 +22,26 @@
             android:paddingBottom="12dp">
 
             <ImageView
+                app:tint="@color/tqf_text"
+                android:padding="12dp"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/bg_tile"
                 android:id="@+id/btnBack"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:contentDescription="Voltar"
+                android:layout_width="@dimen/tqf_touch_target"
+                android:layout_height="@dimen/tqf_touch_target"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:src="@drawable/ic_arrow_back"
-                android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
-                android:focusable="true"
-                tools:ignore="ContentDescription" />
+                android:focusable="true" />
 
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="Perfil do Profissional"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:text="Perfil do Profissional" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -51,24 +52,24 @@
 
                 <ImageView
                     android:id="@+id/btnFavorite"
+                    android:contentDescription="Favoritar"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:src="@drawable/ic_heart"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:focusable="true"
-                    tools:ignore="ContentDescription" />
+                    android:focusable="true" />
 
                 <ImageView
                     android:id="@+id/btnShare"
+                    android:contentDescription="Compartilhar perfil"
                     android:layout_width="26dp"
                     android:layout_height="26dp"
                     android:layout_marginStart="14dp"
                     android:src="@drawable/ic_share"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:focusable="true"
-                    tools:ignore="ContentDescription" />
+                    android:focusable="true" />
             </LinearLayout>
         </RelativeLayout>
 
@@ -77,44 +78,57 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <!-- Cover Background -->
+            <!-- Foto de capa (perfis_prestador.cover_url); sem capa: degradê azul -->
             <ImageView
                 android:id="@+id/imgCover"
+                android:contentDescription="Foto de capa"
                 android:layout_width="match_parent"
-                android:layout_height="110dp"
-                android:scaleType="centerCrop"
-                android:src="@drawable/bg_chip"
-                android:background="#1E293B"
-                android:clickable="true"
-                android:focusable="true"
-                tools:ignore="ContentDescription" />
+                android:layout_height="140dp"
+                android:background="@drawable/bg_cover_placeholder"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
 
-            <!-- Edit Cover Badge -->
-            <FrameLayout
+            <!-- Botão de capa (somente no próprio perfil) -->
+            <LinearLayout
                 android:id="@+id/btnChangeCover"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_alignEnd="@id/imgCover"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/tqf_touch_target"
                 android:layout_alignTop="@id/imgCover"
-                android:layout_margin="12dp"
-                android:background="@drawable/bg_circle_blue"
+                android:layout_alignEnd="@id/imgCover"
+                android:layout_margin="@dimen/tqf_space_sm"
+                android:background="@drawable/bg_back_button"
                 android:clickable="true"
-                android:focusable="true">
+                android:contentDescription="Alterar foto de capa"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="@dimen/tqf_space_sm">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_gravity="center"
+                    android:layout_width="@dimen/tqf_icon_sm"
+                    android:layout_height="@dimen/tqf_icon_sm"
+                    android:importantForAccessibility="no"
                     android:src="@drawable/ic_camera"
-                    tools:ignore="ContentDescription" />
-            </FrameLayout>
+                    app:tint="@color/tqf_text" />
+
+                <TextView
+                    android:id="@+id/txtChangeCover"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="Adicionar capa"
+                    android:textColor="@color/tqf_text"
+                    android:textSize="@dimen/tqf_text_caption"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <!-- Overlapping Avatar -->
             <RelativeLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:layout_marginTop="55dp"
+                android:layout_marginTop="85dp"
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
@@ -126,7 +140,7 @@
                     android:src="@drawable/ic_profile"
                     app:strokeWidth="3dp"
                     app:strokeColor="@color/card_bg"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.SmallComponent"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.TQF.Circle"
                     android:clickable="true"
                     android:focusable="true"
                     tools:ignore="ContentDescription" />
@@ -134,6 +148,7 @@
                 <!-- Edit Avatar Camera Badge -->
                 <FrameLayout
                     android:id="@+id/btnChangeAvatar"
+                    android:contentDescription="Alterar foto de perfil"
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_alignEnd="@id/imgAvatar"
@@ -175,13 +190,11 @@
                     android:layout_alignParentStart="true">
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Headline"
                         android:id="@+id/txtProfessionalName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        tools:text="João Ferreira"
-                        android:textColor="@color/text_primary"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        tools:text="João Ferreira" />
 
                     <ImageView
                         android:id="@+id/imgVerified"
@@ -202,25 +215,20 @@
                     android:text="Editar perfil"
                     android:textColor="@color/brand_blue"
                     android:textSize="12sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
                     android:paddingHorizontal="12dp"
-                    app:backgroundTint="#EEF4FF"
-                    app:strokeColor="#D0E1FD"
-                    app:strokeWidth="1dp"
-                    app:cornerRadius="10dp"
-                    app:elevation="0dp" />
+                    app:backgroundTint="@color/tqf_primary_soft"
+                    app:strokeColor="@color/tqf_primary_soft_pressed"
+                    app:strokeWidth="1dp" />
             </RelativeLayout>
 
             <!-- Specialty -->
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:id="@+id/txtSpecialty"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                tools:text="Técnico de TI"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
+                tools:text="Técnico de TI" />
 
             <!-- Rating Row -->
             <LinearLayout
@@ -253,11 +261,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardCornerRadius="@dimen/tqf_radius_card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -297,7 +301,7 @@
                             android:gravity="center"
                             android:text="Serviços realizados"
                             android:textColor="@color/text_secondary"
-                            android:textSize="10sp" />
+                            android:textSize="@dimen/tqf_text_caption" />
                     </LinearLayout>
 
                     <!-- Stat 3: Verified -->
@@ -329,7 +333,7 @@
                             android:gravity="center"
                             android:text="Conta profissional"
                             android:textColor="@color/text_secondary"
-                            android:textSize="10sp" />
+                            android:textSize="@dimen/tqf_text_caption" />
                     </LinearLayout>
 
                 </LinearLayout>
@@ -351,80 +355,59 @@
                     android:minHeight="48dp"
                     android:paddingHorizontal="4dp"
                     android:text="Solicitar Serviço"
-                    android:textColor="@color/white"
-                    android:textSize="13sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
                     app:icon="@drawable/ic_briefcase"
                     app:iconTint="@color/white"
                     app:iconGravity="textStart"
-                    app:iconPadding="4dp"
-                    app:backgroundTint="@color/brand_blue"
-                    app:cornerRadius="12dp"
-                    app:elevation="0dp" />
+                    app:iconPadding="4dp" />
             </LinearLayout>
 
             <!-- "Sobre mim" Section -->
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Sobre mim"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:text="Sobre mim" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardCornerRadius="@dimen/tqf_radius_card">
 
                 <TextView
+                    android:textAppearance="@style/TextAppearance.TQF.Body"
                     android:id="@+id/txtBio"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="16dp"
                     tools:text="Sou técnico de TI com mais de 5 anos de experiência em manutenção de computadores, notebooks e redes. Trabalho com agilidade, transparência e foco em resolver o seu problema."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp"
                     android:lineSpacingExtra="4dp" />
             </com.google.android.material.card.MaterialCardView>
 
             <!-- "Localização do Escritório" Section (Google Maps) -->
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Title"
                 android:id="@+id/txtOfficeMapTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Localização do Escritório"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:text="Localização do Escritório" />
 
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:id="@+id/txtOfficeAddressSubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Carregando endereço..."
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:text="Carregando endereço..." />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardMapContainer"
                 android:layout_width="match_parent"
                 android:layout_height="210dp"
                 android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardCornerRadius="@dimen/tqf_radius_card">
 
                 <com.google.android.gms.maps.MapView
                     android:id="@+id/mapOffice"
@@ -436,13 +419,11 @@
 
             <!-- "Serviços" Section (Chips) -->
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Serviços oferecidos"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:text="Serviços oferecidos" />
 
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/chipGroupServices"
@@ -460,9 +441,9 @@
                     android:textStyle="bold"
                     app:chipIcon="@drawable/ic_check_circle"
                     app:chipIconTint="@color/brand_blue"
-                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipBackgroundColor="@color/tqf_primary_soft"
                     app:chipCornerRadius="12dp"
-                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeColor="@color/tqf_primary_soft_pressed"
                     app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
@@ -474,9 +455,9 @@
                     android:textStyle="bold"
                     app:chipIcon="@drawable/ic_check_circle"
                     app:chipIconTint="@color/brand_blue"
-                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipBackgroundColor="@color/tqf_primary_soft"
                     app:chipCornerRadius="12dp"
-                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeColor="@color/tqf_primary_soft_pressed"
                     app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
@@ -488,9 +469,9 @@
                     android:textStyle="bold"
                     app:chipIcon="@drawable/ic_check_circle"
                     app:chipIconTint="@color/brand_blue"
-                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipBackgroundColor="@color/tqf_primary_soft"
                     app:chipCornerRadius="12dp"
-                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeColor="@color/tqf_primary_soft_pressed"
                     app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
@@ -502,9 +483,9 @@
                     android:textStyle="bold"
                     app:chipIcon="@drawable/ic_check_circle"
                     app:chipIconTint="@color/brand_blue"
-                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipBackgroundColor="@color/tqf_primary_soft"
                     app:chipCornerRadius="12dp"
-                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeColor="@color/tqf_primary_soft_pressed"
                     app:chipStrokeWidth="1dp" />
 
                 <com.google.android.material.chip.Chip
@@ -516,9 +497,9 @@
                     android:textStyle="bold"
                     app:chipIcon="@drawable/ic_check_circle"
                     app:chipIconTint="@color/brand_blue"
-                    app:chipBackgroundColor="#EEF4FF"
+                    app:chipBackgroundColor="@color/tqf_primary_soft"
                     app:chipCornerRadius="12dp"
-                    app:chipStrokeColor="#D0E1FD"
+                    app:chipStrokeColor="@color/tqf_primary_soft_pressed"
                     app:chipStrokeWidth="1dp" />
             </com.google.android.material.chip.ChipGroup>
 
@@ -530,12 +511,10 @@
                 android:layout_marginBottom="10dp">
 
                 <TextView
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Portfólio"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:text="Portfólio" />
 
                 <TextView
                     android:id="@+id/btnSeeAllPortfolio"
@@ -578,14 +557,12 @@
                 android:layout_marginBottom="10dp">
 
                 <TextView
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
                     android:id="@+id/txtReviewsTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Avaliações (0)"
-                    tools:text="Avaliações (0)"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    tools:text="Avaliações (0)" />
 
                 <TextView
                     android:id="@+id/btnSeeAllReviews"
@@ -618,11 +595,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardCornerRadius="@dimen/tqf_radius_card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -634,13 +607,16 @@
                     <RelativeLayout
                         android:id="@+id/menuLogoutProvider"
                         android:layout_width="match_parent"
-                        android:layout_height="52dp"
+                        android:layout_height="60dp"
                         android:paddingHorizontal="16dp"
                         android:background="?attr/selectableItemBackground"
                         android:clickable="true"
                         android:focusable="true">
 
                         <ImageView
+                        android:background="@drawable/bg_tile"
+                        android:padding="8dp"
+                        app:tint="@color/tqf_heart"
                             android:id="@+id/iconLogoutProvider"
                             android:layout_width="22dp"
                             android:layout_height="22dp"
@@ -655,7 +631,7 @@
                             android:layout_toEndOf="@id/iconLogoutProvider"
                             android:layout_marginStart="14dp"
                             android:text="Sair da conta"
-                            android:textColor="#FF3B30"
+                            android:textColor="@color/tqf_heart"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 

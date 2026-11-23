@@ -3,7 +3,6 @@ package com.tqfapp.android.ui.home
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -45,6 +44,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.cos
+import com.tqfapp.android.ui.common.showSkeleton
+import com.tqfapp.android.ui.common.loadImage
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import com.google.android.gms.tasks.Tasks
+import java.util.concurrent.TimeUnit
 
 /**
  * Home do Contratante: mapa com PINs + lista de prestadores, ambos alimentados pelo backend.
@@ -60,6 +66,7 @@ class HomeFragment : Fragment() {
     private var currentUser: User? = null
 
     private lateinit var professionalAdapter: ProfessionalAdapter
+    private var categoryAdapter: CategoryAdapter? = null
 
     /** Prestadores carregados do backend (fonte única para mapa e lista). */
     private var providers: List<User> = emptyList()
@@ -72,6 +79,8 @@ class HomeFragment : Fragment() {
     private var selectedRadiusKm: Double? = null
     /** false quando o contratante não tem endereço/coordenadas: a distância seria até um ponto padrão. */
     private var hasRealClientLocation = false
+    /** true quando as distâncias são medidas pelo GPS do aparelho (e não pelo endereço do perfil). */
+    private var usingDeviceLocation = false
 
     companion object {
         // Coordenadas padrão centralizadas em Manaus, Amazonas
@@ -83,6 +92,7 @@ class HomeFragment : Fragment() {
         private const val DEFAULT_RADIUS_KM = 10.0
         private const val PREFS_HOME = "tqf_home_prefs"
         private const val KEY_RADIUS_KM = "radius_km"
+        private const val GPS_TIMEOUT_SECONDS = 4L
     }
 
     // Launcher para solicitação de permissões de localização (GPS)
@@ -94,6 +104,9 @@ class HomeFragment : Fragment() {
 
         if (fineGranted || coarseGranted) {
             enableMyLocationLayer()
+            // Permissão recém-concedida: recalcula as distâncias a partir do GPS.
+            clientLatLng = null
+            loadProviders()
         } else {
             Toast.makeText(
                 requireContext(),
@@ -194,6 +207,7 @@ class HomeFragment : Fragment() {
     private fun setupOpenRequestButton() {
         val isClient = !UserSessionManager.isProviderUser(requireContext())
         binding.fabOpenRequest.visibility = if (isClient) View.VISIBLE else View.GONE
+        binding.imgHomeAvatar.setOnClickListener { (activity as? HomeActivity)?.showProfileTab() }
         binding.fabOpenRequest.setOnClickListener {
             startActivity(DescricaoServicoActivity.newOpenRequestIntent(requireContext(), selectedCategoryFilter))
         }
@@ -216,7 +230,7 @@ class HomeFragment : Fragment() {
      * Busca prestadores reais (Supabase com cache Room) e calcula a distância até o cliente.
      */
     private fun loadProviders() {
-        binding.progressProfessionals.visibility = View.VISIBLE
+        binding.progressProfessionals.showSkeleton(true)
         val appContext = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
             val loaded = withContext(Dispatchers.IO) {
@@ -240,11 +254,26 @@ class HomeFragment : Fragment() {
             }
 
             if (_binding == null) return@launch
-            binding.progressProfessionals.visibility = View.GONE
+            binding.progressProfessionals.showSkeleton(false)
+            bindHeader()
             providers = loaded
             updateRadiusAvailability()
             applyFilters()
             zoomToRadius()
+        }
+    }
+
+    /** Cabeçalho: foto e nome do contratante e bairro/cidade do endereço cadastrado. */
+    private fun bindHeader() {
+        binding.txtHomeGreeting.text = currentUser?.name?.trim()?.takeIf { it.isNotBlank() } ?: "Bem-vindo(a)"
+        binding.imgHomeAvatar.loadImage(currentUser?.profilePictureUri)
+        binding.txtHomeLocation.text = if (usingDeviceLocation) {
+            "Sua localização atual"
+        } else {
+            currentUser?.address
+                ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+                ?.takeLast(2)?.joinToString(", ")
+                ?.takeIf { it.isNotBlank() } ?: "Sua região"
         }
     }
 
@@ -376,7 +405,7 @@ class HomeFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             adapter = CategoryAdapter(categories) { category ->
                 showSubcategoryDialog(category)
-            }
+            }.also { categoryAdapter = it }
         }
     }
 
@@ -471,20 +500,45 @@ class HomeFragment : Fragment() {
                 ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
+    /** Posição atual pelo GPS (última conhecida ou uma leitura rápida). Bloqueante: chamar em IO. */
+    @SuppressLint("MissingPermission")
+    private fun deviceLocation(context: android.content.Context): LatLng? {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!granted) return null
+        return try {
+            val client = LocationServices.getFusedLocationProviderClient(context)
+            val location = Tasks.await(client.lastLocation, GPS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                ?: Tasks.await(
+                    client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, CancellationTokenSource().token),
+                    GPS_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+                )
+            location?.let { LatLng(it.latitude, it.longitude) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /**
-     * Coordenadas do cliente (endereço cadastrado > coordenadas salvas > centro de Manaus).
-     * Usa Geocoder, portanto deve rodar fora da main thread.
+     * Coordenadas do cliente (coordenadas do cadastro > endereço cadastrado > GPS > centro de Manaus).
+     * Usa Geocoder/GPS, portanto deve rodar fora da main thread.
      */
     private fun resolveClientLocation(context: android.content.Context, user: User?): LatLng {
         clientLatLng?.let { return it }
 
-        var coords: LatLng? = null
+        // 1º coordenadas salvas no cadastro; 2º endereço do perfil; 3º GPS do aparelho (se houver permissão).
+        var coords: LatLng? = if (user?.latitude != null && user.longitude != null) {
+            LatLng(user.latitude, user.longitude)
+        } else null
         val addressText = user?.address
-        if (!addressText.isNullOrBlank()) {
+        if (coords == null && !addressText.isNullOrBlank()) {
             coords = LocationUtils.getCoordinatesFromAddress(context, addressText)
         }
-        if (coords == null && user?.latitude != null && user.longitude != null) {
-            coords = LatLng(user.latitude, user.longitude)
+        usingDeviceLocation = false
+        if (coords == null) {
+            coords = deviceLocation(context)
+            usingDeviceLocation = coords != null
         }
 
         val finalCoords = coords ?: MANAUS_LAT_LNG
@@ -525,8 +579,8 @@ class HomeFragment : Fragment() {
                 .center(clientPos)
                 .radius(radiusKm * 1000)
                 .strokeWidth(2f)
-                .strokeColor(Color.parseColor("#007AFF"))
-                .fillColor(Color.parseColor("#22007AFF"))
+                .strokeColor(ContextCompat.getColor(requireContext(), R.color.tqf_primary))
+                .fillColor(ContextCompat.getColor(requireContext(), R.color.tqf_map_radius_fill))
         )
     }
 
@@ -605,6 +659,7 @@ class HomeFragment : Fragment() {
             .sortedWith(compareBy<User> { it.distanceKm ?: Double.MAX_VALUE }.thenByDescending { it.rating })
 
         professionalAdapter.updateData(filteredList)
+        categoryAdapter?.setSelected(selectedCategoryFilter)
         updateListState(filteredList.size)
         updateMapMarkers(filteredList)
     }
@@ -673,6 +728,15 @@ class HomeFragment : Fragment() {
         private val onItemClick: (CategoryItem) -> Unit
     ) : RecyclerView.Adapter<CategoryAdapter.ViewHolder>() {
 
+        private var selectedName: String? = null
+
+        /** Destaca o chip da categoria filtrada (null = nenhum). */
+        fun setSelected(name: String?) {
+            if (name == selectedName) return
+            selectedName = name
+            notifyDataSetChanged()
+        }
+
         inner class ViewHolder(val binding: ItemCategoryBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -684,6 +748,7 @@ class HomeFragment : Fragment() {
             val item = items[position]
             holder.binding.txtCategoryName.text = item.name
             holder.binding.imgCategoryIcon.setImageResource(item.iconRes)
+            holder.binding.root.isSelected = item.name == selectedName
             holder.binding.root.setOnClickListener { onItemClick(item) }
         }
 

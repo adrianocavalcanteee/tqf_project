@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Destaque do item ativo da barra inferior: pílula azul bem suave sobre o vidro branco -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/tqf_radius_pill" />
+            <solid android:color="@color/tqf_nav_on_glass_active_bg" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

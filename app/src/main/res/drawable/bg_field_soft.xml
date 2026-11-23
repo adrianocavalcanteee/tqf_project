@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Campo simples (busca) no mesmo padrão do Widget.TQF.TextInput -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="@dimen/tqf_radius_field" />
+    <solid android:color="@color/tqf_primary_soft" />
+</shape>

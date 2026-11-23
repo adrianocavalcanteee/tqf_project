@@ -1,208 +1,198 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Perfil público do prestador (visão do Contratante). Conteúdo preenchido pela ProviderProfileActivity. -->
+<!-- Perfil público do prestador (visão do contratante): foto grande, nome + nota + "Ver no mapa",
+     descrição com "Ler mais", serviços em tiles, portfólio, avaliações e barra fixa com valor + CTA. -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app">
-
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Voltar"
-        android:src="@drawable/ic_arrow_back"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Perfil do prestador"
-        android:textColor="@color/text_primary"
-        android:textSize="17sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toEndOf="@id/btnBack"
-        app:layout_constraintTop_toTopOf="@id/btnBack"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack" />
+    android:background="@color/tqf_surface">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/btnBack"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingBottom="20dp">
+            android:paddingHorizontal="@dimen/tqf_screen_margin"
+            android:paddingTop="@dimen/tqf_space_md"
+            android:paddingBottom="@dimen/tqf_space_lg">
 
-            <!-- Cabeçalho -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- Foto grande com botão voltar e selo de disponibilidade sobrepostos -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="300dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/imgAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.TQF.Large"
+                    tools:src="@drawable/ic_reforms" />
+
+                <ImageButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="@dimen/tqf_touch_target"
+                    android:layout_height="@dimen/tqf_touch_target"
+                    android:layout_margin="@dimen/tqf_space_sm"
+                    android:background="@drawable/bg_back_button"
+                    android:contentDescription="Voltar"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_back"
+                    app:tint="@color/tqf_text" />
+
+                <TextView
+                    android:id="@+id/txtStatusBadge"
+                    style="@style/Widget.TQF.Badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|start"
+                    android:layout_margin="@dimen/tqf_space_sm"
+                    android:background="@drawable/bg_back_button"
+                    android:text="⚡ Disponível"
+                    android:textColor="@color/tqf_status_done_text"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </FrameLayout>
+
+            <!-- Nome + "Ver no mapa" -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                android:layout_marginTop="@dimen/tqf_space_md"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/txtName"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.TQF.Headline"
+                    tools:text="Carlos Mendes" />
 
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/imgAvatar"
-                        android:layout_width="88dp"
-                        android:layout_height="88dp"
-                        android:importantForAccessibility="no"
-                        android:scaleType="centerCrop"
-                        android:src="@drawable/ic_profile"
-                        app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent" />
+                <TextView
+                    android:id="@+id/txtShowMap"
+                    style="@style/Widget.TQF.Link"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ver no mapa"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/txtName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:gravity="center"
-                        android:textColor="@color/text_primary"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        tools:text="Carlos Mendes" />
-
-                    <TextView
-                        android:id="@+id/txtCategory"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:gravity="center"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp"
-                        tools:text="Reformas e Reparos • Eletricista" />
-
-                    <TextView
-                        android:id="@+id/txtMetrics"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:drawablePadding="4dp"
-                        android:gravity="center_vertical"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
-                        app:drawableStartCompat="@drawable/ic_star"
-                        tools:text="4,9 • 86 avaliações • 2,1 km" />
-
-                    <TextView
-                        android:id="@+id/txtStatusBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="@drawable/bg_badge_green"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="4dp"
-                        android:text="⚡ Disponível"
-                        android:textColor="@color/green_badge_text"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Sobre -->
             <TextView
+                android:id="@+id/txtMetrics"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="Sobre"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:drawablePadding="4dp"
+                android:gravity="center_vertical"
+                android:textAppearance="@style/TextAppearance.TQF.Body"
+                app:drawableStartCompat="@drawable/ic_star"
+                tools:text="4,5 • 355 avaliações • 2,1 km" />
 
+            <TextView
+                android:id="@+id/txtCategory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/TextAppearance.TQF.Caption"
+                tools:text="Reformas e Reparos • Eletricista" />
+
+            <!-- Sobre (com "Ler mais") -->
             <TextView
                 android:id="@+id/txtBio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:lineSpacingExtra="2dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                tools:text="Eletricista residencial com 8 anos de experiência." />
+                android:layout_marginTop="@dimen/tqf_space_md"
+                android:ellipsize="end"
+                android:maxLines="3"
+                android:textAppearance="@style/TextAppearance.TQF.Body"
+                tools:text="Eletricista residencial com 8 anos de experiência. Atendo com hora marcada e deixo o local limpo." />
 
-            <!-- Serviços (ChipGroup dinâmico) -->
             <TextView
+                android:id="@+id/txtReadMore"
+                style="@style/Widget.TQF.Link"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="Serviços oferecidos"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:drawablePadding="2dp"
+                android:text="Ler mais"
+                android:visibility="gone"
+                app:drawableEndCompat="@drawable/ic_chevron_down"
+                app:drawableTint="@color/tqf_primary"
+                tools:visibility="visible" />
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chipGroupServices"
+            <!-- Serviços oferecidos (tiles) -->
+            <TextView
+                style="@style/Widget.TQF.SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/tqf_space_md"
+                android:layout_marginBottom="@dimen/tqf_space_sm"
+                android:text="Serviços" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvServiceTiles"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:chipSpacingHorizontal="8dp" />
+                android:nestedScrollingEnabled="false"
+                tools:itemCount="4"
+                tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                tools:listitem="@layout/item_service_tile"
+                tools:spanCount="4" />
 
             <TextView
                 android:id="@+id/txtNoServices"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_tile"
+                android:padding="@dimen/tqf_space_md"
                 android:text="Este prestador ainda não listou serviços. Descreva sua necessidade na solicitação."
-                android:textColor="@color/text_muted"
-                android:textSize="13sp"
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:visibility="gone" />
 
-            <!-- Local de atendimento -->
             <TextView
                 android:id="@+id/txtAddress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="@dimen/tqf_space_sm"
                 android:drawablePadding="6dp"
                 android:gravity="center_vertical"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp"
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:visibility="gone"
                 app:drawableStartCompat="@drawable/ic_location"
+                app:drawableTint="@color/tqf_primary"
                 tools:text="Centro, Manaus - AM"
                 tools:visibility="visible" />
 
-            <!-- Portfólio (fotos do Supabase Storage) -->
+            <!-- Portfólio -->
             <TextView
                 android:id="@+id/txtPortfolioTitle"
+                style="@style/Widget.TQF.SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="@dimen/tqf_space_lg"
+                android:layout_marginBottom="@dimen/tqf_space_sm"
                 android:text="Portfólio"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold"
                 android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvPortfolio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginHorizontal="-20dp"
+                android:clipToPadding="false"
                 android:orientation="horizontal"
+                android:paddingHorizontal="@dimen/tqf_screen_margin"
                 android:visibility="gone"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 tools:listitem="@layout/item_portfolio" />
@@ -210,49 +200,49 @@
             <!-- Avaliações reais do prestador (avaliacoes.reviewed_id) -->
             <TextView
                 android:id="@+id/txtReviewsTitle"
+                style="@style/Widget.TQF.SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="Avaliações"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="@dimen/tqf_space_lg"
+                android:layout_marginBottom="@dimen/tqf_space_sm"
+                android:text="Avaliações" />
 
             <TextView
                 android:id="@+id/txtNoReviews"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_tile"
+                android:padding="@dimen/tqf_space_md"
                 android:text="Sem avaliações ainda."
-                android:textColor="@color/text_muted"
-                android:textSize="13sp"
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvReviews"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
                 android:nestedScrollingEnabled="false"
                 tools:itemCount="2"
                 tools:listitem="@layout/item_review" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Barra inferior: preço à esquerda, CTA à direita -->
+    <!-- Barra fixa: valor à esquerda (verde), CTA à direita -->
     <LinearLayout
         android:id="@+id/bottomBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/card_bg"
-        android:elevation="8dp"
+        android:background="@color/tqf_surface"
+        android:elevation="@dimen/tqf_elevation_floating"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="12dp"
+        android:outlineSpotShadowColor="@color/tqf_shadow"
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:paddingVertical="@dimen/tqf_space_sm"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        tools:targetApi="p">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -263,31 +253,24 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Preço"
-                android:textColor="@color/text_muted"
-                android:textSize="12sp" />
+                android:text="Valor"
+                android:textAppearance="@style/TextAppearance.TQF.Caption" />
 
             <TextView
                 android:id="@+id/txtPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
+                android:textColor="@color/tqf_price"
+                android:textSize="@dimen/tqf_text_title"
                 android:textStyle="bold"
-                tools:text="R$ 80,00 / hora" />
+                tools:text="A combinar" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRequestService"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:paddingHorizontal="24dp"
-            android:text="Solicitar Serviço"
-            android:textAllCaps="false"
-            android:textStyle="bold"
-            app:backgroundTint="@color/brand_blue"
-            app:cornerRadius="14dp" />
+            android:text="Solicitar serviço"
+            app:icon="@drawable/ic_chevron_right" />
     </LinearLayout>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

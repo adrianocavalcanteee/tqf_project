@@ -6,63 +6,50 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="@color/bg_app">
+    android:background="@drawable/bg_app_glow">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:paddingTop="@dimen/tqf_space_md"
+        android:paddingBottom="@dimen/tqf_space_lg">
 
-        <!-- Header with Back Button & Title -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="8dp">
-
-            <ImageView
-                android:id="@+id/btnBack"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:src="@drawable/ic_arrow_back"
-                android:padding="6dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                app:tint="@color/text_primary"
-                tools:ignore="ContentDescription" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:text="Criar Nova Conta"
-                android:textColor="@color/text_primary"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+        <!-- Cabeçalho: voltar + título grande + subtítulo -->
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
+            android:background="@drawable/bg_tile"
+            android:clickable="true"
+            android:contentDescription="Voltar"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:padding="@dimen/tqf_space_sm"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/tqf_text" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginStart="48dp"
+            android:layout_marginTop="@dimen/tqf_space_md"
+            android:text="Criar conta"
+            android:textAppearance="@style/TextAppearance.TQF.Display" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/tqf_space_xxs"
             android:text="Cadastre-se para contratar ou oferecer serviços."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.TQF.Body" />
 
         <!-- Register Card Container -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/card_stroke"
-            app:strokeWidth="1dp"
-            app:cardBackgroundColor="@color/card_bg">
+            app:cardCornerRadius="@dimen/tqf_radius_card">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -88,7 +75,7 @@
                             android:id="@+id/containerAvatar"
                             android:layout_width="100dp"
                             android:layout_height="100dp"
-                            app:cardCornerRadius="50dp"
+                            app:cardCornerRadius="@dimen/tqf_radius_card"
                             app:cardElevation="0dp"
                             app:strokeColor="@color/brand_blue"
                             app:strokeWidth="2dp"
@@ -97,11 +84,11 @@
 
                             <ImageView
                                 android:id="@+id/imgRegisterAvatar"
+                                android:contentDescription="Escolher foto de perfil"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
                                 android:scaleType="centerCrop"
-                                android:src="@drawable/ic_profile"
-                                tools:ignore="ContentDescription" />
+                                android:src="@drawable/ic_profile" />
                         </com.google.android.material.card.MaterialCardView>
 
                         <!-- Camera Badge Overlay (posicionado sobre a borda inferior direita) -->
@@ -131,12 +118,10 @@
                 </LinearLayout>
 
                 <TextView
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tipo de Perfil"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:text="Tipo de Perfil" />
 
                 <!-- User Type Selector (Contratante vs Prestador) -->
                 <com.google.android.material.button.MaterialButtonToggleGroup
@@ -145,46 +130,38 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:layout_marginBottom="16dp"
+                    android:background="@drawable/bg_segment_track"
+                    android:padding="@dimen/tqf_space_xxs"
                     app:singleSelection="true"
                     app:selectionRequired="true">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnRegisterContractor"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Segment"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Contratante"
-                        android:textColor="@color/brand_blue"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold" />
+                        android:textColor="@color/brand_blue" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnRegisterProvider"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Segment"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Prestador"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <!-- Full Name Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilName"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Nome Completo *"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    android:hint="Nome Completo *">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etName"
@@ -196,15 +173,11 @@
                 <!-- Email Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilEmail"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="E-mail *"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    android:hint="E-mail *">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
@@ -216,15 +189,11 @@
                 <!-- Phone Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilPhone"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="Telefone / WhatsApp *"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    android:hint="Telefone / WhatsApp *">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPhone"
@@ -236,16 +205,12 @@
                 <!-- Password Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilPassword"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:hint="Senha *"
-                    app:endIconMode="password_toggle"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
@@ -257,16 +222,12 @@
                 <!-- Confirm Password Input -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilConfirmPassword"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.TQF.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:hint="Confirmar Senha *"
-                    app:endIconMode="password_toggle"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
@@ -301,15 +262,11 @@
                     <!-- Category Exposed Dropdown -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilCategory"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        style="@style/Widget.TQF.TextInput.Dropdown"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="Categoria Principal *"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp">
+                        android:hint="Categoria Principal *">
 
                         <AutoCompleteTextView
                             android:id="@+id/actvCategory"
@@ -322,16 +279,12 @@
                     <!-- Specialty Input -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilSpecialty"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        style="@style/Widget.TQF.TextInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:hint="Especialidade / Título do Serviço *"
-                        app:placeholderText="Ex: Eletricista Residencial e Predial"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp">
+                        app:placeholderText="Ex: Eletricista Residencial e Predial">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etSpecialty"
@@ -342,18 +295,14 @@
                     <!-- Address Search Input -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilLocation"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        style="@style/Widget.TQF.TextInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:hint="Endereço do Escritório (Rua, Número, Bairro, Cidade)"
                         app:endIconMode="custom"
                         app:endIconDrawable="@drawable/ic_search"
-                        app:endIconContentDescription="Buscar Endereço"
-                        app:boxCornerRadiusTopStart="12dp"
-                        app:boxCornerRadiusTopEnd="12dp"
-                        app:boxCornerRadiusBottomStart="12dp"
-                        app:boxCornerRadiusBottomEnd="12dp">
+                        app:endIconContentDescription="Buscar Endereço">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etLocation"
@@ -366,18 +315,15 @@
                     <!-- Button: Buscar e Converter Endereço em Coordenadas -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSearchAddress"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Outlined"
                         android:layout_width="match_parent"
-                        android:layout_height="44dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="📍 Localizar e Posicionar no Mapa"
                         android:textColor="@color/brand_blue"
                         android:textSize="12sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold"
                         app:strokeColor="@color/brand_blue"
-                        app:strokeWidth="1dp"
-                        app:cornerRadius="10dp" />
+                        app:strokeWidth="1dp" />
 
                     <!-- Status Feedback -->
                     <TextView
@@ -397,10 +343,8 @@
                         android:layout_height="200dp"
                         android:layout_marginTop="12dp"
                         android:visibility="gone"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="1dp"
-                        app:strokeColor="@color/card_stroke"
-                        app:strokeWidth="1dp">
+                        app:cardCornerRadius="@dimen/tqf_radius_card"
+                        app:cardElevation="@dimen/tqf_elevation_card">
 
                         <com.google.android.gms.maps.MapView
                             android:id="@+id/registerMapView"
@@ -462,20 +406,16 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAddPortfolio"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        style="@style/Widget.TQF.Button.Outlined"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:text="Adicionar Fotos ao Portfólio"
                         android:textColor="@color/brand_blue"
-                        android:textSize="13sp"
-                        android:textAllCaps="false"
-                        android:textStyle="bold"
                         app:icon="@drawable/ic_camera"
                         app:iconTint="@color/brand_blue"
                         app:strokeColor="@color/brand_blue"
-                        app:strokeWidth="1dp"
-                        app:cornerRadius="12dp" />
+                        app:strokeWidth="1dp" />
 
                     <!-- Horizontal Previews of Portfolio Images -->
                     <androidx.recyclerview.widget.RecyclerView
@@ -493,16 +433,9 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnRegister"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    android:text="Finalizar Cadastro"
-                    android:textColor="@color/white"
-                    android:textSize="15sp"
-                    android:textAllCaps="false"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/brand_blue"
-                    app:cornerRadius="14dp"
-                    app:elevation="0dp" />
+                    android:text="Finalizar Cadastro" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -518,11 +451,10 @@
             android:layout_marginBottom="24dp">
 
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Já possui uma conta? "
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:text="Já possui uma conta? " />
 
             <TextView
                 android:id="@+id/txtLogin"

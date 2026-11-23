@@ -6,7 +6,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app"
+    android:background="@drawable/bg_app_glow"
     android:orientation="vertical">
 
     <LinearLayout
@@ -14,24 +14,25 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
-        android:paddingTop="8dp">
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:paddingTop="@dimen/tqf_space_md">
 
         <ImageButton
             android:id="@+id/btnBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
+            android:background="@drawable/bg_tile"
             android:contentDescription="Voltar"
-            android:src="@drawable/ic_arrow_back" />
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/tqf_text" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/tqf_space_sm"
             android:text="Avaliar solicitação"
-            android:textColor="@color/text_primary"
-            android:textSize="17sp"
-            android:textStyle="bold" />
+            android:textAppearance="@style/TextAppearance.TQF.Title" />
     </LinearLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -48,11 +49,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/card_bg"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                style="@style/Widget.TQF.Card">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -90,22 +87,19 @@
                     </LinearLayout>
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Title"
                         android:id="@+id/txtTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:textColor="@color/text_primary"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
                         tools:text="Troca de disjuntor geral" />
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Body"
                         android:id="@+id/txtClient"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="13sp"
                         tools:text="Cliente: Ana Lima • Hoje" />
 
                     <View
@@ -123,25 +117,23 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:textAppearance="@style/TextAppearance.TQF.Body"
                         android:id="@+id/txtDescription"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:lineSpacingExtra="2dp"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp"
                         android:textIsSelectable="true"
                         tools:text="Disjuntor caindo quando liga o forno." />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
+                android:textAppearance="@style/TextAppearance.TQF.Body"
                 android:id="@+id/txtStateHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp"
                 tools:text="Aceite para liberar o contato com o cliente pelo WhatsApp." />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
@@ -150,10 +142,11 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_bg"
-        android:elevation="8dp"
+        android:background="@drawable/bg_action_sheet"
+        android:elevation="@dimen/tqf_elevation_floating"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:paddingVertical="@dimen/tqf_space_md">
 
         <ProgressBar
             android:id="@+id/progressAction"
@@ -171,18 +164,14 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRefuse"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.TQF.Button.Outlined"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:minHeight="56dp"
                 android:text="Recusar"
-                android:textAllCaps="false"
-                android:textColor="@color/notification_red"
-                android:textStyle="bold"
-                app:cornerRadius="14dp"
-                app:strokeColor="@color/notification_red" />
+                android:textColor="@color/tqf_status_refused_text"
+                app:strokeColor="@color/tqf_status_refused_bg" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAccept"
@@ -190,12 +179,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                android:minHeight="56dp"
-                android:text="Aceitar"
-                android:textAllCaps="false"
-                android:textStyle="bold"
-                app:backgroundTint="@color/brand_blue"
-                app:cornerRadius="14dp" />
+                android:text="Aceitar" />
         </LinearLayout>
 
         <!-- EM_ANDAMENTO: contato e conclusão -->
@@ -203,28 +187,19 @@
             android:id="@+id/btnWhatsApp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
             android:text="Falar com o cliente no WhatsApp"
-            android:textAllCaps="false"
-            android:textStyle="bold"
             android:visibility="gone"
-            app:backgroundTint="@color/whatsapp_green"
-            app:cornerRadius="14dp" />
+            app:backgroundTint="@color/whatsapp_green" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFinish"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.TQF.Button.Soft"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:minHeight="56dp"
             android:text="Concluir serviço"
-            android:textAllCaps="false"
             android:textColor="@color/brand_blue"
-            android:textStyle="bold"
-            android:visibility="gone"
-            app:cornerRadius="14dp"
-            app:strokeColor="@color/brand_blue" />
+            android:visibility="gone" />
     </LinearLayout>
 
 </LinearLayout>

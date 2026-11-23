@@ -1,342 +1,277 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Home do prestador: saudação, disponibilidade, métricas em tiles, busca e solicitações recebidas. -->
 <androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:background="@color/bg_app">
+    android:background="@android:color/transparent"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="@dimen/tqf_screen_margin"
+        android:paddingTop="@dimen/tqf_space_lg"
+        android:paddingBottom="@dimen/tqf_space_lg">
 
-        <!-- Top Header: Logo & Notification -->
-        <RelativeLayout
+        <!-- Cabeçalho: avatar + "Olá!" + nome; notificações à direita -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/imgProviderAvatar"
+                android:clickable="true"
+                android:contentDescription="Abrir meu perfil"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:layout_width="@dimen/tqf_avatar_md"
+                android:layout_height="@dimen/tqf_avatar_md"
+                android:background="@color/tqf_primary_soft"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.TQF.Circle"
+                tools:src="@drawable/ic_profile" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:layout_marginStart="@dimen/tqf_space_sm"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <ImageView
+                <TextView
                     android:layout_width="wrap_content"
-                    android:layout_height="52dp"
-                    android:adjustViewBounds="true"
-                    android:src="@drawable/logo"
-                    android:scaleType="fitStart"
-                    tools:ignore="ContentDescription" />
+                    android:layout_height="wrap_content"
+                    android:text="Olá!"
+                    android:textAppearance="@style/TextAppearance.TQF.Caption"
+                    android:textColor="@color/tqf_text_secondary" />
+
+                <TextView
+                    android:id="@+id/txtProviderGreeting"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Prestador"
+                    android:textAppearance="@style/TextAppearance.TQF.Title"
+                    tools:text="João Ferreira" />
             </LinearLayout>
 
             <ImageView
                 android:id="@+id/imgNotificationProvider"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:src="@drawable/ic_bell"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_width="@dimen/tqf_touch_target"
+                android:layout_height="@dimen/tqf_touch_target"
+                android:background="@drawable/bg_surface_card"
                 android:clickable="true"
+                android:contentDescription="Notificações"
+                android:elevation="2dp"
                 android:focusable="true"
-                tools:ignore="ContentDescription" />
-        </RelativeLayout>
+                android:foreground="?attr/selectableItemBackgroundBorderless"
+                android:padding="13dp"
+                android:src="@drawable/ic_bell"
+                app:tint="@color/tqf_text" />
+        </LinearLayout>
 
-        <!-- Provider Greeting -->
-        <TextView
-            android:id="@+id/txtProviderGreeting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Olá!"
-            tools:text="Olá, João!"
-            android:textColor="@color/text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Encontre novos clientes e pedidos de orçamento na sua região."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
-
-        <!-- Status Toggle Card (Disponível para Chamados): perfis_prestador.is_available -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardStatusToggle"
+        <!-- Resumo dos serviços (anel = concluídos / aceitos) -->
+        <include
+            android:id="@+id/cardSummary"
+            layout="@layout/view_summary_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#C7D2FE"
-            app:strokeWidth="1dp"
-            app:cardBackgroundColor="#EEF2FF">
+            android:layout_marginTop="@dimen/tqf_space_md" />
 
-            <RelativeLayout
+        <!-- Disponível para chamados: perfis_prestador.is_available -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStatusToggle"
+            style="@style/Widget.TQF.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/tqf_space_md">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="12dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/tqf_space_md">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_alignParentStart="true"
-                    android:layout_centerVertical="true">
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
                         android:id="@+id/txtStatusTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Status: Disponível 🟢"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
+                        android:textAppearance="@style/TextAppearance.TQF.Subtitle"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Seu perfil está visível para novos chamados"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
+                        android:text="Clientes só encontram você quando disponível"
+                        android:textAppearance="@style/TextAppearance.TQF.Caption" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switchStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:checked="true" />
-            </RelativeLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Provider Metrics Summary Banner (3 Columns) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/card_stroke"
-            app:strokeWidth="1dp"
-            app:cardBackgroundColor="@color/card_bg">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingVertical="16dp"
-                android:paddingHorizontal="8dp">
-
-                <!-- Metric 1: Quotes Received -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/ic_clipboard"
-                        tools:ignore="ContentDescription" />
-
-                    <TextView
-                        android:id="@+id/txtQuotesCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="0"
-                        tools:text="8"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="Orçamentos\nrecebidos"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <!-- Metric 2: Active Services -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/ic_briefcase"
-                        tools:ignore="ContentDescription" />
-
-                    <TextView
-                        android:id="@+id/txtActiveServicesCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="0"
-                        tools:text="3"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="Serviços em\nandamento"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <!-- Metric 3: Completed Services -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:src="@drawable/ic_check_circle"
-                        tools:ignore="ContentDescription" />
-
-                    <TextView
-                        android:id="@+id/txtCompletedServicesCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="0"
-                        tools:text="5"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:text="Serviços\nconcluídos"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
+                    android:checked="true"
+                    android:minHeight="@dimen/tqf_touch_target" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Search Bar -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- Métricas (tiles) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/card_stroke"
-            app:strokeWidth="1dp"
-            app:cardBackgroundColor="@color/bg_search">
+            android:layout_marginTop="@dimen/tqf_space_md"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="16dp">
+                style="@style/Widget.TQF.MetricTile"
+                android:layout_marginEnd="@dimen/tqf_space_xs">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_search"
-                    tools:ignore="ContentDescription" />
+                    style="@style/Widget.TQF.MetricTile.Icon"
+                    android:src="@drawable/ic_clipboard" />
 
-                <EditText
-                    android:id="@+id/etSearchRequests"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:layout_marginStart="10dp"
-                    android:background="@null"
-                    android:hint="Buscar solicitações de clientes..."
-                    android:textColorHint="@color/text_muted"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:inputType="text" />
+                <TextView
+                    android:id="@+id/txtQuotesCount"
+                    style="@style/Widget.TQF.MetricTile.Value"
+                    android:text="0"
+                    tools:text="8" />
+
+                <TextView
+                    style="@style/Widget.TQF.MetricTile.Label"
+                    android:text="Pedidos\nrecebidos" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Section Title: Solicitações de Clientes -->
-        <RelativeLayout
+            <LinearLayout
+                style="@style/Widget.TQF.MetricTile"
+                android:layout_marginHorizontal="@dimen/tqf_space_xxs">
+
+                <ImageView
+                    style="@style/Widget.TQF.MetricTile.Icon"
+                    android:src="@drawable/ic_briefcase" />
+
+                <TextView
+                    android:id="@+id/txtActiveServicesCount"
+                    style="@style/Widget.TQF.MetricTile.Value"
+                    android:text="0"
+                    tools:text="3" />
+
+                <TextView
+                    style="@style/Widget.TQF.MetricTile.Label"
+                    android:text="Em\nandamento" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/Widget.TQF.MetricTile"
+                android:layout_marginStart="@dimen/tqf_space_xs">
+
+                <ImageView
+                    style="@style/Widget.TQF.MetricTile.Icon"
+                    android:src="@drawable/ic_check_circle" />
+
+                <TextView
+                    android:id="@+id/txtCompletedServicesCount"
+                    style="@style/Widget.TQF.MetricTile.Value"
+                    android:text="0"
+                    tools:text="5" />
+
+                <TextView
+                    style="@style/Widget.TQF.MetricTile.Label"
+                    android:text="Serviços\nconcluídos" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Busca nas solicitações -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/tqf_field_height"
+            android:layout_marginTop="@dimen/tqf_space_md"
+            android:background="@drawable/bg_field_soft"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="@dimen/tqf_space_md">
+
+            <ImageView
+                android:layout_width="@dimen/tqf_icon_sm"
+                android:layout_height="@dimen/tqf_icon_sm"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_search"
+                app:tint="@color/tqf_text_muted" />
+
+            <EditText
+                android:id="@+id/etSearchRequests"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/tqf_space_sm"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="Buscar solicitações"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:textColor="@color/tqf_text"
+                android:textColorHint="@color/tqf_text_muted"
+                android:textSize="@dimen/tqf_text_body" />
+        </LinearLayout>
+
+        <!-- Cabeçalho de seção -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp">
+            android:layout_marginTop="@dimen/tqf_space_lg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
+                style="@style/Widget.TQF.SectionTitle"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Solicitações na sua região"
-                android:textColor="@color/text_primary"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:layout_weight="1"
+                android:text="Solicitações na sua região" />
 
             <TextView
                 android:id="@+id/btnSeeAllRequests"
+                style="@style/Widget.TQF.Link"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="Ver todas >"
-                android:textColor="@color/brand_blue"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true" />
-        </RelativeLayout>
+                android:text="Ver todas" />
+        </LinearLayout>
 
-        <!-- Service Requests RecyclerView -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvServiceRequests"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/tqf_space_xs"
             android:nestedScrollingEnabled="false"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:itemCount="3"
+            tools:itemCount="2"
             tools:listitem="@layout/item_service_request" />
 
         <TextView
             android:id="@+id/txtEmptyRequests"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="16dp"
+            android:layout_marginVertical="@dimen/tqf_space_md"
+            android:background="@drawable/bg_tile"
             android:gravity="center"
+            android:padding="@dimen/tqf_space_lg"
             android:text="Nenhuma solicitação pendente no momento."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
+            android:textAppearance="@style/TextAppearance.TQF.Body"
             android:visibility="gone" />
-
-        <!-- Espaço para a barra de navegação flutuante -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="80dp" />
-
     </LinearLayout>
-
 </androidx.core.widget.NestedScrollView>

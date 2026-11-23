@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
 
 class LoginActivity : AppCompatActivity() {
 
@@ -35,6 +36,7 @@ class LoginActivity : AppCompatActivity() {
         try {
             binding = ActivityLoginBinding.inflate(layoutInflater)
             setContentView(binding.root)
+            binding.root.applySystemBarsPadding()
 
             userRepository = UserRepository(this)
 
@@ -43,6 +45,7 @@ class LoginActivity : AppCompatActivity() {
             setupUserTypeToggle()
             setupClickListeners()
             prefillFromRegistration()
+            restoreSessionIfAny()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Erro ao iniciar Login: ${e.message}", Toast.LENGTH_LONG).show()
@@ -201,6 +204,20 @@ class LoginActivity : AppCompatActivity() {
             loading -> "Entrando..."
             isProviderMode -> "Entrar como Prestador"
             else -> "Entrar como Contratante"
+        }
+    }
+
+    /**
+     * Sessão salva: entra direto na Home (sem pedir login a cada abertura). Não roda quando o app
+     * foi aberto por link de e-mail (confirmação/recuperação) nem na volta do cadastro.
+     */
+    private fun restoreSessionIfAny() {
+        if (intent.data != null || intent.hasExtra(EXTRA_EMAIL)) return
+        setLoginLoading(true)
+        lifecycleScope.launch {
+            val user = withContext(Dispatchers.IO) { userRepository.restoreSession() }
+            setLoginLoading(false)
+            if (user != null) handleLoginResult(Result.success(user))
         }
     }
 

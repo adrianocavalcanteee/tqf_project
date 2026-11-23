@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_app">
+    android:background="@android:color/transparent">
 
     <!-- Top Bar Header -->
     <RelativeLayout
@@ -17,25 +17,26 @@
         android:paddingBottom="14dp">
 
         <ImageView
+            app:tint="@color/tqf_text"
+            android:padding="12dp"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_tile"
             android:id="@+id/btnBackNotifications"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:contentDescription="Voltar"
+            android:layout_width="@dimen/tqf_touch_target"
+            android:layout_height="@dimen/tqf_touch_target"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_arrow_back"
-            android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"
-            android:focusable="true"
-            tools:ignore="ContentDescription" />
+            android:focusable="true" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="Notificações"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:text="Notificações" />
 
         <TextView
             android:id="@+id/btnClearAllNotifications"
@@ -71,22 +72,19 @@
             tools:ignore="ContentDescription" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Nenhuma notificação por enquanto"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:text="Nenhuma notificação por enquanto" />
 
         <TextView
+            android:textAppearance="@style/TextAppearance.TQF.Body"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:gravity="center"
-            android:text="Você receberá novidades e atualizações dos seus serviços aqui."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:text="Você receberá novidades e atualizações dos seus serviços aqui." />
     </LinearLayout>
 
     <!-- Notifications RecyclerView -->

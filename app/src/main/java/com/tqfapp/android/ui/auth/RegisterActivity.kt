@@ -37,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.tqfapp.android.ui.common.applySystemBarsPadding
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -79,6 +80,7 @@ class RegisterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityRegisterBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarsPadding()
 
         userRepository = UserRepository(this)
 
@@ -154,6 +156,11 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private var registerGoogleMap: GoogleMap? = null
+
+    private companion object {
+        /** Centro inicial do mapa quando o prestador precisa marcar o local manualmente (Manaus). */
+        val DEFAULT_MAP_CENTER = LatLng(-3.1190, -60.0217)
+    }
     private var isRegisterMapCreated = false
 
     override fun onResume() {
@@ -185,6 +192,7 @@ class RegisterActivity : AppCompatActivity() {
                 registerGoogleMap = map
                 MapUtils.applyCustomMapStyle(this, map)
                 map.uiSettings.isZoomControlsEnabled = true
+                map.setOnMapClickListener { point -> markOfficeOnMap(point) }
             }
 
             // Impede conflito de rolagem ao arrastar o mapa dentro do ScrollView
@@ -256,6 +264,27 @@ class RegisterActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Local escolhido tocando no mapa: grava as coordenadas sem depender do Geocoder
+     * (que pode falhar sem rede ou em aparelhos sem o serviço de endereços).
+     */
+    private fun markOfficeOnMap(point: LatLng) {
+        binding.etLatitude.setText(point.latitude.toString())
+        binding.etLongitude.setText(point.longitude.toString())
+        binding.tilLocation.error = null
+        binding.txtLocationStatus.visibility = View.VISIBLE
+        binding.txtLocationStatus.text = "✓ Local marcado no mapa"
+        updateMapMarker(point, binding.etLocation.text?.toString()?.trim().orEmpty())
+    }
+
+    /** Endereço não localizado: mostra o mapa para o prestador marcar o ponto manualmente. */
+    private fun showMapForManualPick() {
+        binding.cardRegisterMap.visibility = View.VISIBLE
+        binding.txtLocationStatus.visibility = View.VISIBLE
+        binding.txtLocationStatus.text = "⚠️ Endereço não encontrado. Toque no mapa para marcar o local."
+        registerGoogleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(DEFAULT_MAP_CENTER, 12f))
+    }
+
     private fun showLocatedAddress(addressText: String, coords: LatLng?) {
         if (coords != null) {
             binding.etLatitude.setText(coords.latitude.toString())
@@ -268,10 +297,8 @@ class RegisterActivity : AppCompatActivity() {
 
             Toast.makeText(this, "Endereço localizado no mapa!", Toast.LENGTH_SHORT).show()
         } else {
-            binding.cardRegisterMap.visibility = View.GONE
-            binding.txtLocationStatus.visibility = View.VISIBLE
-            binding.txtLocationStatus.text = "⚠️ Endereço não encontrado."
-            Toast.makeText(this, "Endereço não encontrado. Tente incluir rua, número e cidade.", Toast.LENGTH_LONG).show()
+            showMapForManualPick()
+            Toast.makeText(this, "Endereço não encontrado. Toque no mapa para marcar o local.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -372,7 +399,8 @@ class RegisterActivity : AppCompatActivity() {
                 }
                 if (coords == null) {
                     setRegisterLoading(false)
-                    binding.tilLocation.error = "Endereço não encontrado. Inclua rua, número e cidade."
+                    binding.tilLocation.error = "Endereço não encontrado. Toque no mapa para marcar o local."
+                    showMapForManualPick()
                     return@launch
                 }
                 userToRegister = newUser.copy(latitude = coords.latitude, longitude = coords.longitude)

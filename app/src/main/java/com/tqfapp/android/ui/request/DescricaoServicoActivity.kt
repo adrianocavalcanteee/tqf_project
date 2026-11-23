@@ -21,6 +21,8 @@ import com.tqfapp.android.utils.LocationUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.tqfapp.android.ui.common.applySystemBarsPadding
+import androidx.core.widget.doAfterTextChanged
 
 /**
  * Formulário de descrição do serviço. Ao enviar, cria a solicitação com status PENDENTE e exibe o
@@ -40,6 +42,7 @@ class DescricaoServicoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityDescricaoServicoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.root.applySystemBarsPadding()
 
         provider = intent.serializableExtra<User>(EXTRA_PROVIDER)
         if (provider == null && !intent.getBooleanExtra(EXTRA_OPEN_REQUEST, false)) {
@@ -60,7 +63,7 @@ class DescricaoServicoActivity : AppCompatActivity() {
     }
 
     private fun setupOpenRequest() {
-        binding.txtScreenTitle.text = "Pedido aberto"
+        binding.txtScreenTitle.text = "Abrir solicitação"
         binding.txtProviderInfo.text =
             "Descreva o que precisa. Todos os prestadores da categoria escolhida poderão aceitar."
         binding.tilCategory.visibility = View.VISIBLE
@@ -93,10 +96,23 @@ class DescricaoServicoActivity : AppCompatActivity() {
             if (!phone.isNullOrBlank() && binding.etClientPhone.text.isNullOrBlank()) {
                 binding.etClientPhone.setText(phone)
             }
+            // O número digitado também vira o telefone do cadastro: avisa quando ele é diferente.
+            binding.etClientPhone.doAfterTextChanged { updatePhoneHint() }
+            updatePhoneHint()
             val address = currentUser?.address
             if (!address.isNullOrBlank() && binding.etLocation.text.isNullOrBlank()) {
                 binding.etLocation.setText(address)
             }
+        }
+    }
+
+    private fun updatePhoneHint() {
+        val saved = currentUser?.telephone?.filter { it.isDigit() }.orEmpty()
+        val typed = binding.etClientPhone.text?.toString()?.filter { it.isDigit() }.orEmpty()
+        binding.tilClientPhone.helperText = if (saved.isNotEmpty() && typed.isNotEmpty() && typed != saved) {
+            "Este número substituirá o telefone do seu cadastro."
+        } else {
+            "O prestador entrará em contato por aqui se aceitar."
         }
     }
 

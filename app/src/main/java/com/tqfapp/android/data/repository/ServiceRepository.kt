@@ -20,12 +20,18 @@ import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 
 /**
  * Repositório da entidade Serviço/Solicitação integrado ao Supabase PostgREST, com cache no Room.
  * As funções são bloqueantes: chame-as fora da main thread (ex.: lifecycleScope + Dispatchers.IO).
  */
 class ServiceRepository(private val context: Context) {
+
+    private companion object {
+        /** Postgres: violação de UNIQUE (solicitação pendente repetida para o mesmo prestador). */
+        const val UNIQUE_VIOLATION = "23505"
+    }
 
     private val serviceDao = AppDatabase.getDatabase(context).serviceDao()
 
@@ -97,6 +103,13 @@ class ServiceRepository(private val context: Context) {
             try { serviceDao.insert(service) } catch (_: Exception) {}
 
             Result.success(service)
+        } catch (e: PostgrestRestException) {
+            val message = if (e.code == UNIQUE_VIOLATION) {
+                "Você já tem uma solicitação pendente com este prestador. Aguarde a resposta ou cancele a anterior."
+            } else {
+                e.userMessage("Não foi possível enviar a solicitação. Tente novamente.")
+            }
+            Result.failure(IllegalStateException(message, e))
         } catch (e: Exception) {
             Result.failure(IllegalStateException(e.userMessage("Não foi possível enviar a solicitação. Tente novamente."), e))
         }
@@ -153,9 +166,12 @@ class ServiceRepository(private val context: Context) {
         } catch (_: Exception) { null }
 
         if (remote != null) {
-            return@runBlocking remote
-                .filter { isForProvider(it.targetProviderId, it.category) }
-                .map { mergeWithLocal(it) }
+            // Nome do contratante vem de usuarios (o cache local só existe no aparelho dele).
+            return@runBlocking withPartyNames(
+                remote
+                    .filter { isForProvider(it.targetProviderId, it.category) }
+                    .map { mergeWithLocal(it) }
+            )
         }
 
         try {
@@ -220,6 +236,25 @@ class ServiceRepository(private val context: Context) {
     /** Recusa: PENDENTE -> RECUSADO via RPC. Só vale para solicitações direcionadas ao prestador. */
     fun refuseRequest(service: Service): Result<Service> =
         runStatusRpc(service, ServiceStatus.RECUSADO, "recusar_solicitacao")
+
+    /**
+     * Cancelamento pelo contratante: pendente sem resposta ou recusada pelo prestador
+     * (RPC `cancelar_solicitacao` valida dono e status).
+     */
+    fun cancelRequest(service: Service): Result<Service> =
+        runStatusRpc(service, ServiceStatus.CANCELADO, "cancelar_solicitacao")
+
+    /** Cancelamento só com o id (telas que não têm a solicitação completa, ex.: sugestões após recusa). */
+    fun cancelRequestById(requestId: String): Result<Unit> = runBlocking {
+        try {
+            SupabaseClient.postgrest.rpc("cancelar_solicitacao", buildJsonObject {
+                put("p_solicitacao_id", requestId)
+            })
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException(friendlyError(e), e))
+        }
+    }
 
     /** Conclusão (exclusiva do prestador aceito): EM_ANDAMENTO -> CONCLUIDO via RPC. */
     fun finalizeRequest(service: Service): Result<Service> =
